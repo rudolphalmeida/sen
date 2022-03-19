@@ -13,17 +13,17 @@ using word = uint16_t;
 using sbyte = int8_t;
 
 template <typename T>
-bool isBitSet(T value, byte index) {
+inline bool isBitSet(T value, byte index) {
     return (value & (0b1 << index)) != 0;
 }
 
 template <typename T>
-T setBit(T value, byte index) {
+inline T setBit(T value, byte index) {
     return value | (0b1 << index);
 }
 
 template <typename T>
-T resetBit(T value, byte index) {
+inline T resetBit(T value, byte index) {
     return value & ~(0b1 << index);
 }
 
