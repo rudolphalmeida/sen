@@ -1,12 +1,15 @@
+#include <filesystem>
 #include <iostream>
 
 #include <args.hxx>
+
+#include "rom.h"
 
 /*
  * Command-line and Program Options
  * */
 struct Options {
-    std::string romFile;
+    std::filesystem::path romFilePath;
 };
 
 Options parseArgs(int argc, char** argv) {
@@ -32,9 +35,9 @@ Options parseArgs(int argc, char** argv) {
         std::exit(-1);
     }
 
-    std::string romFile;
+    std::string romFilePath;
     if (rom) {
-        romFile = args::get(rom);
+        romFilePath = std::filesystem::path(args::get(rom));
     } else {
         // Should not get to this point
         std::cerr << "Argument rom is required\n";
@@ -42,10 +45,15 @@ Options parseArgs(int argc, char** argv) {
         std::exit(-1);
     }
 
-    return { romFile };
+    return {romFilePath};
 }
 
 int main(int argc, char** argv) {
     auto options = parseArgs(argc, argv);
+
+    auto rom = Rom::ParseRomFile(options.romFilePath);
+
+    spdlog::info("ROM requires mapper number: {}", rom.MapperNumber());
+
     return 0;
 }
