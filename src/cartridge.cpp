@@ -6,10 +6,15 @@
 
 std::unique_ptr<Mapper> buildMapperFromRom(const Rom& rom);
 
-Cartridge Cartridge::BuildForRom(Rom&& rom) {
-    auto mapper = buildMapperFromRom(rom);
+Cartridge::Cartridge(Rom&& rom)
+    : Cartridge(std::move(rom), buildMapperFromRom(rom)) {}
 
-    return Cartridge(std::move(rom), std::move(mapper));
+byte Cartridge::read(word address) const {
+    return mapper->read(rom, address);
+}
+
+void Cartridge::write(word address, byte data) {
+    mapper->write(rom, address, data);
 }
 
 std::unique_ptr<Mapper> buildMapperFromRom(const Rom& rom) {

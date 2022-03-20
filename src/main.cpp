@@ -4,6 +4,7 @@
 #include <args.hxx>
 
 #include "cartridge.h"
+#include "mmu.h"
 #include "rom.h"
 
 /*
@@ -53,8 +54,8 @@ int main(int argc, char** argv) {
     auto options = parseArgs(argc, argv);
 
     auto rom = Rom::ParseRomFile(options.romFilePath);
-
-    auto cart = Cartridge::BuildForRom(std::move(rom));
+    auto cart = std::make_shared<Cartridge>(std::move(rom));
+    auto mmu = std::make_shared<Mmu>(cart);
 
     return 0;
 }

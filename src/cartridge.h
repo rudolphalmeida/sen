@@ -5,6 +5,7 @@
 #ifndef SEN_SRC_CARTRIDGE_H_
 #define SEN_SRC_CARTRIDGE_H_
 
+#include "memory.h"
 #include "rom.h"
 #include "utils.h"
 
@@ -20,9 +21,12 @@ class Mapper {
 };
 
 // Contains the cartridge data and the mapper implementation
-class Cartridge {
+class Cartridge : public Memory {
    public:
-    static Cartridge BuildForRom(Rom&& rom);
+    explicit Cartridge(Rom&& rom);
+
+    [[nodiscard]] byte read(word address) const override;
+    void write(word address, byte data) override;
 
    private:
     explicit Cartridge(Rom&& rom, std::unique_ptr<Mapper> mapper)

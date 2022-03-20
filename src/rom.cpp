@@ -54,11 +54,13 @@ Rom Rom::ParseRomFile(const std::filesystem::path& romFilePath) {
     }
 
     // Extract PRG ROM
-    std::vector<byte> prgRom(prgRomSize);
+    std::vector<byte> prgRom;
+    prgRom.reserve(prgRomSize);
     std::copy_n(romData, prgRomSize, std::back_inserter(prgRom));
 
     // Extract CHR ROM
-    std::vector<byte> chrRom(chrRomSize);
+    std::vector<byte> chrRom;
+    chrRom.reserve(chrRomSize);
     std::copy_n(romData, chrRomSize, std::back_inserter(chrRom));
 
     return Rom{flag6, flag7, std::move(trainer), std::move(prgRom),
