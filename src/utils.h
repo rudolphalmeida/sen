@@ -33,6 +33,10 @@ inline T resetBit(T value, byte index) {
     return value & ~(0b1 << index);
 }
 
+inline bool inRange(word low, word value, word high) {
+    return low <= value && value <= high;
+}
+
 std::vector<byte> readBinaryFile(const std::filesystem::path& path);
 
 #endif  // SEN_SRC_UTILS_H_

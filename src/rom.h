@@ -34,6 +34,11 @@ class Rom {
         return (flag7 & 0xF0) | (flag6 & 0xF0);
     }
 
+    std::vector<byte>& PrgRom() { return prgRom; }
+    [[nodiscard]] const std::vector<byte>& PrgRom() const { return prgRom; }
+    std::vector<byte>& ChrRom() { return chrRom; }
+    [[nodiscard]] const std::vector<byte>& ChrRom() const { return chrRom; }
+
    private:
     explicit Rom(byte flag6,
                  byte flag7,

@@ -3,6 +3,7 @@
 
 #include <args.hxx>
 
+#include "cartridge.h"
 #include "rom.h"
 
 /*
@@ -53,7 +54,7 @@ int main(int argc, char** argv) {
 
     auto rom = Rom::ParseRomFile(options.romFilePath);
 
-    spdlog::info("ROM requires mapper number: {}", rom.MapperNumber());
+    auto cart = Cartridge::BuildForRom(std::move(rom));
 
     return 0;
 }
