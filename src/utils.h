@@ -17,6 +17,7 @@
 using byte = uint8_t;
 using word = uint16_t;
 using sbyte = int8_t;
+using uint = uint32_t;
 
 template <typename T>
 inline bool isBitSet(T value, byte index) {

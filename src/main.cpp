@@ -4,6 +4,7 @@
 #include <args.hxx>
 
 #include "cartridge.h"
+#include "cpu.h"
 #include "mmu.h"
 #include "rom.h"
 
@@ -56,6 +57,12 @@ int main(int argc, char** argv) {
     auto rom = Rom::ParseRomFile(options.romFilePath);
     auto cart = std::make_shared<Cartridge>(std::move(rom));
     auto mmu = std::make_shared<Mmu>(cart);
+    Cpu cpu(mmu);
+
+    // Main CPU loop
+    while (true) {
+        cpu.Tick();
+    }
 
     return 0;
 }

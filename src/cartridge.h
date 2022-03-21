@@ -25,8 +25,8 @@ class Cartridge : public Memory {
    public:
     explicit Cartridge(Rom&& rom);
 
-    [[nodiscard]] byte read(word address) const override;
-    void write(word address, byte data) override;
+    [[nodiscard]] byte Read(word address) const override;
+    void Write(word address, byte data) override;
 
    private:
     explicit Cartridge(Rom&& rom, std::unique_ptr<Mapper> mapper)

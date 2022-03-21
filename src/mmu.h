@@ -14,8 +14,8 @@ class Mmu : public Memory {
     explicit Mmu(std::shared_ptr<Cartridge> cart)
         : cart{std::move(cart)}, iram(0x800) {}
 
-    [[nodiscard]] byte read(word address) const override;
-    void write(word address, byte data) override;
+    [[nodiscard]] byte Read(word address) const override;
+    void Write(word address, byte data) override;
 
    private:
     std::shared_ptr<Cartridge> cart;
