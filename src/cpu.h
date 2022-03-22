@@ -9,22 +9,20 @@
 #include "utils.h"
 
 enum class FlagRegister : byte {
-    Carry = (1 << 0),
-    Zero = (1 << 1),
-    InterruptDisable = (1 << 2),
-    Overflow = (1 << 6),
-    Negative = (1 << 7),
+    Carry = 0,
+    Zero = 1,
+    InterruptDisable = 2,
+    Overflow = 6,
+    Negative = 7,
 };
 
 class Cpu {
    public:
     explicit Cpu(std::shared_ptr<Mmu> mmu);
 
-    [[nodiscard]] bool FlagStatus(FlagRegister flag) const {
-        return (p & (byte)flag) != 0;
-    }
+    [[nodiscard]] bool FlagStatus(FlagRegister flag) const { return (p & (byte)flag) != 0; }
 
-    uint Tick();
+    cycles_t Tick();
 
    private:
     std::shared_ptr<Mmu> mmu;
@@ -34,13 +32,13 @@ class Cpu {
 
     void SetFlag(FlagRegister flag, bool value) {
         if (value) {
-            p |= (byte)flag;
+            p = setBit(p, (byte)flag);
         } else {
-            p &= ~((byte)flag);
+            p = resetBit(p, (byte)flag);
         }
     }
 
-    uint ExecuteOpcode();
+    cycles_t ExecuteOpcode();
     byte Fetch();
 
     // Addressing Modes
@@ -48,7 +46,7 @@ class Cpu {
     word Indirect();
 
     // Opcodes
-    uint JMP(byte opcode);
+    cycles_t JMP(byte opcode);
 };
 
 #endif  // SEN_SRC_CPU_H_

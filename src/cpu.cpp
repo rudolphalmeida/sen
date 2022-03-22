@@ -2,10 +2,12 @@
 // Created by rudolph on 20/3/22.
 //
 
+#include <array>
+
 #include "cpu.h"
 
 /// Base timings of each opcode without any page faults or branching
-std::array<uint, 256> OPCODE_TIMINGS{
+std::array<cycles_t, 256> OPCODE_TIMINGS{
     7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6, 2, 5, 2, 8, 4, 4, 6, 6,
     2, 4, 2, 7, 4, 4, 7, 7, 6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 4, 4, 6, 6,
     2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, 6, 6, 2, 8, 3, 3, 5, 5,
@@ -38,13 +40,13 @@ Cpu::Cpu(std::shared_ptr<Mmu> mmu) : mmu(std::move(mmu)) {
     }
 }
 
-uint Cpu::Tick() {
+cycles_t Cpu::Tick() {
     return ExecuteOpcode();
 }
 
-uint Cpu::ExecuteOpcode() {
+cycles_t Cpu::ExecuteOpcode() {
     auto opcode = Fetch();
-    uint oopsCycles = 0;
+    cycles_t oopsCycles = 0;
 
     switch (opcode) {
         case 0x4C:
@@ -90,7 +92,7 @@ word Cpu::Indirect() {
 
 // Opcodes
 
-uint Cpu::JMP(byte opcode) {
+cycles_t Cpu::JMP(byte opcode) {
     word address{};
     if (opcode == 0x4C) {
         // Absolute Addressing
