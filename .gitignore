@@ -5,3 +5,5 @@ cmake-build-*
 build
 
 roms
+
+.python-version

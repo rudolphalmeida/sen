@@ -41,26 +41,11 @@ Cpu::Cpu(std::shared_ptr<Mmu> mmu) : mmu(std::move(mmu)) {
 }
 
 cycles_t Cpu::Tick() {
-    return ExecuteOpcode();
+    return 0;
 }
 
 cycles_t Cpu::ExecuteOpcode() {
-    auto opcode = Fetch();
-    cycles_t oopsCycles = 0;
-
-    switch (opcode) {
-        case 0x4C:
-        case 0x6C:
-            oopsCycles = JMP(opcode);
-            break;
-        default:
-            spdlog::error(
-                "Unimplemented or illegal opcode: {:#4X} at PC: {:#6X}", opcode,
-                pc - 1);
-            std::exit(-1);
-    }
-
-    return OPCODE_TIMINGS[opcode] + oopsCycles;
+    return 0;
 }
 
 byte Cpu::Fetch() {
@@ -69,40 +54,4 @@ byte Cpu::Fetch() {
 
 // Addressing Modes
 
-/*
- * Absolute Addressing Mode
- * Effective address is followed immediately after the opcode in little endian
- * */
-word Cpu::Absolute() {
-    auto low = Fetch();
-    auto high = Fetch();
-    return (word)high << 8 | (word)low;
-}
-
-/*
- * Indirect Addressing Mode
- * Effective address is value at argument address (+1) in little endian
- * */
-word Cpu::Indirect() {
-    auto address = Absolute();
-    auto low = mmu->Read(address);
-    auto high = mmu->Read(address + 1);
-    return (word)high << 8 | (word)low;
-}
-
 // Opcodes
-
-cycles_t Cpu::JMP(byte opcode) {
-    word address{};
-    if (opcode == 0x4C) {
-        // Absolute Addressing
-        address = Absolute();
-    } else {
-        // Indirect Addressing. Effective address at (address, address+1)
-        address = Indirect();
-    }
-
-    pc = address;
-
-    return 0;
-}

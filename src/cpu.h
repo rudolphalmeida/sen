@@ -5,6 +5,8 @@
 #ifndef SEN_SRC_CPU_H_
 #define SEN_SRC_CPU_H_
 
+#include <utility>
+
 #include "mmu.h"
 #include "utils.h"
 
@@ -20,7 +22,9 @@ class Cpu {
    public:
     explicit Cpu(std::shared_ptr<Mmu> mmu);
 
-    [[nodiscard]] bool FlagStatus(FlagRegister flag) const { return (p & (byte)flag) != 0; }
+    [[nodiscard]] bool FlagStatus(FlagRegister flag) const {
+        return (p & (byte)flag) != 0;
+    }
 
     cycles_t Tick();
 
@@ -42,11 +46,8 @@ class Cpu {
     byte Fetch();
 
     // Addressing Modes
-    word Absolute();
-    word Indirect();
 
     // Opcodes
-    cycles_t JMP(byte opcode);
 };
 
 #endif  // SEN_SRC_CPU_H_
