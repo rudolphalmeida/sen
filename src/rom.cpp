@@ -43,26 +43,21 @@ Rom Rom::ParseRomFile(const std::filesystem::path& romFilePath) {
     for (int i = 9; i < 16; i++, romData++)
         ;
 
-    // Extract trainer if it exists
-    std::vector<byte> trainer;
+    // Skip trainer if it exists
     if (isBitSet(flag6, 2)) {
         spdlog::info("Found {}B trainer in ROM", TRAINER_SIZE);
-        trainer.reserve(TRAINER_SIZE);
-        std::copy_n(romData, TRAINER_SIZE, std::back_inserter(trainer));
-    } else {
-        trainer.reserve(0);
+        romData += static_cast<long>(TRAINER_SIZE);
     }
 
     // Extract PRG ROM
     std::vector<byte> prgRom;
-    prgRom.reserve(prgRomSize);
+    prgRom.reserve(static_cast<size_t>(prgRomSize));
     std::copy_n(romData, prgRomSize, std::back_inserter(prgRom));
 
     // Extract CHR ROM
     std::vector<byte> chrRom;
-    chrRom.reserve(chrRomSize);
+    chrRom.reserve(static_cast<size_t>(chrRomSize));
     std::copy_n(romData, chrRomSize, std::back_inserter(chrRom));
 
-    return Rom{flag6, flag7, std::move(trainer), std::move(prgRom),
-               std::move(chrRom)};
+    return Rom{flag6, flag7, std::move(prgRom), std::move(chrRom)};
 }

@@ -25,7 +25,7 @@ Cpu::Cpu(std::shared_ptr<Mmu> mmu) : mmu(std::move(mmu)) {
     // Set Power-Up State. Reference:
     // https://www.nesdev.org/wiki/CPU_power_up_state
     a = x = y = 0x00;
-    p = 0x24;  // Differs from nesdev to match with nestest.nes
+    p.value = 0x24;  // Differs from nesdev to match with nestest.nes
     s = 0xFD;
 
     // TODO: Determine this by reading the reset vector. For nestest
@@ -41,10 +41,19 @@ Cpu::Cpu(std::shared_ptr<Mmu> mmu) : mmu(std::move(mmu)) {
 }
 
 cycles_t Cpu::Tick() {
-    return 0;
+    return ExecuteOpcode();
 }
 
 cycles_t Cpu::ExecuteOpcode() {
+    auto opcode = Fetch();
+
+    switch (opcode) {
+        default:
+            spdlog::error("Unimplemented or Unknown opcode {:#4X} at {:#6X}",
+                          opcode, pc - 1);
+            std::exit(-1);
+    }
+
     return 0;
 }
 

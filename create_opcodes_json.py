@@ -31,10 +31,10 @@ def main():
     opcodes_json = {}
 
     opcodes_dl = soup.find("dl", class_="opcodes")
-    for dt, dd in chunked(filter(lambda x: x != '\n', opcodes_dl.children), 2):
+    for dt, dd in chunked(filter(lambda x: x != "\n", opcodes_dl.children), 2):
         # Create opcode with data from `details` table
         details = dd.find_all(find_aria_labeled_element("details"))[0]
-        headings, *opcodes = filter(lambda x: x != '\n', details.children)
+        headings, *opcodes = filter(lambda x: x != "\n", details.children)
         headings = extract_values_in_tr_td(headings)
         opcodes = [extract_values_in_tr_td(values) for values in opcodes]
 
@@ -43,7 +43,9 @@ def main():
         # Add flags field
         flags = dd.find_all(find_aria_labeled_element("flags"))[0]
         # We include the x.name != "table" check because some table tags are not closed :(
-        headings, changes = list(filter(lambda x: x != '\n' and x.name != "table", flags.children))
+        headings, changes = list(
+            filter(lambda x: x != "\n" and x.name != "table", flags.children)
+        )
         headings = extract_values_in_tr_td(headings)
         changes = extract_values_in_tr_td(changes)
 
@@ -59,13 +61,15 @@ def main():
             # Remove unnecessary spaces after cycles value
             opcode["cycles"] = opcode["cycles"].strip()
 
-            opcodes_json[opcode['opc']] = opcode
-            opcodes_json[opcode['opc']]["flags"] = flags
-            opcodes_json[opcode['opc']]["summary"] = summary.text
-            opcodes_json[opcode['opc']]["synopsis"] = ' '.join(synopsis.strings)
+            opcodes_json[opcode["opc"]] = opcode
+            opcodes_json[opcode["opc"]]["flags"] = flags
+            opcodes_json[opcode["opc"]]["summary"] = summary.text
+            opcodes_json[opcode["opc"]]["synopsis"] = " ".join(synopsis.strings)
 
-    with open('opcodes.json', 'w') as opcodes_file:
-        opcodes_file.write(json.dumps(opcodes_json, sort_keys=True, indent=4, separators=(',', ':')))
+    with open("opcodes.json", "w") as opcodes_file:
+        opcodes_file.write(
+            json.dumps(opcodes_json, sort_keys=True, indent=4, separators=(",", ":"))
+        )
 
 
 if __name__ == "__main__":

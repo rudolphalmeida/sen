@@ -17,6 +17,8 @@ class Mmu : public Memory {
     [[nodiscard]] byte Read(word address) const override;
     void Write(word address, byte data) override;
 
+    void Tick();
+
    private:
     std::shared_ptr<Cartridge> cart;
     // Internal RAM

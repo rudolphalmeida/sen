@@ -11,3 +11,8 @@ find_package(spdlog CONFIG REQUIRED)
 add_executable(sen src/main.cpp ${SRC_FILES})
 target_include_directories(sen PRIVATE src)
 target_link_libraries(sen PRIVATE taywee::args spdlog::spdlog spdlog::spdlog_header_only)
+target_compile_options(sen PRIVATE
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
+        -Wall -Wextra -Werror -Wpedantic>
+        $<$<CXX_COMPILER_ID:MSVC>:
+        >)

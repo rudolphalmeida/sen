@@ -28,8 +28,6 @@ class Rom {
         return isBitSet(flag6, 1);
     }
 
-    [[nodiscard]] bool HasTrainer() const { return isBitSet(flag6, 2); }
-
     [[nodiscard]] byte MapperNumber() const {
         return (flag7 & 0xF0) | (flag6 & 0xF0);
     }
@@ -42,18 +40,15 @@ class Rom {
    private:
     explicit Rom(byte flag6,
                  byte flag7,
-                 std::vector<byte>&& trainer,
                  std::vector<byte>&& prgRom,
                  std::vector<byte>&& chrRom)
         : flag6{flag6},
           flag7{flag7},
-          trainer{std::move(trainer)},
           prgRom{std::move(prgRom)},
           chrRom{std::move(chrRom)} {}
 
     byte flag6, flag7;
 
-    std::vector<byte> trainer;
     std::vector<byte> prgRom;
     std::vector<byte> chrRom;
 };
