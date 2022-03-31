@@ -8,13 +8,14 @@
 #include <utility>
 
 #include "mmu.h"
+#include "opcode.h"
 #include "utils.h"
 
 class Cpu {
    public:
     explicit Cpu(std::shared_ptr<Mmu> mmu);
 
-    cycles_t Tick();
+    void Tick();
 
    private:
     std::shared_ptr<Mmu> mmu;
@@ -35,12 +36,16 @@ class Cpu {
         byte value;
     } p{};
 
-    cycles_t ExecuteOpcode();
+    void ExecuteOpcode(Opcode opcode);
     byte Fetch();
 
     // Addressing Modes
+    word Indirect(word pointer);
+    word IndirectIndexed(byte operand, byte offset);
 
     // Opcodes
+    void JMP(Opcode opcode);
+    void LDX(Opcode opcode);
 };
 
 #endif  // SEN_SRC_CPU_H_

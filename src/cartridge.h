@@ -25,7 +25,7 @@ class Cartridge : public Memory {
    public:
     explicit Cartridge(Rom&& rom);
 
-    [[nodiscard]] byte Read(word address) const override;
+    [[nodiscard]] byte Read(word address) override;
     void Write(word address, byte data) override;
 
    private:

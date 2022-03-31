@@ -9,7 +9,7 @@ std::unique_ptr<Mapper> buildMapperFromRom(const Rom& rom);
 Cartridge::Cartridge(Rom&& rom)
     : Cartridge(std::move(rom), buildMapperFromRom(rom)) {}
 
-byte Cartridge::Read(word address) const {
+byte Cartridge::Read(word address) {
     return mapper->read(rom, address);
 }
 

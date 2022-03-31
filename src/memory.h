@@ -10,7 +10,7 @@
 // Abstract Class for Memory-Mapped Components
 class Memory {
    public:
-    [[nodiscard]] virtual byte Read(word address) const = 0;
+    [[nodiscard]] virtual byte Read(word address) = 0;
     virtual void Write(word address, byte data) = 0;
 };
 

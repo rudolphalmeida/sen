@@ -6,20 +6,10 @@
 
 #include "cpu.h"
 
-/// Base timings of each opcode without any page faults or branching
-std::array<cycles_t, 256> OPCODE_TIMINGS{
-    7, 6, 2, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6, 2, 5, 2, 8, 4, 4, 6, 6,
-    2, 4, 2, 7, 4, 4, 7, 7, 6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 4, 4, 6, 6,
-    2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, 6, 6, 2, 8, 3, 3, 5, 5,
-    3, 2, 2, 2, 3, 4, 6, 6, 2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
-    6, 6, 2, 8, 3, 3, 5, 5, 4, 2, 2, 2, 5, 4, 6, 6, 2, 5, 2, 8, 4, 4, 6, 6,
-    2, 4, 2, 7, 4, 4, 7, 7, 2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4,
-    2, 6, 2, 6, 4, 4, 4, 4, 2, 5, 2, 5, 5, 5, 5, 5, 2, 6, 2, 6, 3, 3, 3, 3,
-    2, 2, 2, 2, 4, 4, 4, 4, 2, 5, 2, 5, 4, 4, 4, 4, 2, 4, 2, 4, 4, 4, 4, 4,
-    2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6, 2, 5, 2, 8, 4, 4, 6, 6,
-    2, 4, 2, 7, 4, 4, 7, 7, 2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6,
-    2, 5, 2, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7,
-};
+#define OPCODE_CASE(opc)   \
+    case OpcodeClass::opc: \
+        opc(opcode);       \
+        break;
 
 Cpu::Cpu(std::shared_ptr<Mmu> mmu) : mmu(std::move(mmu)) {
     // Set Power-Up State. Reference:
@@ -29,38 +19,99 @@ Cpu::Cpu(std::shared_ptr<Mmu> mmu) : mmu(std::move(mmu)) {
     s = 0xFD;
 
     // TODO: Determine this by reading the reset vector. For nestest
-    // hardcoded to 0xC000
+    //       hardcoded to 0xC000
     pc = 0xC000;
-
-    this->mmu->Write(0x4015, 0x00);  // All Channels Disabled
-    this->mmu->Write(0x4017, 0x00);  // Frame IRQ enabled
-
-    for (word i = 0x4000; i < 0x4014; i++) {
-        this->mmu->Write(i, 0x00);
-    }
 }
 
-cycles_t Cpu::Tick() {
-    return ExecuteOpcode();
+void Cpu::Tick() {
+    auto opcode_byte = Fetch();
+    auto opcode = DecodeOpcode(opcode_byte);
+    return ExecuteOpcode(opcode);
 }
 
-cycles_t Cpu::ExecuteOpcode() {
-    auto opcode = Fetch();
-
-    switch (opcode) {
-        default:
+void Cpu::ExecuteOpcode(Opcode opcode) {
+    switch (opcode.class_) {
+        OPCODE_CASE(JMP)
+        OPCODE_CASE(LDX)
+        case OpcodeClass::JAM:
             spdlog::error("Unimplemented or Unknown opcode {:#4X} at {:#6X}",
-                          opcode, pc - 1);
+                          opcode.opcode, pc - 1);
             std::exit(-1);
     }
-
-    return 0;
 }
 
 byte Cpu::Fetch() {
-    return mmu->Read(pc++);
+    auto value = mmu->Read(pc++);
+    return value;
 }
 
 // Addressing Modes
+word Cpu::Indirect(word pointer) {
+    auto latch = mmu->Read(pointer);
+
+    word result = (word)(mmu->Read(pointer + 1)) << 8;
+    result |= latch;
+
+    return result;
+}
+
+word Cpu::IndirectIndexed(byte operand, byte offset) {
+    mmu->Read((word)operand);
+    return (word)(operand + offset);
+}
 
 // Opcodes
+void Cpu::JMP(Opcode opcode) {
+    word address;
+
+    address = Fetch();              // Fetch low byte
+    address |= (word)Fetch() << 8;  // Fetch high byte
+
+    switch (opcode.mode) {
+        case AddressingMode::Absolute:
+            pc = address;
+            break;
+        case AddressingMode::Indirect: {
+            pc = Indirect(address);
+            break;
+        }
+        default:
+            spdlog::error("Invalid addressing mode for JMP");
+            std::exit(-1);
+    }
+}
+
+void Cpu::LDX(Opcode opcode) {
+    auto operand = Fetch();  // Fetch low byte
+
+    switch (opcode.mode) {
+        case AddressingMode::Immediate:
+            x = operand;
+            break;
+        case AddressingMode::ZeroPage: {
+            auto address = (word)operand;  // Address falls on the zero page
+            x = mmu->Read(address);
+            break;
+        }
+        case AddressingMode::ZeroPageY: {
+            auto address = IndirectIndexed(operand, y);
+            x = mmu->Read(address);
+            break;
+        }
+        case AddressingMode::Absolute: {
+            auto high = Fetch();  // Fetch high byte
+            auto address = (word)high << 8 | (word)operand;
+            x = mmu->Read(address);
+            break;
+        }
+        case AddressingMode::AbsoluteYIndexed: {
+            break;
+        }
+        default:
+            spdlog::error("Invalid addressing mode for JMP");
+            std::exit(-1);
+    }
+
+    p.flags.Zero = x == 0;
+    p.flags.Negative = isBitSet(x, 7);
+}
