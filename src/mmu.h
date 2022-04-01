@@ -22,7 +22,7 @@ class Mmu : public Memory {
         //        }
     }
 
-    [[nodiscard]] byte Read(word address) override;
+    byte Read(word address) override;
     void Write(word address, byte data) override;
 
     // For Dummy Writes

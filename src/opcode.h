@@ -8,9 +8,11 @@
 #include "utils.h"
 
 enum class OpcodeClass {
-    JMP,
     JAM,  // Not really an opcode, jams the CPU when executed
-    LDX,
+    JMP,  // Jump
+    JSR,  // Jump, Saving Return Address
+    LDX,  // Load X from Memory
+    STX,  // Store X to Memory
 };
 
 enum class AddressingMode {

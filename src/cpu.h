@@ -41,11 +41,15 @@ class Cpu {
 
     // Addressing Modes
     word Indirect(word pointer);
-    word IndirectIndexed(byte operand, byte offset);
+    word ZeroPageIndexed(byte operand, byte offset);
+    word Absolute();
+    std::pair<word, word> AbsoluteIndexed(byte offset);
 
     // Opcodes
     void JMP(Opcode opcode);
+    void JSR(Opcode opcode);
     void LDX(Opcode opcode);
+    void STX(Opcode opcode);
 };
 
 #endif  // SEN_SRC_CPU_H_

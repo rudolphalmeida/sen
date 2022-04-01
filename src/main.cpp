@@ -1,6 +1,8 @@
 #include <filesystem>
 #include <iostream>
 
+#include <spdlog/cfg/env.h>
+#include <spdlog/spdlog.h>
 #include <args.hxx>
 
 #include "cartridge.h"
@@ -52,6 +54,7 @@ Options parseArgs(int argc, char** argv) {
 }
 
 int main(int argc, char** argv) {
+    spdlog::cfg::load_env_levels();
     auto options = parseArgs(argc, argv);
 
     auto rom = Rom::ParseRomFile(options.romFilePath);
