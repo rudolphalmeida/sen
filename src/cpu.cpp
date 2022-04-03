@@ -56,6 +56,7 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(BCC)
         OPCODE_CASE(BEQ)
         OPCODE_CASE(BNE)
+        OPCODE_CASE(STA)
         case OpcodeClass::JAM:
             spdlog::error("Unimplemented or Unknown opcode {:#4X} at {:#6X}",
                           opcode.opcode, pc - 1);
@@ -90,12 +91,21 @@ word Cpu::Absolute() {
     return address;
 }
 
-std::pair<word, word> Cpu::AbsoluteIndexed(byte offset) {
+word Cpu::AbsoluteIndexed(byte offset) {
     auto low = Fetch();
     auto high = Fetch();
     word supplied = joinWord(high, low + offset);
     word corrected = joinWord(high, low) + offset;
-    return {supplied, corrected};
+
+    mmu->Read(supplied);
+    auto effective = supplied;
+
+    if (supplied != corrected) {
+        effective = corrected;
+        cyc += 1;
+    }
+
+    return effective;
 }
 
 word Cpu::IndirectX() {
@@ -111,8 +121,23 @@ word Cpu::IndirectX() {
 }
 
 word Cpu::IndirectY() {
-    // TODO: IndirectY addressing Mode
-    return 0x00;
+    auto pointer = Fetch();
+
+    auto low = mmu->Read((word)pointer);
+    auto high = mmu->Read((word)(pointer + 1));
+
+    auto supplied = joinWord(high, low + y);
+    auto corrected = joinWord(high, low) + y;
+
+    mmu->Read(supplied);
+    auto effective = supplied;
+
+    if (supplied != corrected) {
+        effective = corrected;
+        cyc += 1;
+    }
+
+    return effective;
 }
 
 // Opcodes
@@ -153,14 +178,8 @@ void Cpu::LDX(Opcode opcode) {
             break;
         }
         case AddressingMode::AbsoluteYIndexed: {
-            auto [supplied, corrected] = AbsoluteIndexed(y);
-            x = mmu->Read(supplied);
-
-            if (supplied != corrected) {  // There was a page crossing
-                x = mmu->Read(corrected);
-                cyc += 1;
-            }
-
+            auto address = AbsoluteIndexed(y);
+            x = mmu->Read(address);
             break;
         }
         default:
@@ -232,15 +251,9 @@ void Cpu::LDA(Opcode opcode) {
         }
         case AddressingMode::AbsoluteXIndexed:
         case AddressingMode::AbsoluteYIndexed: {
-            auto [supplied, corrected] = AbsoluteIndexed(
+            auto address = AbsoluteIndexed(
                 opcode.mode == AddressingMode::AbsoluteXIndexed ? x : y);
-
-            a = mmu->Read(supplied);
-
-            if (supplied != corrected) {  // Page boundary was crossed
-                a = mmu->Read(corrected);
-                cyc += 1;
-            }
+            a = mmu->Read(address);
             break;
         }
         case AddressingMode::IndirectX: {
@@ -248,9 +261,11 @@ void Cpu::LDA(Opcode opcode) {
             a = mmu->Read(address);
             break;
         }
-        case AddressingMode::IndirectY:
-            // TODO: Indirect Y for LDA
+        case AddressingMode::IndirectY: {
+            auto address = IndirectY();
+            a = mmu->Read(address);
             break;
+        }
         default:
             spdlog::error("Invalid addressing mode for LDA");
             std::exit(-1);
@@ -345,6 +360,39 @@ void Cpu::CLC(Opcode opcode) {
 
     p.flags.Carry = false;
     mmu->Read(pc);  // Dummy Read
+}
+
+void Cpu::STA(Opcode opcode) {
+    word address;
+    switch (opcode.mode) {
+        case AddressingMode::ZeroPage: {
+            address = (word)Fetch();
+            break;
+        }
+        case AddressingMode::ZeroPageX:
+            address = ZeroPageIndexed(Fetch(), x);
+            break;
+        case AddressingMode::Absolute:
+            address = Absolute();
+            break;
+        case AddressingMode::AbsoluteXIndexed:
+        case AddressingMode::AbsoluteYIndexed:
+            address = AbsoluteIndexed(
+                opcode.mode == AddressingMode::AbsoluteXIndexed ? x : y);
+            break;
+
+        case AddressingMode::IndirectX:
+            address = IndirectX();
+            break;
+        case AddressingMode::IndirectY:
+            address = IndirectY();
+            break;
+        default:
+            spdlog::error("Invalid addressing mode for STA");
+            std::exit(-1);
+    }
+
+    mmu->Write(address, a);
 }
 
 void Cpu::PerformRelativeBranch(bool condition) {

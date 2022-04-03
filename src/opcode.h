@@ -22,6 +22,7 @@ enum class OpcodeClass {
     SEC,  // Set Carry Flag
     SED,  // Set Decimal Flag
     SEI,  // Set Interrupt Disable Status
+    STA,  // Store Accumulator in Memory
     STX,  // Store X to Memory
 };
 

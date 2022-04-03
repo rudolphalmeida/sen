@@ -32,8 +32,8 @@ class Cpu {
             byte InterruptDisable : 1;
             byte Decimal : 1;
             byte B : 2;
-            byte Negative : 1;
             byte Overflow : 1;
+            byte Negative : 1;
         } flags;
         byte value;
     } p{};
@@ -45,7 +45,7 @@ class Cpu {
     word Indirect(word pointer);
     word ZeroPageIndexed(byte operand, byte offset);
     word Absolute();
-    std::pair<word, word> AbsoluteIndexed(byte offset);
+    word AbsoluteIndexed(byte offset);
     word IndirectX();
     word IndirectY();
 
@@ -63,6 +63,7 @@ class Cpu {
     void SEC(Opcode opcode);
     void SED(Opcode opcode);  // This is only for completeness. Not used in NES
     void SEI(Opcode opcode);
+    void STA(Opcode opcode);
     void STX(Opcode opcode);
 
     // Opcode Helpers
