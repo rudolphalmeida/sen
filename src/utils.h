@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <utility>
 #include <vector>
 
 #include <spdlog/spdlog.h>
@@ -36,6 +37,16 @@ inline T resetBit(T value, byte index) {
 
 inline bool inRange(word low, word value, word high) {
     return low <= value && value <= high;
+}
+
+inline std::pair<byte, byte> splitWord(word value) {
+    auto low = (byte)value;
+    auto high = (byte)(value >> 8);
+    return {high, low};
+}
+
+inline word joinWord(byte high, byte low) {
+    return (word)high << 8 | (word)low;
 }
 
 std::vector<byte> readBinaryFile(const std::filesystem::path& path);

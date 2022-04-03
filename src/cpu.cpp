@@ -4,6 +4,8 @@
 
 #include <array>
 
+#include <fmt/format.h>
+
 #include "cpu.h"
 
 #define OPCODE_CASE(opc)   \
@@ -18,6 +20,8 @@ Cpu::Cpu(std::shared_ptr<Mmu> mmu) : mmu(std::move(mmu)) {
     p.value = 0x24;  // Differs from nesdev to match with nestest.nes
     s = 0xFD;
 
+    cyc = 7;
+
     // TODO: Determine this by reading the reset vector. For nestest
     //       hardcoded to 0xC000
     pc = 0xC000;
@@ -26,7 +30,14 @@ Cpu::Cpu(std::shared_ptr<Mmu> mmu) : mmu(std::move(mmu)) {
 void Cpu::Tick() {
     auto opcode_byte = Fetch();
     auto opcode = DecodeOpcode(opcode_byte);
-    return ExecuteOpcode(opcode);
+
+    spdlog::debug(
+        "{:4X}  {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
+        pc - 1, opcode_byte, a, x, y, p.value, s, cyc);
+
+    ExecuteOpcode(opcode);
+
+    cyc += opcode.cycles;
 }
 
 void Cpu::ExecuteOpcode(Opcode opcode) {
@@ -35,6 +46,16 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(LDX)
         OPCODE_CASE(STX)
         OPCODE_CASE(JSR)
+        OPCODE_CASE(LDA)
+        OPCODE_CASE(NOP)
+        OPCODE_CASE(SED)
+        OPCODE_CASE(SEI)
+        OPCODE_CASE(SEC)
+        OPCODE_CASE(BCS)
+        OPCODE_CASE(CLC)
+        OPCODE_CASE(BCC)
+        OPCODE_CASE(BEQ)
+        OPCODE_CASE(BNE)
         case OpcodeClass::JAM:
             spdlog::error("Unimplemented or Unknown opcode {:#4X} at {:#6X}",
                           opcode.opcode, pc - 1);
@@ -72,9 +93,26 @@ word Cpu::Absolute() {
 std::pair<word, word> Cpu::AbsoluteIndexed(byte offset) {
     auto low = Fetch();
     auto high = Fetch();
-    word supplied = (word)high << 8 | (word)(low + offset);
-    word corrected = ((word)high << 8 | (word)low) + offset;
+    word supplied = joinWord(high, low + offset);
+    word corrected = joinWord(high, low) + offset;
     return {supplied, corrected};
+}
+
+word Cpu::IndirectX() {
+    auto pointer = Fetch();
+
+    mmu->Read((word)pointer);  // Dummy read
+    pointer += x;
+
+    word effective = (word)mmu->Read(pointer);
+    effective |= ((word)mmu->Read(pointer + 1)) << 8;
+
+    return effective;
+}
+
+word Cpu::IndirectY() {
+    // TODO: IndirectY addressing Mode
+    return 0x00;
 }
 
 // Opcodes
@@ -120,6 +158,7 @@ void Cpu::LDX(Opcode opcode) {
 
             if (supplied != corrected) {  // There was a page crossing
                 x = mmu->Read(corrected);
+                cyc += 1;
             }
 
             break;
@@ -167,5 +206,163 @@ void Cpu::JSR(Opcode opcode) {
     mmu->Write(0x100 + (word)(s--), (byte)(pc >> 8));
     mmu->Write(0x100 + (word)(s--), (byte)pc);
 
-    pc = (word)Fetch() << 8 | (word)low;
+    pc = ((word)Fetch()) << 8 | (word)low;
+}
+
+void Cpu::LDA(Opcode opcode) {
+    switch (opcode.mode) {
+        case AddressingMode::Immediate: {
+            a = Fetch();
+            break;
+        }
+        case AddressingMode::ZeroPage: {
+            auto address = (word)Fetch();
+            a = mmu->Read(address);
+            break;
+        }
+        case AddressingMode::ZeroPageX: {
+            auto address = ZeroPageIndexed(Fetch(), x);
+            a = mmu->Read(address);
+            break;
+        }
+        case AddressingMode::Absolute: {
+            auto address = Absolute();
+            a = mmu->Read(address);
+            break;
+        }
+        case AddressingMode::AbsoluteXIndexed:
+        case AddressingMode::AbsoluteYIndexed: {
+            auto [supplied, corrected] = AbsoluteIndexed(
+                opcode.mode == AddressingMode::AbsoluteXIndexed ? x : y);
+
+            a = mmu->Read(supplied);
+
+            if (supplied != corrected) {  // Page boundary was crossed
+                a = mmu->Read(corrected);
+                cyc += 1;
+            }
+            break;
+        }
+        case AddressingMode::IndirectX: {
+            auto address = IndirectX();
+            a = mmu->Read(address);
+            break;
+        }
+        case AddressingMode::IndirectY:
+            // TODO: Indirect Y for LDA
+            break;
+        default:
+            spdlog::error("Invalid addressing mode for LDA");
+            std::exit(-1);
+    }
+
+    p.flags.Zero = a == 0;
+    p.flags.Negative = isBitSet(a, 7);
+}
+
+void Cpu::NOP(Opcode opcode) {
+    switch (opcode.mode) {
+        case AddressingMode::Implied:
+            mmu->Read(pc);  // Dummy Read
+            break;
+        default:
+            spdlog::error("Invalid addressing mode for NOP");
+            std::exit(-1);
+    }
+}
+
+void Cpu::SEC(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for SEC");
+        std::exit(-1);
+    }
+
+    p.flags.Carry = true;
+    mmu->Read(pc);  // Dummy Read
+}
+
+void Cpu::SED(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for SED");
+        std::exit(-1);
+    }
+
+    p.flags.Decimal = true;
+    mmu->Read(pc);  // Dummy Read
+}
+
+void Cpu::SEI(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for SEI");
+        std::exit(-1);
+    }
+
+    p.flags.InterruptDisable = true;
+    mmu->Read(pc);  // Dummy Read
+}
+
+void Cpu::BCS(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Relative) {
+        spdlog::error("Invalid addressing mode for BCS");
+        std::exit(-1);
+    }
+
+    PerformRelativeBranch(p.flags.Carry);
+}
+
+void Cpu::BCC(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Relative) {
+        spdlog::error("Invalid addressing mode for BCC");
+        std::exit(-1);
+    }
+
+    PerformRelativeBranch(!p.flags.Carry);
+}
+
+void Cpu::BEQ(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Relative) {
+        spdlog::error("Invalid addressing mode for BEQ");
+        std::exit(-1);
+    }
+
+    PerformRelativeBranch(p.flags.Zero);
+}
+
+void Cpu::BNE(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Relative) {
+        spdlog::error("Invalid addressing mode for BNE");
+        std::exit(-1);
+    }
+
+    PerformRelativeBranch(!p.flags.Zero);
+}
+
+void Cpu::CLC(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for CLC");
+        std::exit(-1);
+    }
+
+    p.flags.Carry = false;
+    mmu->Read(pc);  // Dummy Read
+}
+
+void Cpu::PerformRelativeBranch(bool condition) {
+    auto operand = Fetch();
+    if (!condition)
+        return;
+
+    mmu->Read(pc);  // Dummy Read
+    cyc += 1;       // Branch taken cycle
+    auto [pch, pcl] = splitWord(pc);
+    auto incorrect = joinWord(pch, pcl + operand);
+    auto correct = joinWord(pch, pcl) + operand;
+
+    pc = incorrect;
+
+    if (incorrect != correct) {  // There was a page crossing
+        mmu->Read(incorrect);    // Dummy read
+        pc = correct;
+        cyc += 1;  // Oops cycle
+    }
 }
