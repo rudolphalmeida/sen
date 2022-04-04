@@ -42,21 +42,26 @@ void Cpu::Tick() {
 
 void Cpu::ExecuteOpcode(Opcode opcode) {
     switch (opcode.class_) {
+        OPCODE_CASE(BCC)
+        OPCODE_CASE(BCS)
+        OPCODE_CASE(BEQ)
+        OPCODE_CASE(BIT)
+        OPCODE_CASE(BNE)
+        OPCODE_CASE(BPL)
+        OPCODE_CASE(BVC)
+        OPCODE_CASE(BVS)
+        OPCODE_CASE(CLC)
         OPCODE_CASE(JMP)
-        OPCODE_CASE(LDX)
-        OPCODE_CASE(STX)
         OPCODE_CASE(JSR)
         OPCODE_CASE(LDA)
+        OPCODE_CASE(LDX)
         OPCODE_CASE(NOP)
+        OPCODE_CASE(RTS)
+        OPCODE_CASE(SEC)
         OPCODE_CASE(SED)
         OPCODE_CASE(SEI)
-        OPCODE_CASE(SEC)
-        OPCODE_CASE(BCS)
-        OPCODE_CASE(CLC)
-        OPCODE_CASE(BCC)
-        OPCODE_CASE(BEQ)
-        OPCODE_CASE(BNE)
         OPCODE_CASE(STA)
+        OPCODE_CASE(STX)
         case OpcodeClass::JAM:
             spdlog::error("Unimplemented or Unknown opcode {:#4X} at {:#6X}",
                           opcode.opcode, pc - 1);
@@ -221,11 +226,27 @@ void Cpu::JSR(Opcode opcode) {
     }
 
     auto low = Fetch();
-    mmu->Read(0x100 + (word)s);  // Run the third cycle
-    mmu->Write(0x100 + (word)(s--), (byte)(pc >> 8));
-    mmu->Write(0x100 + (word)(s--), (byte)pc);
+    mmu->Read(0x100 + s);  // Run the third cycle
+    mmu->Write(0x100 + s--, (byte)(pc >> 8));
+    mmu->Write(0x100 + s--, (byte)pc);
 
     pc = ((word)Fetch()) << 8 | (word)low;
+}
+
+void Cpu::RTS(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for RTS");
+        std::exit(-1);
+    }
+
+    mmu->Read(pc);  // Dummy Read
+
+    mmu->Read(0x100 + s++);
+    auto pcl = mmu->Read(0x100 + s++);
+    auto pch = mmu->Read(0x100 + s);
+
+    pc = (word)pch << 8 | (word)pcl;
+    mmu->Read(pc++);
 }
 
 void Cpu::LDA(Opcode opcode) {
@@ -352,6 +373,33 @@ void Cpu::BNE(Opcode opcode) {
     PerformRelativeBranch(!p.flags.Zero);
 }
 
+void Cpu::BVS(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Relative) {
+        spdlog::error("Invalid addressing mode for BVS");
+        std::exit(-1);
+    }
+
+    PerformRelativeBranch(p.flags.Overflow);
+}
+
+void Cpu::BVC(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Relative) {
+        spdlog::error("Invalid addressing mode for BVC");
+        std::exit(-1);
+    }
+
+    PerformRelativeBranch(!p.flags.Overflow);
+}
+
+void Cpu::BPL(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Relative) {
+        spdlog::error("Invalid addressing mode for BPL");
+        std::exit(-1);
+    }
+
+    PerformRelativeBranch(!p.flags.Negative);
+}
+
 void Cpu::CLC(Opcode opcode) {
     if (opcode.mode != AddressingMode::Implied) {
         spdlog::error("Invalid addressing mode for CLC");
@@ -395,6 +443,27 @@ void Cpu::STA(Opcode opcode) {
     mmu->Write(address, a);
 }
 
+void Cpu::BIT(Opcode opcode) {
+    word address;
+    switch (opcode.mode) {
+        case AddressingMode::ZeroPage:
+            address = (word)Fetch();
+            break;
+        case AddressingMode::Absolute:
+            address = Absolute();
+            break;
+        default:
+            spdlog::error("Invalid addressing mode for BIT");
+            std::exit(-1);
+    }
+
+    auto operand = mmu->Read(address);
+    p.flags.Negative = isBitSet(operand, 7);
+    p.flags.Overflow = isBitSet(operand, 6);
+    p.flags.Zero = (a & operand) == 0;
+}
+
+// Opcode Helpers
 void Cpu::PerformRelativeBranch(bool condition) {
     auto operand = Fetch();
     if (!condition)

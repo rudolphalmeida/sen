@@ -52,7 +52,11 @@ class Cpu {
     // Opcodes
     void BCC(Opcode opcode);
     void BCS(Opcode opcode);
+    void BIT(Opcode opcode);
     void BNE(Opcode opcode);
+    void BPL(Opcode opcode);
+    void BVC(Opcode opcode);
+    void BVS(Opcode opcode);
     void CLC(Opcode opcode);
     void BEQ(Opcode opcode);
     void JMP(Opcode opcode);
@@ -60,6 +64,7 @@ class Cpu {
     void LDA(Opcode opcode);
     void LDX(Opcode opcode);
     void NOP(Opcode opcode);
+    void RTS(Opcode opcode);
     void SEC(Opcode opcode);
     void SED(Opcode opcode);  // This is only for completeness. Not used in NES
     void SEI(Opcode opcode);

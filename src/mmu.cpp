@@ -15,7 +15,7 @@ byte Mmu::Read(word address) {
     address_ = address;
 
     if (inRange(0x0000, address_, 0x1FFF)) {
-        data_ = iram.at(address_ & 0x7F);
+        data_ = iram.at(address_ & 0x7FF);
     } else if (inRange(0x2000, address_, 0x3FFF)) {
         spdlog::info("Read from PPU register: {:#6X}", address_);
         data_ = 0x00;
