@@ -42,6 +42,7 @@ void Cpu::Tick() {
 
 void Cpu::ExecuteOpcode(Opcode opcode) {
     switch (opcode.class_) {
+        OPCODE_CASE(AND)
         OPCODE_CASE(BCC)
         OPCODE_CASE(BCS)
         OPCODE_CASE(BEQ)
@@ -51,11 +52,14 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(BVC)
         OPCODE_CASE(BVS)
         OPCODE_CASE(CLC)
+        OPCODE_CASE(CMP)
         OPCODE_CASE(JMP)
         OPCODE_CASE(JSR)
         OPCODE_CASE(LDA)
         OPCODE_CASE(LDX)
         OPCODE_CASE(NOP)
+        OPCODE_CASE(PLA)
+        OPCODE_CASE(PHP)
         OPCODE_CASE(RTS)
         OPCODE_CASE(SEC)
         OPCODE_CASE(SED)
@@ -461,6 +465,113 @@ void Cpu::BIT(Opcode opcode) {
     p.flags.Negative = isBitSet(operand, 7);
     p.flags.Overflow = isBitSet(operand, 6);
     p.flags.Zero = (a & operand) == 0;
+}
+
+void Cpu::PHP(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for PHP");
+        std::exit(-1);
+    }
+
+    mmu->Read(pc);  // Dummy Read
+
+    auto status_register = p;
+    // Bit 5 is always set to 1 when P is pushed, and bit 4 when pushed by
+    // PHP/BRK
+    status_register.flags.B = 0b11;
+    mmu->Write(0x100 + s--, status_register.value);
+}
+
+void Cpu::PLA(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for PLA");
+        std::exit(-1);
+    }
+
+    mmu->Read(pc);  // Dummy Read
+
+    mmu->Read(0x100 + s++);
+    a = mmu->Read(0x100 + s);
+    p.flags.Zero = a == 0x00;
+    p.flags.Negative = isBitSet(a, 7);
+}
+
+void Cpu::CMP(Opcode opcode) {
+    byte operand{};
+    switch (opcode.mode) {
+        case AddressingMode::Immediate:
+            operand = Fetch();
+            break;
+        case AddressingMode::ZeroPage:
+            operand = mmu->Read((word)Fetch());
+            break;
+        case AddressingMode::ZeroPageX:
+            operand = mmu->Read(ZeroPageIndexed(Fetch(), x));
+            break;
+        case AddressingMode::Absolute:
+            operand = mmu->Read(Absolute());
+            break;
+        case AddressingMode::AbsoluteXIndexed:
+        case AddressingMode::AbsoluteYIndexed: {
+            auto address = AbsoluteIndexed(
+                opcode.mode == AddressingMode::AbsoluteXIndexed ? x : y);
+            operand = mmu->Read(address);
+            break;
+        }
+        case AddressingMode::IndirectX:
+            operand = mmu->Read(IndirectX());
+            break;
+        case AddressingMode::IndirectY:
+            operand = mmu->Read(IndirectY());
+            break;
+        default:
+            spdlog::error("Invalid addressing mode for CMP");
+            std::exit(-1);
+    }
+
+    auto result = a - operand;
+    p.flags.Zero = result == 0x00;
+    p.flags.Negative = isBitSet(result, 7);
+    // The carry flag is set if no borrow or greater than or equal for A - M
+    p.flags.Carry = a >= operand;
+}
+
+void Cpu::AND(Opcode opcode) {
+    byte operand{};
+    switch (opcode.mode) {
+        case AddressingMode::Immediate:
+            operand = Fetch();
+            break;
+        case AddressingMode::ZeroPage:
+            operand = mmu->Read((word)Fetch());
+            break;
+        case AddressingMode::ZeroPageX:
+            operand = mmu->Read(ZeroPageIndexed(Fetch(), x));
+            break;
+        case AddressingMode::Absolute:
+            operand = mmu->Read(Absolute());
+            break;
+        case AddressingMode::AbsoluteXIndexed:
+        case AddressingMode::AbsoluteYIndexed: {
+            auto address = AbsoluteIndexed(
+                opcode.mode == AddressingMode::AbsoluteXIndexed ? x : y);
+            operand = mmu->Read(address);
+            break;
+        }
+        case AddressingMode::IndirectX:
+            operand = mmu->Read(IndirectX());
+            break;
+        case AddressingMode::IndirectY:
+            operand = mmu->Read(IndirectY());
+            break;
+        default:
+            spdlog::error("Invalid addressing mode for AND");
+            std::exit(-1);
+    }
+
+    a &= operand;
+    p.flags.Zero = a == 0x00;
+    p.flags.Negative = isBitSet(a, 7);
 }
 
 // Opcode Helpers

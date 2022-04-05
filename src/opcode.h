@@ -8,6 +8,7 @@
 #include "utils.h"
 
 enum class OpcodeClass {
+    AND,  // AND Memory with Accumulator
     BCC,  // Branch on Carry Clear
     BCS,  // Branch on Carry Set
     BEQ,  // Branch on Result Zero
@@ -17,12 +18,15 @@ enum class OpcodeClass {
     BVC,  // Branch on Overflow Clear
     BVS,  // Branch on Overflow Set
     CLC,  // Clear Carry Flag
+    CMP,  // Compare Memory With Accumulator
     JAM,  // Not really an opcode, jams the CPU when executed
     JMP,  // Jump
     JSR,  // Jump, Saving Return Address
     LDA,  // Load Accumulator with Memory
     LDX,  // Load X from Memory
     NOP,  // No Operation
+    PLA,  // Pull Accumulator From Stack
+    PHP,  // Push Processor Status on Stack
     RTS,  // Return from Subroutine
     SEC,  // Set Carry Flag
     SED,  // Set Decimal Flag

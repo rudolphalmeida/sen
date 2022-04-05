@@ -27,13 +27,13 @@ class Cpu {
 
     union {
         struct {
-            byte Carry : 1;
-            byte Zero : 1;
-            byte InterruptDisable : 1;
-            byte Decimal : 1;
-            byte B : 2;
-            byte Overflow : 1;
-            byte Negative : 1;
+            byte Carry : 1;             // Bit 0
+            byte Zero : 1;              // Bit 1
+            byte InterruptDisable : 1;  // Bit 2
+            byte Decimal : 1;           // Bit 3
+            byte B : 2;                 // Bit 4 & 5
+            byte Overflow : 1;          // Bit 6
+            byte Negative : 1;          // Bit 7
         } flags;
         byte value;
     } p{};
@@ -50,6 +50,7 @@ class Cpu {
     word IndirectY();
 
     // Opcodes
+    void AND(Opcode opcode);
     void BCC(Opcode opcode);
     void BCS(Opcode opcode);
     void BIT(Opcode opcode);
@@ -58,12 +59,15 @@ class Cpu {
     void BVC(Opcode opcode);
     void BVS(Opcode opcode);
     void CLC(Opcode opcode);
+    void CMP(Opcode opcode);
     void BEQ(Opcode opcode);
     void JMP(Opcode opcode);
     void JSR(Opcode opcode);
     void LDA(Opcode opcode);
     void LDX(Opcode opcode);
     void NOP(Opcode opcode);
+    void PLA(Opcode opcode);
+    void PHP(Opcode opcode);
     void RTS(Opcode opcode);
     void SEC(Opcode opcode);
     void SED(Opcode opcode);  // This is only for completeness. Not used in NES
