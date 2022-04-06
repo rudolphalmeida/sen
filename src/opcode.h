@@ -13,20 +13,27 @@ enum class OpcodeClass {
     BCS,  // Branch on Carry Set
     BEQ,  // Branch on Result Zero
     BIT,  // Test Bits in Memory with Accumulator
+    BMI,  // Branch on Resul Minus
     BNE,  // Branch on Result Not Zero
     BPL,  // Branch on Result Plus
     BVC,  // Branch on Overflow Clear
     BVS,  // Branch on Overflow Set
     CLC,  // Clear Carry Flag
+    CLD,  // Clear Decimal Mode
+    CLV,  // Clear Overflow Bug
     CMP,  // Compare Memory With Accumulator
+    EOR,  // Exclusive-OR Memory with Accumulator
     JAM,  // Not really an opcode, jams the CPU when executed
     JMP,  // Jump
     JSR,  // Jump, Saving Return Address
     LDA,  // Load Accumulator with Memory
     LDX,  // Load X from Memory
     NOP,  // No Operation
-    PLA,  // Pull Accumulator From Stack
+    ORA,  // OR Memory with Accumulator
+    PHA,  // Push Accumulator To Stack
     PHP,  // Push Processor Status on Stack
+    PLA,  // Pull Accumulator From Stack
+    PLP,  // Pull Processor Status From Stack
     RTS,  // Return from Subroutine
     SEC,  // Set Carry Flag
     SED,  // Set Decimal Flag

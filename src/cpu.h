@@ -53,21 +53,28 @@ class Cpu {
     void AND(Opcode opcode);
     void BCC(Opcode opcode);
     void BCS(Opcode opcode);
+    void BEQ(Opcode opcode);
     void BIT(Opcode opcode);
+    void BMI(Opcode opcode);
     void BNE(Opcode opcode);
     void BPL(Opcode opcode);
     void BVC(Opcode opcode);
     void BVS(Opcode opcode);
     void CLC(Opcode opcode);
+    void CLD(Opcode opcode);  // This is only for completeness. Not used in NES
+    void CLV(Opcode opcode);
     void CMP(Opcode opcode);
-    void BEQ(Opcode opcode);
+    void EOR(Opcode opcode);
     void JMP(Opcode opcode);
     void JSR(Opcode opcode);
     void LDA(Opcode opcode);
     void LDX(Opcode opcode);
     void NOP(Opcode opcode);
-    void PLA(Opcode opcode);
+    void ORA(Opcode opcode);
+    void PHA(Opcode opcode);
     void PHP(Opcode opcode);
+    void PLA(Opcode opcode);
+    void PLP(Opcode opcode);
     void RTS(Opcode opcode);
     void SEC(Opcode opcode);
     void SED(Opcode opcode);  // This is only for completeness. Not used in NES

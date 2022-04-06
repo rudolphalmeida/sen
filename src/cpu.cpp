@@ -47,19 +47,26 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(BCS)
         OPCODE_CASE(BEQ)
         OPCODE_CASE(BIT)
+        OPCODE_CASE(BMI)
         OPCODE_CASE(BNE)
         OPCODE_CASE(BPL)
         OPCODE_CASE(BVC)
         OPCODE_CASE(BVS)
         OPCODE_CASE(CLC)
+        OPCODE_CASE(CLD)
+        OPCODE_CASE(CLV)
         OPCODE_CASE(CMP)
+        OPCODE_CASE(EOR)
         OPCODE_CASE(JMP)
         OPCODE_CASE(JSR)
         OPCODE_CASE(LDA)
         OPCODE_CASE(LDX)
         OPCODE_CASE(NOP)
-        OPCODE_CASE(PLA)
+        OPCODE_CASE(ORA)
+        OPCODE_CASE(PHA)
         OPCODE_CASE(PHP)
+        OPCODE_CASE(PLA)
+        OPCODE_CASE(PLP)
         OPCODE_CASE(RTS)
         OPCODE_CASE(SEC)
         OPCODE_CASE(SED)
@@ -404,6 +411,15 @@ void Cpu::BPL(Opcode opcode) {
     PerformRelativeBranch(!p.flags.Negative);
 }
 
+void Cpu::BMI(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Relative) {
+        spdlog::error("Invalid addressing mode for BMI");
+        std::exit(-1);
+    }
+
+    PerformRelativeBranch(p.flags.Negative);
+}
+
 void Cpu::CLC(Opcode opcode) {
     if (opcode.mode != AddressingMode::Implied) {
         spdlog::error("Invalid addressing mode for CLC");
@@ -411,6 +427,26 @@ void Cpu::CLC(Opcode opcode) {
     }
 
     p.flags.Carry = false;
+    mmu->Read(pc);  // Dummy Read
+}
+
+void Cpu::CLD(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for CLD");
+        std::exit(-1);
+    }
+
+    p.flags.Decimal = false;
+    mmu->Read(pc);  // Dummy Read
+}
+
+void Cpu::CLV(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for CLV");
+        std::exit(-1);
+    }
+
+    p.flags.Overflow = false;
     mmu->Read(pc);  // Dummy Read
 }
 
@@ -482,6 +518,16 @@ void Cpu::PHP(Opcode opcode) {
     mmu->Write(0x100 + s--, status_register.value);
 }
 
+void Cpu::PHA(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for PHA");
+        std::exit(-1);
+    }
+
+    mmu->Read(pc);  // Dummy Read
+    mmu->Write(0x100 + s--, a);
+}
+
 void Cpu::PLA(Opcode opcode) {
     if (opcode.mode != AddressingMode::Implied) {
         spdlog::error("Invalid addressing mode for PLA");
@@ -494,6 +540,22 @@ void Cpu::PLA(Opcode opcode) {
     a = mmu->Read(0x100 + s);
     p.flags.Zero = a == 0x00;
     p.flags.Negative = isBitSet(a, 7);
+}
+
+void Cpu::PLP(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for PLP");
+        std::exit(-1);
+    }
+
+    mmu->Read(pc);  // Dummy Read
+
+    mmu->Read(0x100 + s++);
+
+    // The B flag is not affected by the PULL. It should remain same
+    auto oldBValue = p.flags.B;
+    p.value = mmu->Read(0x100 + s);
+    p.flags.B = oldBValue;
 }
 
 void Cpu::CMP(Opcode opcode) {
@@ -570,6 +632,82 @@ void Cpu::AND(Opcode opcode) {
     }
 
     a &= operand;
+    p.flags.Zero = a == 0x00;
+    p.flags.Negative = isBitSet(a, 7);
+}
+
+void Cpu::ORA(Opcode opcode) {
+    byte operand{};
+    switch (opcode.mode) {
+        case AddressingMode::Immediate:
+            operand = Fetch();
+            break;
+        case AddressingMode::ZeroPage:
+            operand = mmu->Read((word)Fetch());
+            break;
+        case AddressingMode::ZeroPageX:
+            operand = mmu->Read(ZeroPageIndexed(Fetch(), x));
+            break;
+        case AddressingMode::Absolute:
+            operand = mmu->Read(Absolute());
+            break;
+        case AddressingMode::AbsoluteXIndexed:
+        case AddressingMode::AbsoluteYIndexed: {
+            auto address = AbsoluteIndexed(
+                opcode.mode == AddressingMode::AbsoluteXIndexed ? x : y);
+            operand = mmu->Read(address);
+            break;
+        }
+        case AddressingMode::IndirectX:
+            operand = mmu->Read(IndirectX());
+            break;
+        case AddressingMode::IndirectY:
+            operand = mmu->Read(IndirectY());
+            break;
+        default:
+            spdlog::error("Invalid addressing mode for ORA");
+            std::exit(-1);
+    }
+
+    a |= operand;
+    p.flags.Zero = a == 0x00;
+    p.flags.Negative = isBitSet(a, 7);
+}
+
+void Cpu::EOR(Opcode opcode) {
+    byte operand{};
+    switch (opcode.mode) {
+        case AddressingMode::Immediate:
+            operand = Fetch();
+            break;
+        case AddressingMode::ZeroPage:
+            operand = mmu->Read((word)Fetch());
+            break;
+        case AddressingMode::ZeroPageX:
+            operand = mmu->Read(ZeroPageIndexed(Fetch(), x));
+            break;
+        case AddressingMode::Absolute:
+            operand = mmu->Read(Absolute());
+            break;
+        case AddressingMode::AbsoluteXIndexed:
+        case AddressingMode::AbsoluteYIndexed: {
+            auto address = AbsoluteIndexed(
+                opcode.mode == AddressingMode::AbsoluteXIndexed ? x : y);
+            operand = mmu->Read(address);
+            break;
+        }
+        case AddressingMode::IndirectX:
+            operand = mmu->Read(IndirectX());
+            break;
+        case AddressingMode::IndirectY:
+            operand = mmu->Read(IndirectY());
+            break;
+        default:
+            spdlog::error("Invalid addressing mode for EOR");
+            std::exit(-1);
+    }
+
+    a ^= operand;
     p.flags.Zero = a == 0x00;
     p.flags.Negative = isBitSet(a, 7);
 }
