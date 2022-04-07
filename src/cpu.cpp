@@ -86,7 +86,8 @@ byte Cpu::Fetch() {
 }
 
 // Addressing Modes
-word Cpu::Indirect(word pointer) {
+word Cpu::Indirect() {
+    auto pointer = Absolute();
     auto latch = mmu->Read(pointer);
 
     word result = (word)(mmu->Read(pointer + 1)) << 8;
@@ -95,7 +96,8 @@ word Cpu::Indirect(word pointer) {
     return result;
 }
 
-word Cpu::ZeroPageIndexed(byte operand, byte offset) {
+word Cpu::ZeroPageIndexed(byte offset) {
+    auto operand = Fetch();
     mmu->Read((word)operand);
     return (word)(operand + offset);
 }
@@ -158,14 +160,12 @@ word Cpu::IndirectY() {
 
 // Opcodes
 void Cpu::JMP(Opcode opcode) {
-    word address = Absolute();
-
     switch (opcode.mode) {
         case AddressingMode::Absolute:
-            pc = address;
+            pc = Absolute();
             break;
         case AddressingMode::Indirect: {
-            pc = Indirect(address);
+            pc = Indirect();
             break;
         }
         default:
@@ -185,7 +185,7 @@ void Cpu::LDX(Opcode opcode) {
             break;
         }
         case AddressingMode::ZeroPageY: {
-            auto address = ZeroPageIndexed(Fetch(), y);
+            auto address = ZeroPageIndexed(y);
             x = mmu->Read(address);
             break;
         }
@@ -218,7 +218,7 @@ void Cpu::STX(Opcode opcode) {
                 break;
             }
             case AddressingMode::ZeroPageY: {
-                address = ZeroPageIndexed(Fetch(), y);
+                address = ZeroPageIndexed(y);
                 break;
             }
             default:
@@ -272,7 +272,7 @@ void Cpu::LDA(Opcode opcode) {
             break;
         }
         case AddressingMode::ZeroPageX: {
-            auto address = ZeroPageIndexed(Fetch(), x);
+            auto address = ZeroPageIndexed(x);
             a = mmu->Read(address);
             break;
         }
@@ -458,7 +458,7 @@ void Cpu::STA(Opcode opcode) {
             break;
         }
         case AddressingMode::ZeroPageX:
-            address = ZeroPageIndexed(Fetch(), x);
+            address = ZeroPageIndexed(x);
             break;
         case AddressingMode::Absolute:
             address = Absolute();
@@ -568,7 +568,7 @@ void Cpu::CMP(Opcode opcode) {
             operand = mmu->Read((word)Fetch());
             break;
         case AddressingMode::ZeroPageX:
-            operand = mmu->Read(ZeroPageIndexed(Fetch(), x));
+            operand = mmu->Read(ZeroPageIndexed(x));
             break;
         case AddressingMode::Absolute:
             operand = mmu->Read(Absolute());
@@ -608,7 +608,7 @@ void Cpu::AND(Opcode opcode) {
             operand = mmu->Read((word)Fetch());
             break;
         case AddressingMode::ZeroPageX:
-            operand = mmu->Read(ZeroPageIndexed(Fetch(), x));
+            operand = mmu->Read(ZeroPageIndexed(x));
             break;
         case AddressingMode::Absolute:
             operand = mmu->Read(Absolute());
@@ -646,7 +646,7 @@ void Cpu::ORA(Opcode opcode) {
             operand = mmu->Read((word)Fetch());
             break;
         case AddressingMode::ZeroPageX:
-            operand = mmu->Read(ZeroPageIndexed(Fetch(), x));
+            operand = mmu->Read(ZeroPageIndexed(x));
             break;
         case AddressingMode::Absolute:
             operand = mmu->Read(Absolute());
@@ -684,7 +684,7 @@ void Cpu::EOR(Opcode opcode) {
             operand = mmu->Read((word)Fetch());
             break;
         case AddressingMode::ZeroPageX:
-            operand = mmu->Read(ZeroPageIndexed(Fetch(), x));
+            operand = mmu->Read(ZeroPageIndexed(x));
             break;
         case AddressingMode::Absolute:
             operand = mmu->Read(Absolute());

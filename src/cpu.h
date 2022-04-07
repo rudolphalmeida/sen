@@ -42,8 +42,8 @@ class Cpu {
     byte Fetch();
 
     // Addressing Modes
-    word Indirect(word pointer);
-    word ZeroPageIndexed(byte operand, byte offset);
+    word Indirect();
+    word ZeroPageIndexed(byte offset);
     word Absolute();
     word AbsoluteIndexed(byte offset);
     word IndirectX();
