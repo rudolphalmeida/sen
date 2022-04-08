@@ -8,38 +8,104 @@
 #include "utils.h"
 
 enum class OpcodeClass {
-    AND,  // AND Memory with Accumulator
-    BCC,  // Branch on Carry Clear
-    BCS,  // Branch on Carry Set
-    BEQ,  // Branch on Result Zero
-    BIT,  // Test Bits in Memory with Accumulator
-    BMI,  // Branch on Resul Minus
-    BNE,  // Branch on Result Not Zero
-    BPL,  // Branch on Result Plus
-    BVC,  // Branch on Overflow Clear
-    BVS,  // Branch on Overflow Set
-    CLC,  // Clear Carry Flag
-    CLD,  // Clear Decimal Mode
-    CLV,  // Clear Overflow Bug
-    CMP,  // Compare Memory With Accumulator
-    EOR,  // Exclusive-OR Memory with Accumulator
-    JAM,  // Not really an opcode, jams the CPU when executed
-    JMP,  // Jump
-    JSR,  // Jump, Saving Return Address
-    LDA,  // Load Accumulator with Memory
-    LDX,  // Load X from Memory
-    NOP,  // No Operation
-    ORA,  // OR Memory with Accumulator
-    PHA,  // Push Accumulator To Stack
-    PHP,  // Push Processor Status on Stack
-    PLA,  // Pull Accumulator From Stack
-    PLP,  // Pull Processor Status From Stack
-    RTS,  // Return from Subroutine
-    SEC,  // Set Carry Flag
-    SED,  // Set Decimal Flag
-    SEI,  // Set Interrupt Disable Status
-    STA,  // Store Accumulator in Memory
-    STX,  // Store X to Memory
+    // Add Memory to Accumulator With Carry
+    ADC,
+    // AND Memory with Accumulator
+    AND,
+    // Branch on Carry Clear
+    BCC,
+    // Branch on Carry Set
+    BCS,
+    // Branch on Result Zero
+    BEQ,
+    // Test Bits in Memory with Accumulator
+    BIT,
+    // Branch on Resul Minus
+    BMI,
+    // Branch on Result Not Zero
+    BNE,
+    // Branch on Result Plus
+    BPL,
+    // Branch on Overflow Clear
+    BVC,
+    // Branch on Overflow Set
+    BVS,
+    // Clear Carry Flag
+    CLC,
+    // Clear Decimal Mode
+    CLD,
+    // Clear Overflow Bug
+    CLV,
+    // Compare Memory with Accumulator
+    CMP,
+    // Compare Memory with Index X
+    CPX,
+    // Compare Memory with Index Y
+    CPY,
+    // Decrement Memory by One
+    DEC,
+    // Decrement Index X by One
+    DEX,
+    // Decrement Index Y by One
+    DEY,
+    // Exclusive-OR Memory with Accumulator
+    EOR,
+    // Increment Memory by One
+    INC,
+    // Increment Index X by One
+    INX,
+    // Increment Index Y by One
+    INY,
+    // Not really an opcode, jams the CPU when executed
+    JAM,
+    // Jump
+    JMP,
+    // Jump, Saving Return Address
+    JSR,
+    // Load Accumulator with Memory
+    LDA,
+    // Load X from Memory
+    LDX,
+    // Load Y from Memory
+    LDY,
+    // No Operation
+    NOP,
+    // OR Memory with Accumulator
+    ORA,
+    // Push Accumulator To Stack
+    PHA,
+    // Push Processor Status on Stack
+    PHP,
+    // Pull Accumulator From Stack
+    PLA,
+    // Pull Processor Status From Stack
+    PLP,
+    // Return from Subroutine
+    RTS,
+    // Subtract Memory from Accumulator with Borrow
+    SBC,
+    // Set Carry Flag
+    SEC,
+    // Set Decimal Flag
+    SED,
+    // Set Interrupt Disable Status
+    SEI,
+    // Store Accumulator in Memory
+    STA,
+    // Store X to Memory
+    STX,
+    // Transfer Accumulator to Index X
+    TAX,
+    // Transfer Accumulator to Index Y
+    TAY,
+    // Transfer Stack Pointer to Index X
+    TSX,
+    // Transfer Index X to Accumulator
+    TXA,
+    // Transfer Index X to Stack Register
+    TXS,
+    // Transfer Index Y to Accumulator
+    TYA,
 };
 
 enum class AddressingMode {

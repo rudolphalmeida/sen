@@ -50,6 +50,7 @@ class Cpu {
     word IndirectY();
 
     // Opcodes
+    void ADC(Opcode opcode);
     void AND(Opcode opcode);
     void BCC(Opcode opcode);
     void BCS(Opcode opcode);
@@ -64,11 +65,20 @@ class Cpu {
     void CLD(Opcode opcode);  // This is only for completeness. Not used in NES
     void CLV(Opcode opcode);
     void CMP(Opcode opcode);
+    void CPX(Opcode opcode);
+    void CPY(Opcode opcode);
+    void DEC(Opcode opcode);
+    void DEX(Opcode opcode);
+    void DEY(Opcode opcode);
     void EOR(Opcode opcode);
+    void INC(Opcode opcode);
+    void INX(Opcode opcode);
+    void INY(Opcode opcode);
     void JMP(Opcode opcode);
     void JSR(Opcode opcode);
     void LDA(Opcode opcode);
     void LDX(Opcode opcode);
+    void LDY(Opcode opcode);
     void NOP(Opcode opcode);
     void ORA(Opcode opcode);
     void PHA(Opcode opcode);
@@ -76,14 +86,25 @@ class Cpu {
     void PLA(Opcode opcode);
     void PLP(Opcode opcode);
     void RTS(Opcode opcode);
+    void SBC(Opcode opcode);
     void SEC(Opcode opcode);
     void SED(Opcode opcode);  // This is only for completeness. Not used in NES
     void SEI(Opcode opcode);
     void STA(Opcode opcode);
     void STX(Opcode opcode);
+    void TAX(Opcode opcode);
+    void TAY(Opcode opcode);
+    void TSX(Opcode opcode);
+    void TXA(Opcode opcode);
+    void TXS(Opcode opcode);
+    void TYA(Opcode opcode);
 
     // Opcode Helpers
+    byte FetchOperandForReadOpcodes(const Opcode& opcode, const char* repr);
     void PerformRelativeBranch(bool condition);
+    void DoInc(byte& reg);
+    void DoDec(byte& reg);
+    void DoTransfer(byte& dest, byte src);
 };
 
 #endif  // SEN_SRC_CPU_H_
