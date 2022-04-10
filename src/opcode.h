@@ -104,6 +104,8 @@ enum class OpcodeClass {
     STA,
     // Store X to Memory
     STX,
+    // Store Y to Memory
+    STY,
     // Transfer Accumulator to Index X
     TAX,
     // Transfer Accumulator to Index Y

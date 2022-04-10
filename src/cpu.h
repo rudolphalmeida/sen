@@ -45,7 +45,8 @@ class Cpu {
     word Indirect();
     word ZeroPageIndexed(byte offset);
     word Absolute();
-    word AbsoluteIndexed(byte offset);
+    // Returns a effective address, page crossed pair
+    std::pair<word, bool> AbsoluteIndexed(byte offset);
     word IndirectX();
     word IndirectY();
 
@@ -97,6 +98,7 @@ class Cpu {
     void SEI(Opcode opcode);
     void STA(Opcode opcode);
     void STX(Opcode opcode);
+    void STY(Opcode opcode);
     void TAX(Opcode opcode);
     void TAY(Opcode opcode);
     void TSX(Opcode opcode);

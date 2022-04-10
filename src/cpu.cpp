@@ -32,7 +32,7 @@ void Cpu::Tick() {
     auto opcode = DecodeOpcode(opcode_byte);
 
     spdlog::debug(
-        "{:4X}  {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
+        "{:04X}  {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
         pc - 1, opcode_byte, a, x, y, p.value, s, cyc);
 
     ExecuteOpcode(opcode);
@@ -89,6 +89,7 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(SEI)
         OPCODE_CASE(STA)
         OPCODE_CASE(STX)
+        OPCODE_CASE(STY)
         OPCODE_CASE(TAX)
         OPCODE_CASE(TAY)
         OPCODE_CASE(TSX)
@@ -110,28 +111,29 @@ byte Cpu::Fetch() {
 // Addressing Modes
 word Cpu::Indirect() {
     auto pointer = Absolute();
-    auto latch = mmu->Read(pointer);
+    auto [high, low] = splitWord(pointer);
 
-    word result = (word)(mmu->Read(pointer + 1)) << 8;
-    result |= latch;
+    auto pcl = (word)mmu->Read(joinWord(high, low));
+    // PCH is fetched from the same page as PCL i.e. only increment the low byte
+    auto pch = (word)mmu->Read(joinWord(high, low + 1));
 
-    return result;
+    return (pch << 8) | pcl;
 }
 
 word Cpu::ZeroPageIndexed(byte offset) {
     auto operand = Fetch();
     mmu->Read((word)operand);
-    return (word)(operand + offset);
+    return (word)(operand + offset) & 0xFF;
 }
 
 word Cpu::Absolute() {
-    word address = Fetch();         // Fetch low byte
-    address |= (word)Fetch() << 8;  // Fetch high byte
+    word low = (word)Fetch();   // Fetch low byte
+    word high = (word)Fetch();  // Fetch high byte
 
-    return address;
+    return (high << 8) | low;
 }
 
-word Cpu::AbsoluteIndexed(byte offset) {
+std::pair<word, bool> Cpu::AbsoluteIndexed(byte offset) {
     auto low = Fetch();
     auto high = Fetch();
     word supplied = joinWord(high, low + offset);
@@ -139,13 +141,14 @@ word Cpu::AbsoluteIndexed(byte offset) {
 
     mmu->Read(supplied);
     auto effective = supplied;
+    bool page_crossed = false;
 
     if (supplied != corrected) {
         effective = corrected;
-        cyc += 1;
+        page_crossed = true;
     }
 
-    return effective;
+    return {effective, page_crossed};
 }
 
 word Cpu::IndirectX() {
@@ -163,8 +166,8 @@ word Cpu::IndirectX() {
 word Cpu::IndirectY() {
     auto pointer = Fetch();
 
-    auto low = mmu->Read((word)pointer);
-    auto high = mmu->Read((word)(pointer + 1));
+    auto low = mmu->Read(pointer & 0xFF);
+    auto high = mmu->Read((pointer + 1) & 0xFF);
 
     auto supplied = joinWord(high, low + y);
     auto corrected = joinWord(high, low) + y;
@@ -198,37 +201,54 @@ void Cpu::JMP(Opcode opcode) {
 
 void Cpu::LDX(Opcode opcode) {
     x = FetchOperandForReadOpcodes(opcode, "LDX");
-    p.flags.Zero = x == 0;
+    p.flags.Zero = (x == 0x00);
     p.flags.Negative = isBitSet(x, 7);
 }
 
 void Cpu::LDY(Opcode opcode) {
     y = FetchOperandForReadOpcodes(opcode, "LDY");
-    p.flags.Zero = y == 0;
+    p.flags.Zero = (y == 0x00);
     p.flags.Negative = isBitSet(y, 7);
 }
 
 void Cpu::STX(Opcode opcode) {
     word address;
-    if (opcode.mode == AddressingMode::Absolute) {
-        address = Absolute();
-    } else {
-        switch (opcode.mode) {
-            case AddressingMode::ZeroPage: {
-                address = (word)Fetch();
-                break;
-            }
-            case AddressingMode::ZeroPageY: {
-                address = ZeroPageIndexed(y);
-                break;
-            }
-            default:
-                spdlog::error("Invalid addressing mode for STX");
-                std::exit(-1);
-        }
+    switch (opcode.mode) {
+        case AddressingMode::Absolute:
+            address = Absolute();
+            break;
+        case AddressingMode::ZeroPage:
+            address = (word)Fetch();
+            break;
+        case AddressingMode::ZeroPageY:
+            address = ZeroPageIndexed(y);
+            break;
+        default:
+            spdlog::error("Invalid addressing mode for STX");
+            std::exit(-1);
     }
 
     mmu->Write(address, x);
+}
+
+void Cpu::STY(Opcode opcode) {
+    word address;
+    switch (opcode.mode) {
+        case AddressingMode::Absolute:
+            address = Absolute();
+            break;
+        case AddressingMode::ZeroPage:
+            address = (word)Fetch();
+            break;
+        case AddressingMode::ZeroPageX:
+            address = ZeroPageIndexed(x);
+            break;
+        default:
+            spdlog::error("Invalid addressing mode for STY");
+            std::exit(-1);
+    }
+
+    mmu->Write(address, y);
 }
 
 void Cpu::JSR(Opcode opcode) {
@@ -441,11 +461,12 @@ void Cpu::STA(Opcode opcode) {
             address = Absolute();
             break;
         case AddressingMode::AbsoluteXIndexed:
-        case AddressingMode::AbsoluteYIndexed:
-            address = AbsoluteIndexed(
+        case AddressingMode::AbsoluteYIndexed: {
+            auto [effective, crossed] = AbsoluteIndexed(
                 opcode.mode == AddressingMode::AbsoluteXIndexed ? x : y);
+            address = effective;
             break;
-
+        }
         case AddressingMode::IndirectX:
             address = IndirectX();
             break;
@@ -652,9 +673,11 @@ void Cpu::INC(Opcode opcode) {
         case AddressingMode::Absolute:
             address = Absolute();
             break;
-        case AddressingMode::AbsoluteXIndexed:
-            address = AbsoluteIndexed(x);
+        case AddressingMode::AbsoluteXIndexed: {
+            auto [effective, crossed] = AbsoluteIndexed(x);
+            address = effective;
             break;
+        }
         default:
             spdlog::error("Invalid addressing mode for INC");
             std::exit(-1);
@@ -677,9 +700,11 @@ void Cpu::DEC(Opcode opcode) {
         case AddressingMode::Absolute:
             address = Absolute();
             break;
-        case AddressingMode::AbsoluteXIndexed:
-            address = AbsoluteIndexed(x);
+        case AddressingMode::AbsoluteXIndexed: {
+            auto [effective, crossed] = AbsoluteIndexed(x);
+            address = effective;
             break;
+        }
         default:
             spdlog::error("Invalid addressing mode for DEC");
             std::exit(-1);
@@ -819,14 +844,19 @@ byte Cpu::FetchOperandForReadOpcodes(const Opcode& opcode, const char* repr) {
         case AddressingMode::ZeroPageX:
             operand = mmu->Read(ZeroPageIndexed(x));
             break;
+        case AddressingMode::ZeroPageY:
+            operand = mmu->Read(ZeroPageIndexed(y));
+            break;
         case AddressingMode::Absolute:
             operand = mmu->Read(Absolute());
             break;
         case AddressingMode::AbsoluteXIndexed:
         case AddressingMode::AbsoluteYIndexed: {
-            auto address = AbsoluteIndexed(
+            auto [address, crossed] = AbsoluteIndexed(
                 opcode.mode == AddressingMode::AbsoluteXIndexed ? x : y);
             operand = mmu->Read(address);
+            if (crossed)
+                cyc += 1;
             break;
         }
         case AddressingMode::IndirectX:
@@ -863,7 +893,7 @@ void Cpu::DoTransfer(byte& dest, byte src) {
 
 void Cpu::PerformShiftOrRotate(const Opcode& opcode, const char* repr) {
     byte operand{};
-    byte effective{};
+    word effective{};
     switch (opcode.mode) {
         case AddressingMode::Accumulator:
             operand = a;
@@ -880,10 +910,12 @@ void Cpu::PerformShiftOrRotate(const Opcode& opcode, const char* repr) {
             effective = Absolute();
             operand = mmu->Read(effective);
             break;
-        case AddressingMode::AbsoluteXIndexed:
-            effective = AbsoluteIndexed(x);
+        case AddressingMode::AbsoluteXIndexed: {
+            auto [address, crossed] = AbsoluteIndexed(x);
+            effective = address;
             operand = mmu->Read(effective);
             break;
+        }
         default:
             spdlog::error("Invalid addressing mode for ASL");
             std::exit(-1);
