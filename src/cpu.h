@@ -52,6 +52,7 @@ class Cpu {
     // Opcodes
     void ADC(Opcode opcode);
     void AND(Opcode opcode);
+    void ASL(Opcode opcode);
     void BCC(Opcode opcode);
     void BCS(Opcode opcode);
     void BEQ(Opcode opcode);
@@ -79,12 +80,16 @@ class Cpu {
     void LDA(Opcode opcode);
     void LDX(Opcode opcode);
     void LDY(Opcode opcode);
+    void LSR(Opcode opcode);
     void NOP(Opcode opcode);
     void ORA(Opcode opcode);
     void PHA(Opcode opcode);
     void PHP(Opcode opcode);
     void PLA(Opcode opcode);
     void PLP(Opcode opcode);
+    void ROL(Opcode opcode);
+    void ROR(Opcode opcode);
+    void RTI(Opcode opcode);
     void RTS(Opcode opcode);
     void SBC(Opcode opcode);
     void SEC(Opcode opcode);
@@ -105,6 +110,7 @@ class Cpu {
     void DoInc(byte& reg);
     void DoDec(byte& reg);
     void DoTransfer(byte& dest, byte src);
+    void PerformShiftOrRotate(const Opcode& opcode, const char* repr);
 };
 
 #endif  // SEN_SRC_CPU_H_

@@ -42,8 +42,9 @@ void Cpu::Tick() {
 
 void Cpu::ExecuteOpcode(Opcode opcode) {
     switch (opcode.class_) {
-        OPCODE_CASE(ADC);
+        OPCODE_CASE(ADC)
         OPCODE_CASE(AND)
+        OPCODE_CASE(ASL)
         OPCODE_CASE(BCC)
         OPCODE_CASE(BCS)
         OPCODE_CASE(BEQ)
@@ -71,12 +72,16 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(LDA)
         OPCODE_CASE(LDX)
         OPCODE_CASE(LDY)
+        OPCODE_CASE(LSR)
         OPCODE_CASE(NOP)
         OPCODE_CASE(ORA)
         OPCODE_CASE(PHA)
         OPCODE_CASE(PHP)
         OPCODE_CASE(PLA)
         OPCODE_CASE(PLP)
+        OPCODE_CASE(ROL)
+        OPCODE_CASE(ROR)
+        OPCODE_CASE(RTI)
         OPCODE_CASE(RTS)
         OPCODE_CASE(SBC)
         OPCODE_CASE(SEC)
@@ -149,10 +154,10 @@ word Cpu::IndirectX() {
     mmu->Read((word)pointer);  // Dummy read
     pointer += x;
 
-    word effective = (word)mmu->Read(pointer);
-    effective |= ((word)mmu->Read(pointer + 1)) << 8;
+    auto low = (word)mmu->Read(pointer & 0xFF);
+    auto high = (word)mmu->Read((pointer + 1) & 0xFF);
 
-    return effective;
+    return (high << 8) | low;
 }
 
 word Cpu::IndirectY() {
@@ -254,6 +259,23 @@ void Cpu::RTS(Opcode opcode) {
 
     pc = (word)pch << 8 | (word)pcl;
     mmu->Read(pc++);
+}
+
+void Cpu::RTI(Opcode opcode) {
+    if (opcode.mode != AddressingMode::Implied) {
+        spdlog::error("Invalid addressing mode for RTI");
+        std::exit(-1);
+    }
+
+    mmu->Read(pc);  // Dummy Read
+    mmu->Read(0x100 + s++);
+
+    auto bit5 = p.value & 0x20;
+    p.value = mmu->Read(0x100 + s++);
+    p.value |= bit5;  // Bit 5 is left as is
+
+    pc = (word)mmu->Read(0x100 + s++);
+    pc |= (word)mmu->Read(0x100 + s) << 8;
 }
 
 void Cpu::LDA(Opcode opcode) {
@@ -748,6 +770,22 @@ void Cpu::TYA(Opcode opcode) {
     DoTransfer(a, y);
 }
 
+void Cpu::LSR(Opcode opcode) {
+    PerformShiftOrRotate(opcode, "LSR");
+}
+
+void Cpu::ASL(Opcode opcode) {
+    PerformShiftOrRotate(opcode, "ASL");
+}
+
+void Cpu::ROL(Opcode opcode) {
+    PerformShiftOrRotate(opcode, "ROL");
+}
+
+void Cpu::ROR(Opcode opcode) {
+    PerformShiftOrRotate(opcode, "ROR");
+}
+
 // Opcode Helpers
 void Cpu::PerformRelativeBranch(bool condition) {
     auto operand = Fetch();
@@ -821,4 +859,78 @@ void Cpu::DoTransfer(byte& dest, byte src) {
     dest = src;
     p.flags.Zero = dest == 0x00;
     p.flags.Negative = isBitSet(dest, 7);
+}
+
+void Cpu::PerformShiftOrRotate(const Opcode& opcode, const char* repr) {
+    byte operand{};
+    byte effective{};
+    switch (opcode.mode) {
+        case AddressingMode::Accumulator:
+            operand = a;
+            break;
+        case AddressingMode::ZeroPage:
+            effective = (word)Fetch();
+            operand = mmu->Read(effective);
+            break;
+        case AddressingMode::ZeroPageX:
+            effective = ZeroPageIndexed(x);
+            operand = mmu->Read(effective);
+            break;
+        case AddressingMode::Absolute:
+            effective = Absolute();
+            operand = mmu->Read(effective);
+            break;
+        case AddressingMode::AbsoluteXIndexed:
+            effective = AbsoluteIndexed(x);
+            operand = mmu->Read(effective);
+            break;
+        default:
+            spdlog::error("Invalid addressing mode for ASL");
+            std::exit(-1);
+    }
+
+    if (opcode.mode != AddressingMode::Accumulator) {
+        mmu->Write(effective, operand);  // Dummy write
+    }
+
+    switch (opcode.class_) {
+        case OpcodeClass::ASL:
+            p.flags.Carry = isBitSet(operand, 7);
+            operand <<= 1;
+            break;
+        case OpcodeClass::LSR:
+            p.flags.Carry = isBitSet(operand, 0);
+            operand >>= 1;
+            break;
+        case OpcodeClass::ROL: {
+            auto carry = isBitSet(operand, 7);
+            operand <<= 1;
+            operand |= p.flags.Carry ? 0x01 : 0x00;
+            p.flags.Carry = carry;
+            break;
+        }
+        case OpcodeClass::ROR: {
+            auto carry = isBitSet(operand, 0);
+            operand >>= 1;
+            operand |= p.flags.Carry ? 0x80 : 0x00;
+            p.flags.Carry = carry;
+            break;
+        }
+        default:
+            spdlog::error("Invalid addressing mode for {}", repr);
+            std::exit(-1);
+    }
+
+    p.flags.Negative = isBitSet(operand, 7);
+    p.flags.Zero = operand == 0x00;
+
+    // Write back the value
+    switch (opcode.mode) {
+        case AddressingMode::Accumulator:
+            a = operand;
+            break;
+        default:
+            mmu->Write(effective, operand);
+            break;
+    }
 }

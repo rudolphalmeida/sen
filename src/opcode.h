@@ -12,6 +12,8 @@ enum class OpcodeClass {
     ADC,
     // AND Memory with Accumulator
     AND,
+    // Shift Left One Bit (Accumulator or Memory)
+    ASL,
     // Branch on Carry Clear
     BCC,
     // Branch on Carry Set
@@ -68,6 +70,8 @@ enum class OpcodeClass {
     LDX,
     // Load Y from Memory
     LDY,
+    // Shift One Bit Right (Memory or Accumulator)
+    LSR,
     // No Operation
     NOP,
     // OR Memory with Accumulator
@@ -80,6 +84,12 @@ enum class OpcodeClass {
     PLA,
     // Pull Processor Status From Stack
     PLP,
+    // Rotate One Bit Left (Memory or Accumulator)
+    ROL,
+    // Rotate One Bit Right (Memory or Accumulator)
+    ROR,
+    // Return from Interrupt
+    RTI,
     // Return from Subroutine
     RTS,
     // Subtract Memory from Accumulator with Borrow
