@@ -13,7 +13,14 @@
         opc(opcode);       \
         break;
 
-Cpu::Cpu(std::shared_ptr<Mmu> mmu) : mmu(std::move(mmu)) {
+// Starting address for jump vectors
+enum class JumpVectors : word {
+    NMI = 0xFFFA,
+    RES = 0xFFFC,
+    IRQ = 0xFFFE,
+};
+
+Cpu::Cpu(std::shared_ptr<Mmu> mmu_) : mmu(std::move(mmu_)) {
     // Set Power-Up State. Reference:
     // https://www.nesdev.org/wiki/CPU_power_up_state
     a = x = y = 0x00;
@@ -22,9 +29,9 @@ Cpu::Cpu(std::shared_ptr<Mmu> mmu) : mmu(std::move(mmu)) {
 
     cyc = 7;
 
-    // TODO: Determine this by reading the reset vector. For nestest
-    //       hardcoded to 0xC000
-    pc = 0xC000;
+    auto pcl = (word)mmu->RawRead(static_cast<word>(JumpVectors::RES));
+    auto pch = (word)mmu->RawRead(static_cast<word>(JumpVectors::RES) + 1);
+    pc = (pch << 8) | pcl;
 }
 
 void Cpu::Tick() {
