@@ -1,5 +1,6 @@
 .idea
 .vscode
+.vs
 
 cmake-build-*
 build
@@ -7,3 +8,4 @@ build
 roms
 
 .python-version
+CMakeSettings.json

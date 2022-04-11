@@ -40,7 +40,7 @@ Options parseArgs(int argc, char** argv) {
         std::exit(-1);
     }
 
-    std::string romFilePath;
+    std::filesystem::path romFilePath;
     if (rom) {
         romFilePath = std::filesystem::path(args::get(rom));
     } else {

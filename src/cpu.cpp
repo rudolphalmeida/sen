@@ -176,8 +176,8 @@ word Cpu::IndirectY() {
     auto low = mmu->Read(pointer & 0xFF);
     auto high = mmu->Read((pointer + 1) & 0xFF);
 
-    auto supplied = joinWord(high, low + y);
-    auto corrected = joinWord(high, low) + y;
+    word supplied = joinWord(high, low + y);
+    word corrected = joinWord(high, low) + (word)y;
 
     mmu->Read(supplied);
     auto effective = supplied;
@@ -827,8 +827,8 @@ void Cpu::PerformRelativeBranch(bool condition) {
     mmu->Read(pc);  // Dummy Read
     cyc += 1;       // Branch taken cycle
     auto [pch, pcl] = splitWord(pc);
-    auto incorrect = joinWord(pch, pcl + operand);
-    auto correct = joinWord(pch, pcl) + operand;
+    word incorrect = joinWord(pch, pcl + operand);
+    word correct = joinWord(pch, pcl) + (word)operand;
 
     pc = incorrect;
 

@@ -31,10 +31,10 @@ target_link_libraries(sen PRIVATE
         spdlog::spdlog_header_only
         fmt::fmt
         SDL2::SDL2
-        SDL2::SDL2main
-        SDL2::SDL2-static)
+        SDL2::SDL2main)
 target_compile_options(sen PRIVATE
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
         -Wall -Wextra -Werror -Wpedantic>
         $<$<CXX_COMPILER_ID:MSVC>:
+        /W4 /WX
         >)
