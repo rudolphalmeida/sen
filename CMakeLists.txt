@@ -16,7 +16,7 @@ set(SRC_FILES
         src/cpu.cpp
         src/cpu.h
         src/opcode.cpp
-        src/opcode.h)
+        src/opcode.h src/ppu.cpp src/ppu.h)
 
 find_package(args CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
@@ -36,5 +36,5 @@ target_compile_options(sen PRIVATE
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
         -Wall -Wextra -Werror -Wpedantic>
         $<$<CXX_COMPILER_ID:MSVC>:
-        /W4 /WX
+        /W4
         >)

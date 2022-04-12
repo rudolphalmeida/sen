@@ -7,19 +7,12 @@
 
 #include "cartridge.h"
 #include "memory.h"
+#include "ppu.h"
 #include "utils.h"
 
 class Mmu : public Memory {
    public:
-    explicit Mmu(std::shared_ptr<Cartridge> cart)
-        : cart{std::move(cart)}, iram(0x800) {
-        RawWrite(0x4015, 0x00);  // All Channels Disabled
-        RawWrite(0x4017, 0x00);  // Frame IRQ enabled
-
-        for (word i = 0x4000; i < 0x4014; i++) {
-            RawWrite(i, 0x00);
-        }
-    }
+    explicit Mmu(std::shared_ptr<Cartridge> cart);
 
     byte Read(word address) override;
     void Write(word address, byte data) override;
@@ -35,6 +28,9 @@ class Mmu : public Memory {
     std::shared_ptr<Cartridge> cart;
     // Internal RAM
     std::vector<byte> iram;
+
+    // Bus-attached components
+    Ppu ppu;
 
     word address_{};
     byte data_{};

@@ -4,6 +4,16 @@
 
 #include "mmu.h"
 
+Mmu::Mmu(std::shared_ptr<Cartridge> cart)
+    : cart{std::move(cart)}, iram(0x800), ppu{std::shared_ptr<Mmu>(this)} {
+    RawWrite(0x4015, 0x00);  // All Channels Disabled
+    RawWrite(0x4017, 0x00);  // Frame IRQ enabled
+
+    for (word i = 0x4000; i < 0x4014; i++) {
+        RawWrite(i, 0x00);
+    }
+}
+
 [[maybe_unused]] void Mmu::SetLines(word address, byte data) {
     data_ = data;
     address_ = address;
@@ -24,8 +34,7 @@ byte Mmu::RawRead(word address) {
     if (inRange(0x0000, address, 0x1FFF)) {
         return iram.at(address & 0x7FF);
     } else if (inRange(0x2000, address, 0x3FFF)) {
-        spdlog::info("Read from PPU register: {:#6X}", address);
-        return 0x00;
+        return ppu.Read(address);
     } else if (inRange(0x4000, address, 0x4017)) {
         spdlog::info("Read from IO register: {:#6X}", address_);
         return 0x00;
@@ -52,7 +61,7 @@ void Mmu::RawWrite(word address, byte data) {
     if (inRange(0x0000, address, 0x1FFF)) {
         iram.at(address & 0x7FF) = data;
     } else if (inRange(0x2000, address, 0x3FFF)) {
-        spdlog::info("Write to PPU register {:#6X} with {:#4X}", address, data);
+        ppu.Write(address, data);
     } else if (inRange(0x4000, address, 0x4017)) {
         spdlog::info("Write to IO register: {:#6X} with {:#4X}", address, data);
     } else if (inRange(0x4018, address, 0x401F)) {
@@ -63,4 +72,9 @@ void Mmu::RawWrite(word address, byte data) {
     }
 }
 
-void Mmu::Tick() {}
+void Mmu::Tick() {
+    // Every CPU cycle is three PPU cycles
+    for (int i = 0; i < 3; i++) {
+        ppu.Tick();
+    }
+}
