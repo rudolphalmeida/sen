@@ -7,8 +7,8 @@
 
 #include "utils.h"
 
-// Abstract Class for Memory-Mapped Components
-class Memory {
+// Abstract Class for Memory space on the CPU bus
+class CpuAddressSpace {
    public:
     virtual byte Read(word address) = 0;
     virtual void Write(word address, byte data) = 0;

@@ -29,8 +29,8 @@ Cpu::Cpu(std::shared_ptr<Mmu> mmu_) : mmu(std::move(mmu_)) {
 
     cyc = 7;
 
-    auto pcl = (word)mmu->RawRead(static_cast<word>(JumpVectors::RES));
-    auto pch = (word)mmu->RawRead(static_cast<word>(JumpVectors::RES) + 1);
+    auto pcl = (word)mmu->RawCpuRead(static_cast<word>(JumpVectors::RES));
+    auto pch = (word)mmu->RawCpuRead(static_cast<word>(JumpVectors::RES) + 1);
     pc = (pch << 8) | pcl;
 }
 

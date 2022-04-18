@@ -34,7 +34,7 @@ class Rom {
 
     std::vector<byte>& PrgRom() { return prgRom; }
     [[nodiscard]] const std::vector<byte>& PrgRom() const { return prgRom; }
-    std::vector<byte>& ChrRom() { return chrRom; }
+
     [[nodiscard]] const std::vector<byte>& ChrRom() const { return chrRom; }
 
    private:

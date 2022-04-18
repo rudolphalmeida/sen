@@ -21,12 +21,16 @@ class Mapper {
 };
 
 // Contains the cartridge data and the mapper implementation
-class Cartridge : public Memory {
+class Cartridge : public CpuAddressSpace {
    public:
     explicit Cartridge(Rom&& rom);
 
     [[nodiscard]] byte Read(word address) override;
     void Write(word address, byte data) override;
+
+    [[nodiscard]] const std::vector<byte>& ChrRom() const {
+        return rom.ChrRom();
+    }
 
    private:
     explicit Cartridge(Rom&& rom, std::unique_ptr<Mapper> mapper)

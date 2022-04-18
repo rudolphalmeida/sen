@@ -5,16 +5,18 @@
 #include "mmu.h"
 
 Mmu::Mmu(std::shared_ptr<Cartridge> cart)
-    : cart{std::move(cart)}, iram(0x800), ppu{std::shared_ptr<Mmu>(this)} {
-    RawWrite(0x4015, 0x00);  // All Channels Disabled
-    RawWrite(0x4017, 0x00);  // Frame IRQ enabled
+    : cart{std::move(cart)},
+      iram(0x800),
+      ppu{std::shared_ptr<Mmu>(this), this->ChrRom()} {
+    RawCpuWrite(0x4015, 0x00);  // All Channels Disabled
+    RawCpuWrite(0x4017, 0x00);  // Frame IRQ enabled
 
     for (word i = 0x4000; i < 0x4014; i++) {
-        RawWrite(i, 0x00);
+        RawCpuWrite(i, 0x00);
     }
 }
 
-[[maybe_unused]] void Mmu::SetLines(word address, byte data) {
+[[maybe_unused]] void Mmu::SetCpuLines(word address, byte data) {
     data_ = data;
     address_ = address;
 
@@ -23,14 +25,14 @@ Mmu::Mmu(std::shared_ptr<Cartridge> cart)
 
 byte Mmu::Read(word address) {
     address_ = address;
-    data_ = RawRead(address);
+    data_ = RawCpuRead(address);
 
     Tick();  // Every CPU cycle R/W from memory. We use that to drive the rest
 
     return data_;  // This should not be needed
 }
 
-byte Mmu::RawRead(word address) {
+byte Mmu::RawCpuRead(word address) {
     if (inRange(0x0000, address, 0x1FFF)) {
         return iram.at(address & 0x7FF);
     } else if (inRange(0x2000, address, 0x3FFF)) {
@@ -52,12 +54,12 @@ void Mmu::Write(word address, byte data) {
     address_ = address;
     data_ = data;
 
-    RawWrite(address, data);
+    RawCpuWrite(address, data);
 
     Tick();  // Every CPU cycle R/W from memory. We use that to drive the rest
 }
 
-void Mmu::RawWrite(word address, byte data) {
+void Mmu::RawCpuWrite(word address, byte data) {
     if (inRange(0x0000, address, 0x1FFF)) {
         iram.at(address & 0x7FF) = data;
     } else if (inRange(0x2000, address, 0x3FFF)) {
