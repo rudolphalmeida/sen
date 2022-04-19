@@ -111,7 +111,7 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
 }
 
 byte Cpu::Fetch() {
-    auto value = mmu->Read(pc++);
+    auto value = mmu->CpuRead(pc++);
     return value;
 }
 
@@ -120,16 +120,16 @@ word Cpu::Indirect() {
     auto pointer = Absolute();
     auto [high, low] = splitWord(pointer);
 
-    auto pcl = (word)mmu->Read(joinWord(high, low));
+    auto pcl = (word)mmu->CpuRead(joinWord(high, low));
     // PCH is fetched from the same page as PCL i.e. only increment the low byte
-    auto pch = (word)mmu->Read(joinWord(high, low + 1));
+    auto pch = (word)mmu->CpuRead(joinWord(high, low + 1));
 
     return (pch << 8) | pcl;
 }
 
 word Cpu::ZeroPageIndexed(byte offset) {
     auto operand = Fetch();
-    mmu->Read((word)operand);
+    mmu->CpuRead((word)operand);
     return (word)(operand + offset) & 0xFF;
 }
 
@@ -146,7 +146,7 @@ std::pair<word, bool> Cpu::AbsoluteIndexed(byte offset) {
     word supplied = joinWord(high, low + offset);
     word corrected = joinWord(high, low) + offset;
 
-    mmu->Read(supplied);
+    mmu->CpuRead(supplied);
     auto effective = supplied;
     bool page_crossed = false;
 
@@ -161,11 +161,11 @@ std::pair<word, bool> Cpu::AbsoluteIndexed(byte offset) {
 word Cpu::IndirectX() {
     auto pointer = Fetch();
 
-    mmu->Read((word)pointer);  // Dummy read
+    mmu->CpuRead((word)pointer);  // Dummy read
     pointer += x;
 
-    auto low = (word)mmu->Read(pointer & 0xFF);
-    auto high = (word)mmu->Read((pointer + 1) & 0xFF);
+    auto low = (word)mmu->CpuRead(pointer & 0xFF);
+    auto high = (word)mmu->CpuRead((pointer + 1) & 0xFF);
 
     return (high << 8) | low;
 }
@@ -173,13 +173,13 @@ word Cpu::IndirectX() {
 word Cpu::IndirectY() {
     auto pointer = Fetch();
 
-    auto low = mmu->Read(pointer & 0xFF);
-    auto high = mmu->Read((pointer + 1) & 0xFF);
+    auto low = mmu->CpuRead(pointer & 0xFF);
+    auto high = mmu->CpuRead((pointer + 1) & 0xFF);
 
     word supplied = joinWord(high, low + y);
     word corrected = joinWord(high, low) + (word)y;
 
-    mmu->Read(supplied);
+    mmu->CpuRead(supplied);
     auto effective = supplied;
 
     if (supplied != corrected) {
@@ -235,7 +235,7 @@ void Cpu::STX(Opcode opcode) {
             std::exit(-1);
     }
 
-    mmu->Write(address, x);
+    mmu->CpuWrite(address, x);
 }
 
 void Cpu::STY(Opcode opcode) {
@@ -255,7 +255,7 @@ void Cpu::STY(Opcode opcode) {
             std::exit(-1);
     }
 
-    mmu->Write(address, y);
+    mmu->CpuWrite(address, y);
 }
 
 void Cpu::JSR(Opcode opcode) {
@@ -265,9 +265,9 @@ void Cpu::JSR(Opcode opcode) {
     }
 
     auto low = Fetch();
-    mmu->Read(0x100 + s);  // Run the third cycle
-    mmu->Write(0x100 + s--, (byte)(pc >> 8));
-    mmu->Write(0x100 + s--, (byte)pc);
+    mmu->CpuRead(0x100 + s);  // Run the third cycle
+    mmu->CpuWrite(0x100 + s--, (byte)(pc >> 8));
+    mmu->CpuWrite(0x100 + s--, (byte)pc);
 
     pc = ((word)Fetch()) << 8 | (word)low;
 }
@@ -278,14 +278,14 @@ void Cpu::RTS(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
 
-    mmu->Read(0x100 + s++);
-    auto pcl = mmu->Read(0x100 + s++);
-    auto pch = mmu->Read(0x100 + s);
+    mmu->CpuRead(0x100 + s++);
+    auto pcl = mmu->CpuRead(0x100 + s++);
+    auto pch = mmu->CpuRead(0x100 + s);
 
     pc = (word)pch << 8 | (word)pcl;
-    mmu->Read(pc++);
+    mmu->CpuRead(pc++);
 }
 
 void Cpu::RTI(Opcode opcode) {
@@ -294,15 +294,15 @@ void Cpu::RTI(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
-    mmu->Read(0x100 + s++);
+    mmu->CpuRead(pc);  // Dummy Read
+    mmu->CpuRead(0x100 + s++);
 
     auto bit5 = p.value & 0x20;
-    p.value = mmu->Read(0x100 + s++);
+    p.value = mmu->CpuRead(0x100 + s++);
     p.value |= bit5;  // Bit 5 is left as is
 
-    pc = (word)mmu->Read(0x100 + s++);
-    pc |= (word)mmu->Read(0x100 + s) << 8;
+    pc = (word)mmu->CpuRead(0x100 + s++);
+    pc |= (word)mmu->CpuRead(0x100 + s) << 8;
 }
 
 void Cpu::LDA(Opcode opcode) {
@@ -314,7 +314,7 @@ void Cpu::LDA(Opcode opcode) {
 void Cpu::NOP(Opcode opcode) {
     switch (opcode.mode) {
         case AddressingMode::Implied:
-            mmu->Read(pc);  // Dummy Read
+            mmu->CpuRead(pc);  // Dummy Read
             break;
         default:
             spdlog::error("Invalid addressing mode for NOP");
@@ -329,7 +329,7 @@ void Cpu::SEC(Opcode opcode) {
     }
 
     p.flags.Carry = true;
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
 }
 
 void Cpu::SED(Opcode opcode) {
@@ -339,7 +339,7 @@ void Cpu::SED(Opcode opcode) {
     }
 
     p.flags.Decimal = true;
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
 }
 
 void Cpu::SEI(Opcode opcode) {
@@ -349,7 +349,7 @@ void Cpu::SEI(Opcode opcode) {
     }
 
     p.flags.InterruptDisable = true;
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
 }
 
 void Cpu::BCS(Opcode opcode) {
@@ -431,7 +431,7 @@ void Cpu::CLC(Opcode opcode) {
     }
 
     p.flags.Carry = false;
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
 }
 
 void Cpu::CLD(Opcode opcode) {
@@ -441,7 +441,7 @@ void Cpu::CLD(Opcode opcode) {
     }
 
     p.flags.Decimal = false;
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
 }
 
 void Cpu::CLV(Opcode opcode) {
@@ -451,7 +451,7 @@ void Cpu::CLV(Opcode opcode) {
     }
 
     p.flags.Overflow = false;
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
 }
 
 void Cpu::STA(Opcode opcode) {
@@ -485,7 +485,7 @@ void Cpu::STA(Opcode opcode) {
             std::exit(-1);
     }
 
-    mmu->Write(address, a);
+    mmu->CpuWrite(address, a);
 }
 
 void Cpu::BIT(Opcode opcode) {
@@ -502,7 +502,7 @@ void Cpu::BIT(Opcode opcode) {
             std::exit(-1);
     }
 
-    auto operand = mmu->Read(address);
+    auto operand = mmu->CpuRead(address);
     p.flags.Negative = isBitSet(operand, 7);
     p.flags.Overflow = isBitSet(operand, 6);
     p.flags.Zero = (a & operand) == 0;
@@ -514,13 +514,13 @@ void Cpu::PHP(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
 
     auto status_register = p;
     // Bit 5 is always set to 1 when P is pushed, and bit 4 when pushed by
     // PHP/BRK
     status_register.flags.B = 0b11;
-    mmu->Write(0x100 + s--, status_register.value);
+    mmu->CpuWrite(0x100 + s--, status_register.value);
 }
 
 void Cpu::PHA(Opcode opcode) {
@@ -529,8 +529,8 @@ void Cpu::PHA(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
-    mmu->Write(0x100 + s--, a);
+    mmu->CpuRead(pc);  // Dummy Read
+    mmu->CpuWrite(0x100 + s--, a);
 }
 
 void Cpu::PLA(Opcode opcode) {
@@ -539,10 +539,10 @@ void Cpu::PLA(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
 
-    mmu->Read(0x100 + s++);
-    a = mmu->Read(0x100 + s);
+    mmu->CpuRead(0x100 + s++);
+    a = mmu->CpuRead(0x100 + s);
     p.flags.Zero = a == 0x00;
     p.flags.Negative = isBitSet(a, 7);
 }
@@ -553,13 +553,13 @@ void Cpu::PLP(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
 
-    mmu->Read(0x100 + s++);
+    mmu->CpuRead(0x100 + s++);
 
     // The B flag is not affected by the PULL. It should remain same
     auto oldBValue = p.flags.B;
-    p.value = mmu->Read(0x100 + s);
+    p.value = mmu->CpuRead(0x100 + s);
     p.flags.B = oldBValue;
 }
 
@@ -654,7 +654,7 @@ void Cpu::INX(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
     DoInc(x);
 }
 
@@ -664,7 +664,7 @@ void Cpu::INY(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
     DoInc(y);
 }
 
@@ -690,9 +690,9 @@ void Cpu::INC(Opcode opcode) {
             std::exit(-1);
     }
 
-    auto operand = mmu->Read(address);
+    auto operand = mmu->CpuRead(address);
     DoInc(operand);
-    mmu->Write(address, operand);
+    mmu->CpuWrite(address, operand);
 }
 
 void Cpu::DEC(Opcode opcode) {
@@ -717,9 +717,9 @@ void Cpu::DEC(Opcode opcode) {
             std::exit(-1);
     }
 
-    auto operand = mmu->Read(address);
+    auto operand = mmu->CpuRead(address);
     DoDec(operand);
-    mmu->Write(address, operand);
+    mmu->CpuWrite(address, operand);
 }
 
 void Cpu::DEX(Opcode opcode) {
@@ -728,7 +728,7 @@ void Cpu::DEX(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
     DoDec(x);
 }
 
@@ -738,7 +738,7 @@ void Cpu::DEY(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
     DoDec(y);
 }
 
@@ -748,7 +748,7 @@ void Cpu::TAX(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
     DoTransfer(x, a);
 }
 
@@ -758,7 +758,7 @@ void Cpu::TAY(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
     DoTransfer(y, a);
 }
 
@@ -768,7 +768,7 @@ void Cpu::TXA(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
     DoTransfer(a, x);
 }
 
@@ -778,7 +778,7 @@ void Cpu::TSX(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
     DoTransfer(x, s);
 }
 
@@ -788,7 +788,7 @@ void Cpu::TXS(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
     s = x;          // This one does not set the flags
 }
 
@@ -798,7 +798,7 @@ void Cpu::TYA(Opcode opcode) {
         std::exit(-1);
     }
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
     DoTransfer(a, y);
 }
 
@@ -824,7 +824,7 @@ void Cpu::PerformRelativeBranch(bool condition) {
     if (!condition)
         return;
 
-    mmu->Read(pc);  // Dummy Read
+    mmu->CpuRead(pc);  // Dummy Read
     cyc += 1;       // Branch taken cycle
     auto [pch, pcl] = splitWord(pc);
     word incorrect = joinWord(pch, pcl + operand);
@@ -833,7 +833,7 @@ void Cpu::PerformRelativeBranch(bool condition) {
     pc = incorrect;
 
     if (incorrect != correct) {  // There was a page crossing
-        mmu->Read(incorrect);    // Dummy read
+        mmu->CpuRead(incorrect);    // Dummy read
         pc = correct;
         cyc += 1;  // Oops cycle
     }
@@ -846,31 +846,31 @@ byte Cpu::FetchOperandForReadOpcodes(const Opcode& opcode, const char* repr) {
             operand = Fetch();
             break;
         case AddressingMode::ZeroPage:
-            operand = mmu->Read((word)Fetch());
+            operand = mmu->CpuRead((word)Fetch());
             break;
         case AddressingMode::ZeroPageX:
-            operand = mmu->Read(ZeroPageIndexed(x));
+            operand = mmu->CpuRead(ZeroPageIndexed(x));
             break;
         case AddressingMode::ZeroPageY:
-            operand = mmu->Read(ZeroPageIndexed(y));
+            operand = mmu->CpuRead(ZeroPageIndexed(y));
             break;
         case AddressingMode::Absolute:
-            operand = mmu->Read(Absolute());
+            operand = mmu->CpuRead(Absolute());
             break;
         case AddressingMode::AbsoluteXIndexed:
         case AddressingMode::AbsoluteYIndexed: {
             auto [address, crossed] = AbsoluteIndexed(
                 opcode.mode == AddressingMode::AbsoluteXIndexed ? x : y);
-            operand = mmu->Read(address);
+            operand = mmu->CpuRead(address);
             if (crossed)
                 cyc += 1;
             break;
         }
         case AddressingMode::IndirectX:
-            operand = mmu->Read(IndirectX());
+            operand = mmu->CpuRead(IndirectX());
             break;
         case AddressingMode::IndirectY:
-            operand = mmu->Read(IndirectY());
+            operand = mmu->CpuRead(IndirectY());
             break;
         default:
             spdlog::error("Invalid addressing mode for {}", repr);
@@ -907,20 +907,20 @@ void Cpu::PerformShiftOrRotate(const Opcode& opcode, const char* repr) {
             break;
         case AddressingMode::ZeroPage:
             effective = (word)Fetch();
-            operand = mmu->Read(effective);
+            operand = mmu->CpuRead(effective);
             break;
         case AddressingMode::ZeroPageX:
             effective = ZeroPageIndexed(x);
-            operand = mmu->Read(effective);
+            operand = mmu->CpuRead(effective);
             break;
         case AddressingMode::Absolute:
             effective = Absolute();
-            operand = mmu->Read(effective);
+            operand = mmu->CpuRead(effective);
             break;
         case AddressingMode::AbsoluteXIndexed: {
             auto [address, crossed] = AbsoluteIndexed(x);
             effective = address;
-            operand = mmu->Read(effective);
+            operand = mmu->CpuRead(effective);
             break;
         }
         default:
@@ -929,7 +929,7 @@ void Cpu::PerformShiftOrRotate(const Opcode& opcode, const char* repr) {
     }
 
     if (opcode.mode != AddressingMode::Accumulator) {
-        mmu->Write(effective, operand);  // Dummy write
+        mmu->CpuWrite(effective, operand);  // Dummy write
     }
 
     switch (opcode.class_) {
@@ -969,7 +969,7 @@ void Cpu::PerformShiftOrRotate(const Opcode& opcode, const char* repr) {
             a = operand;
             break;
         default:
-            mmu->Write(effective, operand);
+            mmu->CpuWrite(effective, operand);
             break;
     }
 }

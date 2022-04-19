@@ -10,22 +10,18 @@
 #include "ppu.h"
 #include "utils.h"
 
-class Mmu : public CpuAddressSpace {
+class Mmu : public CpuBus {
    public:
     explicit Mmu(std::shared_ptr<Cartridge> cart);
 
     // On the CPU address space
-    byte Read(word address) override;
-    void Write(word address, byte data) override;
+    byte CpuRead(word address) override;
+    void CpuWrite(word address, byte data) override;
 
     // For Dummy Writes
     [[maybe_unused]] void SetCpuLines(word address, byte data);
     byte RawCpuRead(word address);
     void RawCpuWrite(word address, byte data);
-
-    [[nodiscard]] const std::vector<byte>& ChrRom() const {
-        return cart->ChrRom();
-    }
 
     void Tick();
 

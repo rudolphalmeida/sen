@@ -11,20 +11,18 @@
 
 class Mmu;
 
-class Ppu : public CpuAddressSpace {
+class Ppu : public CpuBus {
    public:
-    Ppu(std::shared_ptr<Mmu> mmu, const std::vector<byte>& chrRom)
-        : mmu{std::move(mmu)}, chrRom{chrRom} {}
+    Ppu(std::shared_ptr<Mmu> mmu) : mmu{std::move(mmu)} {}
 
     void Tick();
 
     // PPU Read/Write on the CPU address bus
-    byte Read(word address) override;
-    void Write(word address, byte data) override;
+    byte CpuRead(word address) override;
+    void CpuWrite(word address, byte data) override;
 
    private:
     std::shared_ptr<Mmu> mmu;
-    const std::vector<byte>& chrRom;
 
     // PPU Registers
     union {

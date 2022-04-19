@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.18)
 project(sen)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -16,7 +16,13 @@ set(SRC_FILES
         src/cpu.cpp
         src/cpu.h
         src/opcode.cpp
-        src/opcode.h src/ppu.cpp src/ppu.h src/ui.cpp src/ui.hxx src/options.hxx src/options.cpp)
+        src/opcode.h
+        src/ppu.cpp
+        src/ppu.h 
+        src/ui.cpp 
+        src/ui.hxx 
+        src/options.hxx 
+        src/options.cpp)
 
 find_package(args CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)

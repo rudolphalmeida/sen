@@ -23,6 +23,8 @@ class Ui {
 
     int Run();
 
+    ~Ui();
+
    private:
     Options options;
 
@@ -35,7 +37,16 @@ class Ui {
     SDL_Renderer* renderer{};
     SDL_Texture* texture{};
 
-    void InitWindow(const char* title, int x, int y, int width, int height, Uint32 flags);
+    SDL_Event event{};
+    bool quit{false};
+
+    void InitWindow(const char* title,
+                    int x,
+                    int y,
+                    int width,
+                    int height,
+                    Uint32 flags);
+    void PollEvents();
 };
 
 #endif  // SEN_SRC_UI_HXX_

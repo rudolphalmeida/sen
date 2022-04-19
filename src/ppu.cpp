@@ -7,11 +7,23 @@
 
 void Ppu::Tick() {}
 
-byte Ppu::Read(word address) {
-    spdlog::info("Read from PPU register: {:#6X}", address);
-    return 0x00;
+byte Ppu::CpuRead(word address) {
+    switch (address) {
+        case 0x2000:
+            return ppuctrl.value;
+        default:
+            spdlog::info("Read from PPU register {:#6X}", address);
+            return 0xFF;
+    }
 }
 
-void Ppu::Write(word address, byte data) {
-    spdlog::info("Write to PPU register {:#6X} with {:#4X}", address, data);
+void Ppu::CpuWrite(word address, byte data) {
+    switch (address) {
+        case 0x2000:
+            ppuctrl.value = data;
+            break;
+        default:
+            spdlog::info("Write to PPU register {:#6X} with {:#4X}", address,
+                         data);
+    }
 }
