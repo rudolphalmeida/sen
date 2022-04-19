@@ -24,6 +24,9 @@ class Ppu : public CpuBus {
    private:
     std::shared_ptr<Mmu> mmu;
 
+    // PPUs internal data bus
+    byte data_{};
+
     // PPU Registers
     union {
         struct flags {
@@ -37,6 +40,20 @@ class Ppu : public CpuBus {
         };
         byte value;
     } ppuctrl{};
+
+    union {
+        struct flags {
+            byte Greyscale : 1;     // Show image in grey-scale
+            byte BgInLeftmost : 1;  // Show background in left-most 8 pixels
+            byte SpritesInLeftmost : 1;  // Show sprites in left-most 8 pixels
+            byte ShowBackground : 1;     // Show background layer
+            byte ShowSprites : 1;        // Show sprite layer
+            byte EmphasizeRed : 1;
+            byte EmphasizeGreen : 1;
+            byte EmphasizeBlue : 1;
+        };
+        byte value;
+    } ppumask{};
 };
 
 #endif  // SEN_SRC_PPU_H_
