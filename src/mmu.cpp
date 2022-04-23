@@ -27,7 +27,7 @@ byte Mmu::CpuRead(word address) {
 
     Tick();  // Every CPU cycle R/W from memory. We use that to drive the rest
 
-    return data_;  // This should not be needed
+    return data_;
 }
 
 byte Mmu::RawCpuRead(word address) {
@@ -77,4 +77,5 @@ void Mmu::Tick() {
     for (int i = 0; i < 3; i++) {
         ppu.Tick();
     }
+    ppu_cycles += 3;
 }

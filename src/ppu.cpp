@@ -29,6 +29,7 @@ void Ppu::CpuWrite(word address, byte data) {
             break;
         case 0x2001:
             ppumask.value = data_;
+            break;
         default:
             spdlog::info("Write to PPU register {:#6X} with {:#4X}", address,
                          data_);

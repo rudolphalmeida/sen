@@ -9,14 +9,16 @@ int Ui::Run() {
                SDL_WINDOWPOS_CENTERED, 256, 240,
                SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
 
+    cpu.Start();
+
     while (!quit) {
         cpu.Tick();
-
         PollEvents();
     }
 
     return 0;
 }
+
 void Ui::InitWindow(const char* title,
                     int x,
                     int y,
@@ -38,7 +40,7 @@ void Ui::InitWindow(const char* title,
         SDL_Quit();
         std::exit(-1);
     }
-    SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
 

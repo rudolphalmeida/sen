@@ -24,14 +24,25 @@ Cpu::Cpu(std::shared_ptr<Mmu> mmu_) : mmu(std::move(mmu_)) {
     // Set Power-Up State. Reference:
     // https://www.nesdev.org/wiki/CPU_power_up_state
     a = x = y = 0x00;
-    p.value = 0x24;  // Differs from nesdev to match with nestest.nes
+    p.value = 0x34;  // Differs from nesdev to match with nestest.nes
     s = 0xFD;
+}
 
-    cyc = 7;
+void Cpu::Start() {
+    // The whole RESET procedure when the CPU is turned on takes 7 cycles
+    mmu->CpuRead(0x0000);      // The address does not matter. Hold during reset
+    mmu->CpuRead(0x0001);      // First Start State
+    mmu->CpuRead(0x0100 + s);  // Second Start State
+    mmu->CpuRead(0x0100 + s - 1);  // Third Start State
+    mmu->CpuRead(0x0100 + s - 2);  // Fourth Start State
+    auto pcl = mmu->CpuRead(static_cast<word>(JumpVectors::RES));
+    auto pch = mmu->CpuRead(static_cast<word>(JumpVectors::RES) + 1);
+    pc = (word)pch << 8 | (word)pcl;
+    // The eight cycle is the first opcode fetch
+}
 
-    auto pcl = (word)mmu->RawCpuRead(static_cast<word>(JumpVectors::RES));
-    auto pch = (word)mmu->RawCpuRead(static_cast<word>(JumpVectors::RES) + 1);
-    pc = (pch << 8) | pcl;
+void Cpu::Reset() {
+    // TODO: Use the reset procedure for a hard reset
 }
 
 void Cpu::Tick() {
@@ -40,11 +51,11 @@ void Cpu::Tick() {
 
     spdlog::debug(
         "{:04X}  {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
-        pc - 1, opcode_byte, a, x, y, p.value, s, cyc);
+        pc - 1, opcode_byte, a, x, y, p.value, s, mmu->CpuCycles());
 
     ExecuteOpcode(opcode);
 
-    cyc += opcode.cycles;
+    mmu->IncCpuCycles(opcode.cycles);
 }
 
 void Cpu::ExecuteOpcode(Opcode opcode) {
@@ -184,7 +195,7 @@ word Cpu::IndirectY() {
 
     if (supplied != corrected) {
         effective = corrected;
-        cyc += 1;
+        mmu->IncCpuCycles();
     }
 
     return effective;
@@ -789,7 +800,7 @@ void Cpu::TXS(Opcode opcode) {
     }
 
     mmu->CpuRead(pc);  // Dummy Read
-    s = x;          // This one does not set the flags
+    s = x;             // This one does not set the flags
 }
 
 void Cpu::TYA(Opcode opcode) {
@@ -824,18 +835,18 @@ void Cpu::PerformRelativeBranch(bool condition) {
     if (!condition)
         return;
 
-    mmu->CpuRead(pc);  // Dummy Read
-    cyc += 1;       // Branch taken cycle
+    mmu->CpuRead(pc);     // Dummy Read
+    mmu->IncCpuCycles();  // Branch taken cycle
     auto [pch, pcl] = splitWord(pc);
     word incorrect = joinWord(pch, pcl + operand);
     word correct = joinWord(pch, pcl) + (word)operand;
 
     pc = incorrect;
 
-    if (incorrect != correct) {  // There was a page crossing
-        mmu->CpuRead(incorrect);    // Dummy read
+    if (incorrect != correct) {   // There was a page crossing
+        mmu->CpuRead(incorrect);  // Dummy read
         pc = correct;
-        cyc += 1;  // Oops cycle
+        mmu->IncCpuCycles();  // Oops cycle
     }
 }
 
@@ -863,7 +874,7 @@ byte Cpu::FetchOperandForReadOpcodes(const Opcode& opcode, const char* repr) {
                 opcode.mode == AddressingMode::AbsoluteXIndexed ? x : y);
             operand = mmu->CpuRead(address);
             if (crossed)
-                cyc += 1;
+                mmu->IncCpuCycles();
             break;
         }
         case AddressingMode::IndirectX:

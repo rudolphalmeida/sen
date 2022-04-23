@@ -25,6 +25,12 @@ class Mmu : public CpuBus {
 
     void Tick();
 
+    void IncCpuCycles(cycles_t by) { cpu_cycles += by; }
+    void IncCpuCycles() { IncCpuCycles(1); }
+
+    [[nodiscard]] cycles_t CpuCycles() const { return cpu_cycles; }
+    [[nodiscard]] cycles_t PpuCycles() const { return ppu_cycles; }
+
    private:
     std::shared_ptr<Cartridge> cart;
     // Internal RAM
@@ -35,6 +41,9 @@ class Mmu : public CpuBus {
 
     word address_{};
     byte data_{};
+
+    cycles_t cpu_cycles{};
+    cycles_t ppu_cycles{};
 };
 
 #endif  // SEN_SRC_MMU_H_

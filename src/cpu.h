@@ -15,6 +15,8 @@ class Cpu {
    public:
     explicit Cpu(std::shared_ptr<Mmu> mmu);
 
+    void Start();
+    void Reset();
     void Tick();
 
    private:
@@ -22,8 +24,6 @@ class Cpu {
 
     byte a{}, x{}, y{}, s{};
     word pc{};
-
-    cycles_t cyc{};
 
     union {
         struct {
