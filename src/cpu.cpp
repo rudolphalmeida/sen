@@ -49,13 +49,12 @@ void Cpu::Tick() {
     auto opcode_byte = Fetch();
     auto opcode = DecodeOpcode(opcode_byte);
 
+    // PC and cpu cycle values need to be from before the opcode fetch
     spdlog::debug(
         "{:04X}  {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
-        pc - 1, opcode_byte, a, x, y, p.value, s, mmu->CpuCycles());
+        pc - 1, opcode_byte, a, x, y, p.value, s, mmu->CpuCycles() - 1);
 
     ExecuteOpcode(opcode);
-
-    mmu->IncCpuCycles(opcode.cycles);
 }
 
 void Cpu::ExecuteOpcode(Opcode opcode) {

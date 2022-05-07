@@ -73,6 +73,8 @@ void Mmu::RawCpuWrite(word address, byte data) {
 }
 
 void Mmu::Tick() {
+    IncCpuCycles();
+
     // Every CPU cycle is three PPU cycles
     for (int i = 0; i < 3; i++) {
         ppu.Tick();

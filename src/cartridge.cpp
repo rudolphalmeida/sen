@@ -10,11 +10,11 @@ Cartridge::Cartridge(Rom&& rom)
     : Cartridge(std::move(rom), buildMapperFromRom(rom)) {}
 
 byte Cartridge::CpuRead(word address) {
-    return mapper->read(rom, address);
+    return mapper->Read(rom, address);
 }
 
 void Cartridge::CpuWrite(word address, byte data) {
-    mapper->write(rom, address, data);
+    mapper->Write(rom, address, data);
 }
 
 std::unique_ptr<Mapper> buildMapperFromRom(const Rom& rom) {
@@ -29,7 +29,7 @@ std::unique_ptr<Mapper> buildMapperFromRom(const Rom& rom) {
     }
 }
 
-byte Mapper000::read(const Rom& rom, word address) const {
+byte Mapper000::Read(const Rom& rom, word address) const {
     if (inRange(0x8000, address, 0xFFFF)) {
         return rom.PrgRom().at(address % rom.PrgRom().size());
     }
@@ -39,7 +39,7 @@ byte Mapper000::read(const Rom& rom, word address) const {
     return 0xFF;
 }
 
-void Mapper000::write(Rom& rom, word address, byte data) {
+void Mapper000::Write(Rom& rom, word address, byte data) {
     if (inRange(0x8000, address, 0xFFFF)) {
         rom.PrgRom().at(address % rom.PrgRom().size()) = data;
     }

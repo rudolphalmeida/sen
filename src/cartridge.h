@@ -14,8 +14,8 @@
  * */
 class Mapper {
    public:
-    [[nodiscard]] virtual byte read(const Rom& rom, word address) const = 0;
-    virtual void write(Rom& rom, word address, byte data) = 0;
+    [[nodiscard]] virtual byte Read(const Rom& rom, word address) const = 0;
+    virtual void Write(Rom& rom, word address, byte data) = 0;
 
     virtual ~Mapper() = default;
 };
@@ -42,9 +42,9 @@ class Cartridge : public CpuBus {
 class Mapper000 : public Mapper {
     static const byte NUMBER = 0x00;
 
-    [[nodiscard]] byte read(const Rom& rom, word address) const override;
+    [[nodiscard]] byte Read(const Rom& rom, word address) const override;
 
-    void write(Rom& rom, word address, byte data) override;
+    void Write(Rom& rom, word address, byte data) override;
 };
 
 #endif  // SEN_SRC_CARTRIDGE_H_
