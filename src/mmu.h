@@ -25,6 +25,10 @@ class Mmu : public CpuBus {
 
     void Tick();
 
+    bool NmiRequested() { return nmi_requested; }
+    void RequestNmi();
+    void NmiAcked();
+
     void IncCpuCycles(cycles_t by) { cpu_cycles += by; }
     void IncCpuCycles() { IncCpuCycles(1); }
 
@@ -44,6 +48,8 @@ class Mmu : public CpuBus {
 
     cycles_t cpu_cycles{};
     cycles_t ppu_cycles{};
+
+    bool nmi_requested{false};
 };
 
 #endif  // SEN_SRC_MMU_H_

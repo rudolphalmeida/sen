@@ -12,6 +12,8 @@ class CpuBus {
    public:
     virtual byte CpuRead(word address) = 0;
     virtual void CpuWrite(word address, byte data) = 0;
+
+    virtual ~CpuBus() = default;
 };
 
 // Abstract Class for Memory space on the PPU bus
@@ -19,6 +21,8 @@ class PpuBus {
    public:
     virtual byte PpuRead(word address) = 0;
     virtual void PpuWrite(word address, byte data) = 0;
+
+    virtual ~PpuBus() = default;
 };
 
 #endif  // SEN_SRC_MEMORY_H_

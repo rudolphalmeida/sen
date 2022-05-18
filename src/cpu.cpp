@@ -38,6 +38,7 @@ void Cpu::Start() {
     auto pcl = mmu->CpuRead(static_cast<word>(JumpVectors::RES));
     auto pch = mmu->CpuRead(static_cast<word>(JumpVectors::RES) + 1);
     pc = (word)pch << 8 | (word)pcl;
+    spdlog::debug("Starting execution at {:#6X}", pc);
     // The eight cycle is the first opcode fetch
 }
 
@@ -46,6 +47,14 @@ void Cpu::Reset() {
 }
 
 void Cpu::Tick() {
+    // TODO: Add handler for IRQ
+    if (mmu->NmiRequested()) {
+        mmu->NmiAcked();
+        if (!p.flags.InterruptDisable) {
+            HandleInterrupt();
+        }
+    }
+
     auto opcode_byte = Fetch();
     auto opcode = DecodeOpcode(opcode_byte);
 
@@ -55,6 +64,24 @@ void Cpu::Tick() {
         pc - 1, opcode_byte, a, x, y, p.value, s, mmu->CpuCycles() - 1);
 
     ExecuteOpcode(opcode);
+}
+
+void Cpu::HandleInterrupt() {
+    spdlog::debug("Entering interrupt handler");
+
+    mmu->CpuRead(pc);
+    mmu->CpuRead(pc);
+    mmu->CpuWrite(0x100 + s--, (byte)(pc >> 8));
+    mmu->CpuWrite(0x100 + s--, (byte)pc);
+
+    // TODO: Determine if NMI or IRQ here
+    // Clear B flag when pushing
+    mmu->CpuWrite(0x100 + s--, p.value & ~0x20);
+
+    spdlog::debug("Servicing NMI interrupt");
+    auto pcl = mmu->CpuRead(static_cast<word>(JumpVectors::NMI));
+    auto pch = mmu->CpuRead(static_cast<word>(JumpVectors::NMI) + 1);
+    pc = (word)pch << 8 | (word)pcl;
 }
 
 void Cpu::ExecuteOpcode(Opcode opcode) {
@@ -838,7 +865,9 @@ void Cpu::PerformRelativeBranch(bool condition) {
     mmu->IncCpuCycles();  // Branch taken cycle
     auto [pch, pcl] = splitWord(pc);
     word incorrect = joinWord(pch, pcl + operand);
-    word correct = joinWord(pch, pcl) + (word)operand;
+    // The operand needs to be sign-extended to 16-bits. This is the most
+    // explicit way of doing this
+    word correct = joinWord(pch, pcl) + (word)(int16_t)(int8_t)operand;
 
     pc = incorrect;
 

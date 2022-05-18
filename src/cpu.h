@@ -41,6 +41,9 @@ class Cpu {
     void ExecuteOpcode(Opcode opcode);
     byte Fetch();
 
+    // Interrupts
+    void HandleInterrupt();
+
     // Addressing Modes
     word Indirect();
     word ZeroPageIndexed(byte offset);

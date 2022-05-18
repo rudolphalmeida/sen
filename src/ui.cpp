@@ -9,10 +9,10 @@ int Ui::Run() {
                SDL_WINDOWPOS_CENTERED, 256, 240,
                SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
 
-    cpu.Start();
+    nes.Start();
 
     while (!quit) {
-        cpu.Tick();
+        nes.RunFrame();
         PollEvents();
     }
 

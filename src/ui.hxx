@@ -12,14 +12,13 @@
 
 #include "cpu.h"
 #include "mmu.h"
+#include "nes.hxx"
 #include "options.hxx"
 
 class Ui {
    public:
     explicit Ui(Options&& options, Cpu&& cpu, std::shared_ptr<Mmu> mmu)
-        : options{std::move(options)},
-          cpu{std::move(cpu)},
-          mmu{std::move(mmu)} {}
+        : options{std::move(options)}, nes{options, std::move(cpu), mmu} {}
 
     int Run();
 
@@ -28,9 +27,7 @@ class Ui {
    private:
     Options options;
 
-    // NES components
-    Cpu cpu;
-    std::shared_ptr<Mmu> mmu;
+    Nes nes;
 
     // SDL2 window and controllers
     SDL_Window* window{};

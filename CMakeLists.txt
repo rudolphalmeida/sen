@@ -22,7 +22,9 @@ set(SRC_FILES
         src/ui.cpp 
         src/ui.hxx 
         src/options.hxx 
-        src/options.cpp)
+        src/options.cpp
+        src/nes.cpp
+        src/nes.hxx)
 
 find_package(args CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)

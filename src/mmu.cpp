@@ -81,3 +81,13 @@ void Mmu::Tick() {
     }
     ppu_cycles += 3;
 }
+
+void Mmu::RequestNmi() {
+    spdlog::debug("NMI requested");
+    nmi_requested = true;
+}
+
+void Mmu::NmiAcked() {
+    spdlog::debug("NMI acknowledged");
+    nmi_requested = false;
+}

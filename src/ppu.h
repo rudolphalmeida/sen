@@ -22,7 +22,13 @@ class Ppu : public CpuBus {
     byte CpuRead(word address) override;
     void CpuWrite(word address, byte data) override;
 
-    // PPU Constants
+    /* PPU Scanline Constants
+     * Numerically the frame looks like:
+     * FRAME_LINES (0..239)
+     * POST_RENDER_LINE (240)
+     * VBLANK_LINES (241..261)
+     * PRE_RENDER_LINE (262)
+     * */
     const uint FRAME_LINES = 262;
     const uint VISIBLE_FRAME_LINES = 240;
     const uint CYCLES_PER_SCANLINE = 341;
@@ -37,8 +43,33 @@ class Ppu : public CpuBus {
 
     // Start out at the pre-render line (the -1 line, but I am using unsigned)
     uint frames{0};
-    uint line{PRE_RENDER_LINE};
+    uint line{0};
     uint cycle_in_line{0};
+
+    bool InRenderingLines() const { return line < VISIBLE_FRAME_LINES; }
+
+    bool InVerticalBlankLines() const {
+        return line > POST_RENDER_LINE && line < PRE_RENDER_LINE;
+    }
+
+    // OAM
+    struct OamEntry {
+        byte y{};
+        byte index{};
+        union {
+            struct {
+                byte palette : 2;             // Palette (4 to 7) of sprite
+                byte unimplemented : 3 = {};  // Unimplemented (Read 0)
+                byte priority : 1;            // Priority (0: Front, 1: Back)
+                bool horizontal_flip : 1;
+                bool vertical_flip : 1;
+            } flags;
+            byte value;
+        } attributes{};
+        byte x{};
+    };
+
+    std::array<OamEntry, 64> oam;
 
     // PPU Registers
     union {
@@ -77,6 +108,9 @@ class Ppu : public CpuBus {
         } flags;
         byte value;
     } ppustatus{.value = 0xA0};
+
+    byte oamaddr{};
+    byte oamdata{};
 };
 
 #endif  // SEN_SRC_PPU_H_
