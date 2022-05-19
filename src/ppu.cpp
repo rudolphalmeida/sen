@@ -49,6 +49,7 @@ byte Ppu::CpuRead(word address) {
         case 0x2000:
         case 0x2001:
         case 0x2003:
+        case 0x2006:
             // Return value of internal data bus for "write-only" registers
             return data_;
         case 0x2002:
@@ -67,7 +68,7 @@ byte Ppu::CpuRead(word address) {
             }
             break;
         default:
-            spdlog::info("Read from PPU register {:#6X}", address);
+            spdlog::debug("Read from PPU register {:#6X}", address);
             data_ = 0xFF;
     }
 
@@ -89,8 +90,11 @@ void Ppu::CpuWrite(word address, byte data) {
         case 0x2004:
             oamdata = data_;
             break;
+        case 0x2006:
+            ppu_address = (ppu_address << 8) | data_;
+            break;
         default:
-            spdlog::info("Write to PPU register {:#6X} with {:#4X}", address,
-                         data_);
+            spdlog::debug("Write to PPU register {:#6X} with {:#4X}", address,
+                          data_);
     }
 }

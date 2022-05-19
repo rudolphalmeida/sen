@@ -111,6 +111,7 @@ class Ppu : public CpuBus {
 
     byte oamaddr{};
     byte oamdata{};
+    word ppu_address{};
 };
 
 #endif  // SEN_SRC_PPU_H_

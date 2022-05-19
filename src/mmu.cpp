@@ -36,10 +36,10 @@ byte Mmu::RawCpuRead(word address) {
     } else if (inRange(0x2000, address, 0x3FFF)) {
         return ppu.CpuRead(address);
     } else if (inRange(0x4000, address, 0x4017)) {
-        spdlog::info("Read from IO register: {:#6X}", address_);
+        spdlog::debug("Read from IO register: {:#6X}", address_);
         return 0x00;
     } else if (inRange(0x4018, address, 0x401F)) {
-        spdlog::info("Read from Disabled functionality: {:#6X}", address);
+        spdlog::debug("Read from Disabled functionality: {:#6X}", address);
         return 0x00;
     } else if (inRange(0x4020, address, 0xFFFF)) {
         return cart->CpuRead(address);
@@ -63,9 +63,9 @@ void Mmu::RawCpuWrite(word address, byte data) {
     } else if (inRange(0x2000, address, 0x3FFF)) {
         ppu.CpuWrite(address, data);
     } else if (inRange(0x4000, address, 0x4017)) {
-        spdlog::info("Write to IO register: {:#6X} with {:#4X}", address, data);
+        spdlog::debug("Write to IO register: {:#6X} with {:#4X}", address, data);
     } else if (inRange(0x4018, address, 0x401F)) {
-        spdlog::info("Write to Disabled functionality {:#6X} with {:#4X}",
+        spdlog::debug("Write to Disabled functionality {:#6X} with {:#4X}",
                      address, data);
     } else if (inRange(0x4020, address, 0xFFFF)) {
         cart->CpuWrite(address, data);
