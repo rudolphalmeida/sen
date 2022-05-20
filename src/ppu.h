@@ -43,7 +43,7 @@ class Ppu : public CpuBus {
 
     // Start out at the pre-render line (the -1 line, but I am using unsigned)
     uint frames{0};
-    uint line{0};
+    uint line{PRE_RENDER_LINE};
     uint cycle_in_line{0};
 
     bool InRenderingLines() const { return line < VISIBLE_FRAME_LINES; }
@@ -111,6 +111,11 @@ class Ppu : public CpuBus {
 
     byte oamaddr{};
     byte oamdata{};
+
+    byte scroll_x{};
+    byte scroll_y{};
+    bool write_to_x{true};
+
     word ppu_address{};
 };
 

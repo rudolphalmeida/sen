@@ -49,13 +49,15 @@ byte Ppu::CpuRead(word address) {
         case 0x2000:
         case 0x2001:
         case 0x2003:
+        case 0x2005:
         case 0x2006:
             // Return value of internal data bus for "write-only" registers
             return data_;
         case 0x2002:
             data_ = (ppustatus.value & 0xE0) | (data_ & 0x1F);
             ppustatus.flags.VerticalBlanking = false;
-            // TODO: Clear PPUSCROLL and PPUADDR
+            ppu_address = 0x0000;
+            // TODO: Clear PPUSCROLL
             // TODO: Implement race-condition if read within two ticks of Vblank
 
             break;
@@ -89,6 +91,14 @@ void Ppu::CpuWrite(word address, byte data) {
             break;
         case 0x2004:
             oamdata = data_;
+            break;
+        case 0x2005:
+            if (write_to_x) {
+                scroll_x = data_;
+            } else {
+                scroll_y = data_;
+            }
+            write_to_x = !write_to_x;
             break;
         case 0x2006:
             ppu_address = (ppu_address << 8) | data_;
