@@ -22,7 +22,7 @@ class Nes {
     void RunFrame();
 
    private:
-    const Options& options;
+    [[maybe_unused]] const Options& options;
 
     std::shared_ptr<Mmu> mmu;
     Cpu cpu;

@@ -59,9 +59,24 @@ void Cpu::Tick() {
     auto opcode = DecodeOpcode(opcode_byte);
 
     // PC and cpu cycle values need to be from before the opcode fetch
-    spdlog::debug(
-        "{:04X}  {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
-        pc - 1, opcode_byte, a, x, y, p.value, s, mmu->CpuCycles() - 1);
+    if (opcode.length == 1) {
+        spdlog::debug(
+            "{:04X}  {:02X}       A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
+            pc - 1, opcode_byte, a, x, y, p.value, s, mmu->CpuCycles() - 1);
+    } else if (opcode.length == 2) {
+        auto arg = mmu->RawCpuRead(pc);
+        spdlog::debug(
+            "{:04X}  {:02X} {:02X}    A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
+            pc - 1, opcode_byte, arg, a, x, y, p.value, s, mmu->CpuCycles() - 1);
+    } else if (opcode.length == 3) {
+        auto arg1 = mmu->RawCpuRead(pc);
+        auto arg2 = mmu->RawCpuRead(pc + 1);
+
+        spdlog::debug(
+            "{:04X}  {:02X} {:02X} {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
+            pc - 1, opcode_byte, arg1, arg2, a, x, y, p.value, s, mmu->CpuCycles() - 1
+        );
+    }
 
     ExecuteOpcode(opcode);
 }

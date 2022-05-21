@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <utility>
+#include <array>
 
 #include "memory.h"
 
@@ -69,7 +70,7 @@ class Ppu : public CpuBus {
         byte x{};
     };
 
-    std::array<OamEntry, 64> oam;
+    std::array<OamEntry, 64> oam{};
 
     // PPU Registers
     union {
