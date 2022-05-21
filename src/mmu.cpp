@@ -72,6 +72,14 @@ void Mmu::RawCpuWrite(word address, byte data) {
     }
 }
 
+byte Mmu::PpuRead(word address) {
+    return cart->PpuRead(address);
+}
+
+void Mmu::PpuWrite(word address, byte data) {
+    cart->PpuWrite(address, data);
+}
+
 void Mmu::Tick() {
     IncCpuCycles();
 

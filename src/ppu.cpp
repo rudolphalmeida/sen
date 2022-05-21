@@ -109,8 +109,23 @@ void Ppu::CpuWrite(word address, byte data) {
     }
 }
 
-byte Ppu::PpuRead(word) {
-    return 0x00;
+byte Ppu::PpuRead(word address) {
+    address %= 0x4000;
+
+    if (inRange(0x0000, address, 0x1FFF)) {
+        return mmu->PpuRead(address);
+    } else if (inRange(0x2000, address, 0x2FFF)) {
+        return vram.at(address);
+    } else if (inRange(0x3000, address, 0x3EFF)) {
+        return PpuRead(address - 0x1000);
+    } else if (inRange(0x3F00, address, 0x3F1F)) {
+        spdlog::info("Read from Palette address: {:#6X}", address);
+    } else if (inRange(0x3F00, address, 0x3F1F)) {
+        return PpuRead(0x3F00 + (address % 0x20));
+    }
+
+    // Should not really happen
+    return 0xFF;
 }
 
 void Ppu::PpuWrite(word, byte) {

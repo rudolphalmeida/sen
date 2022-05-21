@@ -10,7 +10,7 @@
 #include "ppu.h"
 #include "utils.h"
 
-class Mmu : public CpuBus {
+class Mmu : public CpuBus, public PpuBus {
    public:
     explicit Mmu(std::shared_ptr<Cartridge> cart);
 
@@ -24,7 +24,6 @@ class Mmu : public CpuBus {
     void RawCpuWrite(word address, byte data);
 
     void Tick();
-
     bool NmiRequested() { return nmi_requested; }
     void RequestNmi();
     void NmiAcked();
@@ -39,9 +38,13 @@ class Mmu : public CpuBus {
     std::shared_ptr<Cartridge> cart;
     // Internal RAM
     std::vector<byte> iram;
-
+ 
     // Bus-attached components
+    friend class Ppu;
     Ppu ppu;
+
+    [[nodiscard]] byte PpuRead(word address) override;
+    void PpuWrite(word address, byte data) override;
 
     word address_{};
     byte data_{};

@@ -74,6 +74,7 @@ class Ppu : public CpuBus, public PpuBus {
     };
 
     std::array<OamEntry, 64> oam{};
+    std::array<byte, 0x1000> vram{};
 
     // PPU Registers
     union {
