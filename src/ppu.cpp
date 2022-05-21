@@ -108,3 +108,12 @@ void Ppu::CpuWrite(word address, byte data) {
                           data_);
     }
 }
+
+byte Ppu::PpuRead(word) {
+    return 0x00;
+}
+
+void Ppu::PpuWrite(word, byte) {
+
+}
+

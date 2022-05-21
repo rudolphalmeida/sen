@@ -13,7 +13,7 @@
 
 class Mmu;
 
-class Ppu : public CpuBus {
+class Ppu : public CpuBus, public PpuBus {
    public:
     Ppu(std::shared_ptr<Mmu> mmu) : mmu{std::move(mmu)} {}
 
@@ -22,6 +22,9 @@ class Ppu : public CpuBus {
     // PPU Read/Write on the CPU address bus
     byte CpuRead(word address) override;
     void CpuWrite(word address, byte data) override;
+
+    byte PpuRead(word address) override;
+    void PpuWrite(word address, byte data) override;
 
     /* PPU Scanline Constants
      * Numerically the frame looks like:

@@ -17,16 +17,23 @@ class Mapper {
     [[nodiscard]] virtual byte Read(const Rom& rom, word address) const = 0;
     virtual void Write(Rom& rom, word address, byte data) = 0;
 
+    [[nodiscard]] virtual byte PpuRead(const Rom& rom, word address) const = 0;
+    virtual void PpuWrite(Rom& rom, word address, byte data) = 0;
+
     virtual ~Mapper() = default;
 };
 
 // Contains the cartridge data and the mapper implementation
-class Cartridge : public CpuBus {
+class Cartridge : public CpuBus, public PpuBus {
    public:
     explicit Cartridge(Rom&& rom);
 
     [[nodiscard]] byte CpuRead(word address) override;
     void CpuWrite(word address, byte data) override;
+
+    [[nodiscard]] byte PpuRead(word address) override;
+    void PpuWrite(word address, byte data) override;
+
 
    private:
     explicit Cartridge(Rom&& rom, std::unique_ptr<Mapper> mapper)
@@ -43,8 +50,10 @@ class Mapper000 : public Mapper {
     static const byte NUMBER = 0x00;
 
     [[nodiscard]] byte Read(const Rom& rom, word address) const override;
-
     void Write(Rom& rom, word address, byte data) override;
+
+    [[nodiscard]] byte PpuRead(const Rom& rom, word address) const override;
+    void PpuWrite(Rom& rom, word address, byte data) override;
 };
 
 #endif  // SEN_SRC_CARTRIDGE_H_
