@@ -5,9 +5,9 @@
 #ifndef SEN_SRC_PPU_H_
 #define SEN_SRC_PPU_H_
 
+#include <array>
 #include <memory>
 #include <utility>
-#include <array>
 
 #include "memory.h"
 
@@ -15,7 +15,7 @@ class Mmu;
 
 class Ppu : public CpuBus, public PpuBus {
    public:
-    Ppu(std::shared_ptr<Mmu> mmu) : mmu{std::move(mmu)} {}
+    explicit Ppu(std::shared_ptr<Mmu> mmu) : mmu{std::move(mmu)} {}
 
     void Tick();
 
@@ -50,9 +50,9 @@ class Ppu : public CpuBus, public PpuBus {
     uint line{PRE_RENDER_LINE};
     uint cycle_in_line{0};
 
-    bool InRenderingLines() const { return line < VISIBLE_FRAME_LINES; }
+    [[nodiscard]] bool InRenderingLines() const { return line < VISIBLE_FRAME_LINES; }
 
-    bool InVerticalBlankLines() const {
+    [[nodiscard]] bool InVerticalBlankLines() const {
         return line > POST_RENDER_LINE && line < PRE_RENDER_LINE;
     }
 
@@ -79,9 +79,9 @@ class Ppu : public CpuBus, public PpuBus {
     // PPU Registers
     union {
         struct {
-            byte NametableBaseAddress : 2;       // 0x2000 + <value> * 0x400;
-            byte IncrementVram : 1;              // 0: Add 1, 1: Add 32
-            byte SpritePatternTableAddress : 1;  // For 8x8 sprites only
+            byte NametableBaseAddress : 2;           // 0x2000 + <value> * 0x400;
+            byte IncrementVram : 1;                  // 0: Add 1, 1: Add 32
+            byte SpritePatternTableAddress : 1;      // For 8x8 sprites only
             byte BackgroundPatternTableAddress : 1;  // <value> * 0x1000
             byte SpriteSize : 1;                     // 0: 8x8, 1: 8x16
             byte PpuMasterSlaveSelect : 1;           // 0: read, 1: output
@@ -92,8 +92,8 @@ class Ppu : public CpuBus, public PpuBus {
 
     union {
         struct {
-            byte Greyscale : 1;     // Show image in grey-scale
-            byte BgInLeftmost : 1;  // Show background in left-most 8 pixels
+            byte Greyscale : 1;          // Show image in grey-scale
+            byte BgInLeftmost : 1;       // Show background in left-most 8 pixels
             byte SpritesInLeftmost : 1;  // Show sprites in left-most 8 pixels
             byte ShowBackground : 1;     // Show background layer
             byte ShowSprites : 1;        // Show sprite layer

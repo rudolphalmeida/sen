@@ -24,7 +24,7 @@ class Mmu : public CpuBus, public PpuBus {
     void RawCpuWrite(word address, byte data);
 
     void Tick();
-    bool NmiRequested() { return nmi_requested; }
+    [[nodiscard]] bool NmiRequested() const { return nmi_requested; }
     void RequestNmi();
     void NmiAcked();
 

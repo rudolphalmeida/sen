@@ -15,15 +15,13 @@
 // Driver class for the NES
 class Nes {
    public:
-    Nes(const Options& options, Cpu&& cpu, std::shared_ptr<Mmu> mmu)
-        : options{options}, mmu{std::move(mmu)}, cpu{std::move(cpu)} {}
+    Nes(const Options&, Cpu&& cpu, std::shared_ptr<Mmu> mmu)
+        : mmu{std::move(mmu)}, cpu{std::move(cpu)} {}
 
     void Start();
     void RunFrame();
 
    private:
-    [[maybe_unused]] const Options& options;
-
     std::shared_ptr<Mmu> mmu;
     Cpu cpu;
 };
