@@ -10,8 +10,11 @@ void Ppu::Tick() {
 
     if (cycle_in_line == 0) {
         line = (line + 1) % FRAME_LINES;
-        frames++;
-        spdlog::debug("Frame Counter: {}", frames);
+
+        if (line == PRE_RENDER_LINE) {
+            frames++;
+            spdlog::debug("Frame Counter: {}", frames);
+        }
     }
 
     if (line == PRE_RENDER_LINE) {
