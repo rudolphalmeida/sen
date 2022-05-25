@@ -88,7 +88,7 @@ class Ppu : public CpuBus, public PpuBus {
             byte VerticalBlankingInterrupt : 1;      // 0: Off, 1: On
         } flags;
         byte value;
-    } ppuctrl{};
+    } ppu_ctrl{};
 
     union {
         struct {
@@ -102,7 +102,7 @@ class Ppu : public CpuBus, public PpuBus {
             byte EmphasizeBlue : 1;
         } flags;
         byte value;
-    } ppumask{};
+    } ppu_mask{};
 
     union {
         struct {
@@ -112,10 +112,10 @@ class Ppu : public CpuBus, public PpuBus {
             byte VerticalBlanking : 1;
         } flags;
         byte value;
-    } ppustatus{.value = 0xA0};
+    } ppu_status{.value = 0xA0};
 
-    byte oamaddr{};
-    byte oamdata{};
+    byte oam_addr{};
+    byte oam_data{};
 
     byte scroll_x{};
     byte scroll_y{};
