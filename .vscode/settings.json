@@ -1,0 +1,13 @@
+{
+    "cmake.configureArgs": [
+        "-DCMAKE_TOOLCHAIN_FILE=/home/rudolph/Projects/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=1"
+        "-DVCPKG_TARGET_TRIPLET=x64-linux"
+    ],
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "clangd.arguments": [
+        "-background-index",
+        "-compile-commands-dir=build",
+        "--completion-style=detailed",
+    ]
+}
