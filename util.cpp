@@ -8,7 +8,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include "sen.hxx"
 #include "util.hxx"
 
 std::vector<byte> read_binary_file(const std::filesystem::path& path) {

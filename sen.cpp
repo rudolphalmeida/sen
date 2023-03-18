@@ -1,15 +1,16 @@
-#include <spdlog/spdlog.h>
-#include <cassert>
 #include <cstddef>
-#include <iterator>
 
+#include <spdlog/spdlog.h>
+
+#include "cartridge.hxx"
+#include "mapper.hxx"
 #include "sen.hxx"
 
 Sen::Sen(RomArgs rom_args) {
-    auto parsed_rom = parse_rom_file(rom_args);
+    auto parsed_rom = ParseRomFile(rom_args);
 }
 
-ParsedRom parse_rom_file(const RomArgs& rom_args) {
+Cartridge ParseRomFile(const RomArgs& rom_args) {
     auto rom_iter = rom_args.rom.cbegin();
 
     if (*rom_iter++ != '\x4E' || *rom_iter++ != '\x45' || *rom_iter++ != '\x53' ||
@@ -19,10 +20,12 @@ ParsedRom parse_rom_file(const RomArgs& rom_args) {
         std::exit(-1);
     }
 
-    size_t prg_rom_size = 16384 * (*rom_iter++);
+    size_t prg_rom_banks = *rom_iter++;
+    size_t prg_rom_size = 16384 * prg_rom_banks;
     spdlog::debug("PRG ROM size (Bytes): {}", prg_rom_size);
 
-    size_t chr_rom_size = 8192 * (*rom_iter++);
+    size_t chr_rom_banks = *rom_iter++;
+    size_t chr_rom_size = 8192 * chr_rom_banks;
     spdlog::debug("CHR ROM size (Bytes): {}", chr_rom_size);
 
     auto flag_6 = *rom_iter++;
@@ -70,5 +73,7 @@ ParsedRom parse_rom_file(const RomArgs& rom_args) {
     chr_rom.reserve(chr_rom_size);
     std::copy_n(rom_iter, chr_rom_size, std::back_inserter(chr_rom));
 
-    return {header, prg_rom, chr_rom};
+    auto mapper = MapperFromInesNumber(mapper_number, prg_rom_banks, chr_rom_banks);
+
+    return {header, prg_rom, chr_rom, std::move(mapper)};
 }
