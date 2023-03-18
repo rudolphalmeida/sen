@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <memory>
 
 #include <spdlog/spdlog.h>
 
@@ -7,10 +8,10 @@
 #include "sen.hxx"
 
 Sen::Sen(RomArgs rom_args) {
-    auto parsed_rom = ParseRomFile(rom_args);
+    cartridge = ParseRomFile(rom_args);
 }
 
-Cartridge ParseRomFile(const RomArgs& rom_args) {
+std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     auto rom_iter = rom_args.rom.cbegin();
 
     if (*rom_iter++ != '\x4E' || *rom_iter++ != '\x45' || *rom_iter++ != '\x53' ||
@@ -75,5 +76,5 @@ Cartridge ParseRomFile(const RomArgs& rom_args) {
 
     auto mapper = MapperFromInesNumber(mapper_number, prg_rom_banks, chr_rom_banks);
 
-    return {header, prg_rom, chr_rom, std::move(mapper)};
+    return std::make_shared<Cartridge>(header, prg_rom, chr_rom, std::move(mapper));
 }

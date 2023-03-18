@@ -26,6 +26,7 @@ struct RomHeader {
 };
 
 struct Cartridge {
+   private:
     RomHeader header;
     std::vector<byte> prg_rom;
     std::vector<byte> chr_rom;
@@ -33,4 +34,16 @@ struct Cartridge {
     std::unique_ptr<Mapper> mapper{};
 
     std::optional<std::vector<byte>> chr_ram = std::nullopt;
+
+   public:
+    Cartridge(RomHeader header,
+              std::vector<byte> prg_rom,
+              std::vector<byte> chr_rom,
+              std::unique_ptr<Mapper> mapper,
+              std::optional<std::vector<byte>> chr_ram = std::nullopt)
+        : header{header},
+          prg_rom{std::move(prg_rom)},
+          chr_rom{std::move(chr_rom)},
+          mapper{std::move(mapper)},
+          chr_ram{std::move(chr_ram)} {}
 };

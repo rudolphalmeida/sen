@@ -8,16 +8,16 @@
 #include "sen.hxx"
 #include "util.hxx"
 
-RomArgs read_cmd_args(int argc, char** argv);
+RomArgs ReadCmdArgs(int argc, char** argv);
 
 int main(int argc, char** argv) {
     spdlog::cfg::load_env_levels();
 
-    auto rom_args = read_cmd_args(argc, argv);
+    auto rom_args = ReadCmdArgs(argc, argv);
     Sen sen(rom_args);
 }
 
-RomArgs read_cmd_args(int argc, char** argv) {
+RomArgs ReadCmdArgs(int argc, char** argv) {
     args::ArgumentParser parser("sen is a NES emulator", "");
     args::Positional<std::string> rom_path(parser, "rom", "Path to ROM file",
                                            args::Options::Required);
