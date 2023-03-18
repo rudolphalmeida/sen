@@ -47,7 +47,7 @@ struct Cartridge {
           mapper{std::move(mapper)},
           chr_ram{std::move(chr_ram)} {}
 
-    byte CpuRead(word addr) { return 0xFF; }
+    byte CpuRead(word addr) { return prg_rom[mapper->MapCpuAddr(addr)]; }
 
-    void CpuWrite(word addr, byte data) {}
+    void CpuWrite(word addr, byte data) { prg_rom[mapper->MapCpuAddr(addr)] = data; }
 };

@@ -17,14 +17,11 @@ std::unique_ptr<Mapper> MapperFromInesNumber(byte mapper_number,
     }
 }
 
-word Nrom::MapCpuAddr(word addr) {
-    if (inRange<word>(0x8000, addr, 0xBFFF)) {
-        return addr;
-    } else if (inRange<word>(0xC000, addr, 0xFFFF)) {
-        // If 16KB then the first 16KB bank is mirrored in this region
-        return prg_rom_banks == 1 ? addr % 0x8000 : addr;
+unsigned int Nrom::MapCpuAddr(word addr) {
+    if (inRange<word>(0x8000, addr, 0xFFFF)) {
+        return addr % (16384 * prg_rom_banks);
     } else {
-        spdlog::error("Unknown CPU address {:#6X} to NROM", addr);
-        return addr;
+        spdlog::error("Unknown CPU address {:#06X} to NROM", addr);
+        return 0x0000;
     }
 }

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstddef>
+#include <iostream>
 #include <memory>
 
 #include <spdlog/spdlog.h>
@@ -12,6 +13,9 @@ Sen::Sen(RomArgs rom_args) {
     auto cartridge = ParseRomFile(rom_args);
     bus = std::make_shared<Bus>(std::move(cartridge));
     cpu = Cpu(bus);
+
+    word x = static_cast<word>(bus->CpuRead(0xFFFD)) << 8 | static_cast<word>(bus->CpuRead(0xFFFC));
+    spdlog::debug("Starting execution from {:#06X}", x);
 }
 
 Cartridge ParseRomFile(const RomArgs& rom_args) {

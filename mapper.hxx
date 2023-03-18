@@ -15,7 +15,10 @@ class Mapper {
     Mapper(size_t prg_rom_banks, size_t chr_rom_banks)
         : prg_rom_banks{prg_rom_banks}, chr_rom_banks{chr_rom_banks} {}
 
-    virtual word MapCpuAddr(word addr) = 0;
+    // Map an address on the Bus to an index into PRG ROM
+    virtual unsigned int MapCpuAddr(word addr) = 0;
+
+    // Map an address on the Bus to an index into CHR ROM
     virtual word MapPpuAddr(word addr) { return addr; };
 
     virtual ~Mapper() = default;
@@ -32,5 +35,5 @@ class Nrom : public Mapper {
    public:
     Nrom(size_t prg_rom_banks, size_t chr_rom_banks) : Mapper{prg_rom_banks, chr_rom_banks} {}
 
-    word MapCpuAddr(word addr);
+    unsigned int MapCpuAddr(word addr);
 };
