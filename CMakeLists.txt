@@ -6,5 +6,5 @@ set(CMAKE_CXX_STANDARD 20)
 find_package(args CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
-add_executable(sen main.cpp sen.hxx util.hxx util.cpp)
+add_executable(sen main.cpp sen.hxx sen.cpp util.hxx util.cpp)
 target_link_libraries(sen PRIVATE spdlog::spdlog spdlog::spdlog_header_only taywee::args)

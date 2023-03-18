@@ -14,6 +14,7 @@ int main(int argc, char** argv) {
     spdlog::cfg::load_env_levels();
 
     auto rom_args = read_cmd_args(argc, argv);
+    Sen sen(rom_args);
 }
 
 RomArgs read_cmd_args(int argc, char** argv) {
