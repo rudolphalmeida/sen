@@ -3,5 +3,7 @@
 .idea
 .cache
 
+nes-test-roms
+
 build
 cmake-build-*
