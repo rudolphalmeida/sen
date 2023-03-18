@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstddef>
 #include <memory>
 
@@ -8,10 +9,12 @@
 #include "sen.hxx"
 
 Sen::Sen(RomArgs rom_args) {
-    cartridge = ParseRomFile(rom_args);
+    auto cartridge = ParseRomFile(rom_args);
+    bus = std::make_shared<Bus>(std::move(cartridge));
+    cpu = Cpu(bus);
 }
 
-std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
+Cartridge ParseRomFile(const RomArgs& rom_args) {
     auto rom_iter = rom_args.rom.cbegin();
 
     if (*rom_iter++ != '\x4E' || *rom_iter++ != '\x45' || *rom_iter++ != '\x53' ||
@@ -76,5 +79,5 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
 
     auto mapper = MapperFromInesNumber(mapper_number, prg_rom_banks, chr_rom_banks);
 
-    return std::make_shared<Cartridge>(header, prg_rom, chr_rom, std::move(mapper));
+    return Cartridge{header, prg_rom, chr_rom, std::move(mapper)};
 }

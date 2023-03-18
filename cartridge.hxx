@@ -46,4 +46,8 @@ struct Cartridge {
           chr_rom{std::move(chr_rom)},
           mapper{std::move(mapper)},
           chr_ram{std::move(chr_ram)} {}
+
+    byte CpuRead(word addr) { return 0xFF; }
+
+    void CpuWrite(word addr, byte data) {}
 };

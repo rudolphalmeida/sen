@@ -12,5 +12,7 @@ add_executable(sen
     util.hxx util.cpp
     cartridge.hxx cartridge.cpp
     mapper.hxx mapper.cpp
+    cpu.hxx cpu.cpp
+    bus.hxx bus.cpp
 )
 target_link_libraries(sen PRIVATE spdlog::spdlog spdlog::spdlog_header_only taywee::args)
