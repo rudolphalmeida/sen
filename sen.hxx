@@ -24,4 +24,6 @@ class Sen {
 
    public:
     Sen(RomArgs rom_args);
+
+    void Run();
 };

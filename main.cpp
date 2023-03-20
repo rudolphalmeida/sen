@@ -15,6 +15,8 @@ int main(int argc, char** argv) {
 
     auto rom_args = ReadCmdArgs(argc, argv);
     Sen sen(rom_args);
+
+    sen.Run();
 }
 
 RomArgs ReadCmdArgs(int argc, char** argv) {

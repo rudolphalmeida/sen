@@ -4,6 +4,7 @@
 #include "util.hxx"
 
 byte Bus::CpuRead(word addr) {
+    cycles++;
     if (inRange<word>(0x0000, addr, 0x1FFF)) {
         return internal_ram[addr % 0x800];
     } else if (inRange<word>(0x2000, addr, 0x3FFF)) {
@@ -21,6 +22,7 @@ byte Bus::CpuRead(word addr) {
 }
 
 void Bus::CpuWrite(word addr, byte data) {
+    cycles++;
     if (inRange<word>(0x0000, addr, 0x1FFF)) {
         internal_ram[addr % 0x800] = data;
     } else if (inRange<word>(0x2000, addr, 0x3FFF)) {

@@ -3,6 +3,8 @@
 .idea
 .cache
 
+log.txt
+
 nes-test-roms
 
 build
