@@ -177,9 +177,16 @@ class Cpu {
     word AbsoluteYIndexedAddressing();
 
     // Opcodes
+    void BCS(Opcode opcode);
     void JMP(Opcode opcode);
+    void JSR(Opcode opcode);
     void LDX(Opcode opcode);
+    void NOP(Opcode opcode);
+    void SEC(Opcode opcode);
     void STX(Opcode opcode);
+
+    // Opcode helpers
+    void RelativeBranchOnCondition(bool condition);
 
    public:
     Cpu() = default;

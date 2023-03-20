@@ -20,4 +20,6 @@ class Bus {
 
     byte CpuRead(word addr);
     void CpuWrite(word addr, byte data);
+
+    void Tick() { cycles++; }
 };

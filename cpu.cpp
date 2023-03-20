@@ -1,5 +1,6 @@
 #include "cpu.hxx"
 #include <spdlog/spdlog.h>
+#include <cstdint>
 #include "constants.hxx"
 
 #define OPCODE_CASE(opc)   \
@@ -288,8 +289,12 @@ void Cpu::Execute() {
 
 void Cpu::ExecuteOpcode(Opcode opcode) {
     switch (opcode.opcode_class) {
+        OPCODE_CASE(BCS)
         OPCODE_CASE(JMP)
+        OPCODE_CASE(JSR)
         OPCODE_CASE(LDX)
+        OPCODE_CASE(NOP)
+        OPCODE_CASE(SEC)
         OPCODE_CASE(STX)
         default:
             spdlog::error("Unimplemented opcode {:#04X} found", opcode.opcode);
@@ -321,7 +326,7 @@ word Cpu::ZeroPageAddressing() {
 
 word Cpu::ZeroPageYAddressing() {
     auto address = ZeroPageAddressing();
-    bus->CpuRead(address);  // Dummy Read
+    bus->Tick();  // Dummy read cycle
     return NonPageCrossingAdd(address, y);
 }
 
@@ -330,7 +335,7 @@ word Cpu::AbsoluteYIndexedAddressing() {
 
     if ((address + y) != NonPageCrossingAdd(address, y)) {
         // If a page was crossed we require an additional cycle
-        bus->CpuRead(NonPageCrossingAdd(address, y));
+        bus->Tick();  // Dummy read cycle
     }
 
     return address + y;
@@ -399,4 +404,61 @@ void Cpu::STX(Opcode opcode) {
     }
 
     bus->CpuWrite(address, x);
+}
+
+void Cpu::JSR(Opcode opcode) {
+    auto low = static_cast<word>(Fetch());
+
+    bus->Tick();  // Dummy read cycle (3)
+
+    bus->CpuWrite(0x100 + s--, static_cast<byte>(pc >> 8));
+    bus->CpuWrite(0x100 + s--, static_cast<byte>(pc));
+
+    auto high = static_cast<word>(Fetch()) << 8;
+
+    pc = high | low;
+}
+
+void Cpu::NOP(Opcode opcode) {
+    switch (opcode.addressing_mode) {
+        case AddressingMode::Implied:
+            bus->Tick();  // Dummy read
+            break;
+
+            NOT_SUPPORTED_ADDRESSING_MODE(opcode)
+    }
+}
+
+void Cpu::SEC(Opcode opcode) {
+    switch (opcode.addressing_mode) {
+        case AddressingMode::Implied:
+            bus->Tick();  // Dummy read
+            break;
+
+            NOT_SUPPORTED_ADDRESSING_MODE(opcode)
+    }
+
+    UpdateStatusFlag(StatusFlag::Carry, true);
+}
+
+void Cpu::BCS(Opcode opcode) {
+    switch (opcode.addressing_mode) {
+        case AddressingMode::Relative:
+            break;
+
+            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
+    }
+
+    RelativeBranchOnCondition(IsSet(StatusFlag::Carry));
+}
+
+// Opcode helpers
+void Cpu::RelativeBranchOnCondition(bool condition) {
+    // First change the type, then the size, then type again
+    auto offset = (word)(int8_t)Fetch();
+
+    // TODO
+    if (condition) {
+        pc = NonPageCrossingAdd(pc, offset);
+    }
 }
