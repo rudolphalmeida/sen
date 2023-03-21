@@ -1,7 +1,10 @@
-#include "cpu.hxx"
-#include <spdlog/spdlog.h>
 #include <cstdint>
+
+#include <fmt/core.h>
+#include <spdlog/spdlog.h>
+
 #include "constants.hxx"
+#include "cpu.hxx"
 
 #define OPCODE_CASE(opc)   \
     case OpcodeClass::opc: \
@@ -289,7 +292,15 @@ void Cpu::Execute() {
 
 void Cpu::ExecuteOpcode(Opcode opcode) {
     switch (opcode.opcode_class) {
+        OPCODE_CASE(BCC)
         OPCODE_CASE(BCS)
+        OPCODE_CASE(BEQ)
+        OPCODE_CASE(BMI)
+        OPCODE_CASE(BNE)
+        OPCODE_CASE(BPL)
+        OPCODE_CASE(BVC)
+        OPCODE_CASE(BVS)
+        OPCODE_CASE(CLC)
         OPCODE_CASE(JMP)
         OPCODE_CASE(JSR)
         OPCODE_CASE(LDX)
@@ -441,6 +452,29 @@ void Cpu::SEC(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Carry, true);
 }
 
+void Cpu::CLC(Opcode opcode) {
+    switch (opcode.addressing_mode) {
+        case AddressingMode::Implied:
+            bus->Tick();  // Dummy read
+            break;
+
+            NOT_SUPPORTED_ADDRESSING_MODE(opcode)
+    }
+
+    UpdateStatusFlag(StatusFlag::Carry, false);
+}
+
+void Cpu::BCC(Opcode opcode) {
+    switch (opcode.addressing_mode) {
+        case AddressingMode::Relative:
+            break;
+
+            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
+    }
+
+    RelativeBranchOnCondition(!IsSet(StatusFlag::Carry));
+}
+
 void Cpu::BCS(Opcode opcode) {
     switch (opcode.addressing_mode) {
         case AddressingMode::Relative:
@@ -452,13 +486,89 @@ void Cpu::BCS(Opcode opcode) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Carry));
 }
 
+void Cpu::BEQ(Opcode opcode) {
+    switch (opcode.addressing_mode) {
+        case AddressingMode::Relative:
+            break;
+
+            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
+    }
+
+    RelativeBranchOnCondition(IsSet(StatusFlag::Zero));
+}
+
+void Cpu::BNE(Opcode opcode) {
+    switch (opcode.addressing_mode) {
+        case AddressingMode::Relative:
+            break;
+
+            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
+    }
+
+    RelativeBranchOnCondition(!IsSet(StatusFlag::Zero));
+}
+
+void Cpu::BMI(Opcode opcode) {
+    switch (opcode.addressing_mode) {
+        case AddressingMode::Relative:
+            break;
+
+            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
+    }
+
+    RelativeBranchOnCondition(IsSet(StatusFlag::Negative));
+}
+
+void Cpu::BPL(Opcode opcode) {
+    switch (opcode.addressing_mode) {
+        case AddressingMode::Relative:
+            break;
+
+            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
+    }
+
+    RelativeBranchOnCondition(!IsSet(StatusFlag::Negative));
+}
+
+void Cpu::BVC(Opcode opcode) {
+    switch (opcode.addressing_mode) {
+        case AddressingMode::Relative:
+            break;
+
+            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
+    }
+
+    RelativeBranchOnCondition(!IsSet(StatusFlag::Overflow));
+}
+
+void Cpu::BVS(Opcode opcode) {
+    switch (opcode.addressing_mode) {
+        case AddressingMode::Relative:
+            break;
+
+            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
+    }
+
+    RelativeBranchOnCondition(IsSet(StatusFlag::Overflow));
+}
+
 // Opcode helpers
 void Cpu::RelativeBranchOnCondition(bool condition) {
     // First change the type, then the size, then type again
     auto offset = (word)(int8_t)Fetch();
 
-    // TODO
-    if (condition) {
-        pc = NonPageCrossingAdd(pc, offset);
+    if (!condition)
+        return;
+
+    bus->Tick();  // Cycle 3 if branch taken
+
+    word page_crossed = pc + offset;
+    word non_page_crossed = NonPageCrossingAdd(pc, offset);
+
+    pc = non_page_crossed;
+
+    if (page_crossed != non_page_crossed) {
+        bus->Tick();  // Cycle 4 for page crossing
+        pc = page_crossed;
     }
 }

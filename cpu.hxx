@@ -3,7 +3,6 @@
 #include <cassert>
 #include <memory>
 
-#include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
 #include "bus.hxx"
@@ -177,7 +176,15 @@ class Cpu {
     word AbsoluteYIndexedAddressing();
 
     // Opcodes
+    void BCC(Opcode opcode);
     void BCS(Opcode opcode);
+    void BEQ(Opcode opcode);
+    void BMI(Opcode opcode);
+    void BNE(Opcode opcode);
+    void BPL(Opcode opcode);
+    void BVC(Opcode opcode);
+    void BVS(Opcode opcode);
+    void CLC(Opcode opcode);
     void JMP(Opcode opcode);
     void JSR(Opcode opcode);
     void LDX(Opcode opcode);
