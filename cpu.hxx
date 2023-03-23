@@ -150,8 +150,8 @@ enum class StatusFlag : byte {
     Carry = (1 << 0),             // C
     Zero = (1 << 1),              // Z
     InterruptDisable = (1 << 2),  // I
-    _Decimal = (1 << 3),          // Unused in NES
-    _B = 0x30,                    // No CPU effect, bits 45
+    Decimal = (1 << 3),           // D
+    _B = (0b11 << 4),             // No CPU effect, bits 45
     Overflow = (1 << 6),          // V
     Negative = (1 << 7),          // N
 };
@@ -207,8 +207,14 @@ class Cpu {
     void LDA(Opcode opcode);
     void LDX(Opcode opcode);
     void NOP(Opcode opcode);
+    void PHA(Opcode opcode);
+    void PHP(Opcode opcode);
+    void PLA(Opcode opcode);
+    void PLP(Opcode opcode);
     void RTS(Opcode opcode);
     void SEC(Opcode opcode);
+    void SED(Opcode opcode);
+    void SEI(Opcode opcode);
     void STA(Opcode opcode);
     void STX(Opcode opcode);
 

@@ -308,8 +308,14 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(LDA)
         OPCODE_CASE(LDX)
         OPCODE_CASE(NOP)
+        OPCODE_CASE(PHA)
+        OPCODE_CASE(PHP)
+        OPCODE_CASE(PLA)
+        OPCODE_CASE(PLP)
         OPCODE_CASE(RTS)
         OPCODE_CASE(SEC)
+        OPCODE_CASE(SED)
+        OPCODE_CASE(SEI)
         OPCODE_CASE(STA)
         OPCODE_CASE(STX)
         default:
@@ -484,6 +490,16 @@ void Cpu::CLC(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Carry, false);
 }
 
+void Cpu::SEI(Opcode opcode) {
+    bus->Tick();
+    UpdateStatusFlag(StatusFlag::InterruptDisable, true);
+}
+
+void Cpu::SED(Opcode opcode) {
+    bus->Tick();
+    UpdateStatusFlag(StatusFlag::Decimal, true);
+}
+
 void Cpu::BCC(Opcode opcode) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Carry));
 }
@@ -535,6 +551,31 @@ void Cpu::BIT(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (operand & 0x80) != 0x00);
     UpdateStatusFlag(StatusFlag::Overflow, (operand & 0x40) != 0x00);
     UpdateStatusFlag(StatusFlag::Zero, (operand & a) == 0x00);
+}
+
+void Cpu::PHA(Opcode opcode) {
+    bus->CpuRead(pc);  // Fetch next opcode and discard it
+    bus->CpuWrite(0x100 + s--, a);
+}
+
+void Cpu::PLA(Opcode opcode) {
+    bus->CpuRead(pc);           // Fetch next opcode and discard it
+    bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
+    a = bus->CpuRead(0x100 + s);
+    UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
+}
+
+void Cpu::PHP(Opcode opcode) {
+    bus->CpuRead(pc);                                     // Fetch next opcode and discard it
+    byte temp_p = p | static_cast<byte>(StatusFlag::_B);  // Ensure bits 45 are set before push
+    bus->CpuWrite(0x100 + s--, temp_p);
+}
+
+void Cpu::PLP(Opcode opcode) {
+    bus->CpuRead(pc);           // Fetch next opcode and discard it
+    bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
+    p = bus->CpuRead(0x100 + s);
 }
 
 // Opcode helpers
