@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cstdlib>
 
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
@@ -295,6 +296,7 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(BCC)
         OPCODE_CASE(BCS)
         OPCODE_CASE(BEQ)
+        OPCODE_CASE(BIT)
         OPCODE_CASE(BMI)
         OPCODE_CASE(BNE)
         OPCODE_CASE(BPL)
@@ -303,9 +305,12 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(CLC)
         OPCODE_CASE(JMP)
         OPCODE_CASE(JSR)
+        OPCODE_CASE(LDA)
         OPCODE_CASE(LDX)
         OPCODE_CASE(NOP)
+        OPCODE_CASE(RTS)
         OPCODE_CASE(SEC)
+        OPCODE_CASE(STA)
         OPCODE_CASE(STX)
         default:
             spdlog::error("Unimplemented opcode {:#04X} found", opcode.opcode);
@@ -335,10 +340,27 @@ word Cpu::ZeroPageAddressing() {
     return static_cast<word>(Fetch());
 }
 
+word Cpu::ZeroPageXAddressing() {
+    auto address = ZeroPageAddressing();
+    bus->Tick();  // Dummy read cycle
+    return NonPageCrossingAdd(address, x);
+}
+
 word Cpu::ZeroPageYAddressing() {
     auto address = ZeroPageAddressing();
     bus->Tick();  // Dummy read cycle
     return NonPageCrossingAdd(address, y);
+}
+
+word Cpu::AbsoluteXIndexedAddressing() {
+    auto address = AbsoluteAddressing();
+
+    if ((address + x) != NonPageCrossingAdd(address, x)) {
+        // If a page was crossed we require an additional cycle
+        bus->Tick();  // Dummy read cycle
+    }
+
+    return address + x;
 }
 
 word Cpu::AbsoluteYIndexedAddressing() {
@@ -352,210 +374,173 @@ word Cpu::AbsoluteYIndexedAddressing() {
     return address + y;
 }
 
+word Cpu::IndirectXAddressing() {
+    auto operand = static_cast<word>(Fetch());
+    auto pointer = static_cast<word>(bus->CpuRead(operand));
+    auto low = static_cast<word>(NonPageCrossingAdd(pointer, x));
+    auto high = static_cast<word>(NonPageCrossingAdd(pointer, x + 1));
+
+    return (high << 8) | low;
+}
+
+word Cpu::IndirectYAddressing() {
+    auto pointer = static_cast<word>(Fetch());
+    auto low = static_cast<word>(bus->CpuRead(pointer));
+    auto high = static_cast<word>(bus->CpuRead(NonPageCrossingAdd(pointer, 1)));
+
+    word supplied = (high << 8) | NonPageCrossingAdd(low, y);
+    word corrected = ((high << 8) | low) + y;
+    bus->Tick();
+
+    if (supplied != corrected) {
+        bus->Tick();  // Extra tick due to page crossing
+        return corrected;
+    } else {
+        return supplied;
+    }
+}
+
+word Cpu::EffectiveAddress(AddressingMode mode) {
+    switch (mode) {
+        case AddressingMode::Immediate:
+            return pc++;
+        case AddressingMode::ZeroPage:
+            return ZeroPageAddressing();
+        case AddressingMode::ZeroPageX:
+            return ZeroPageXAddressing();
+        case AddressingMode::Absolute:
+            return AbsoluteAddressing();
+        case AddressingMode::AbsoluteXIndexed:
+            return AbsoluteXIndexedAddressing();
+        case AddressingMode::AbsoluteYIndexed:
+            return AbsoluteYIndexedAddressing();
+        case AddressingMode::Indirect:
+            return IndirectAddressing();
+        case AddressingMode::IndirectX:
+            return IndirectXAddressing();
+        case AddressingMode::IndirectY:
+            return IndirectYAddressing();
+        default:
+            spdlog::error("Invalid addressing mode for effective addresss");
+            std::exit(-1);
+    }
+}
+
 // Opcodes
 
 void Cpu::JMP(Opcode opcode) {
-    word address{};
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Absolute:
-            address = AbsoluteAddressing();
-            break;
-        case AddressingMode::Indirect:
-            address = IndirectAddressing();
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode)
-    }
-
+    word address = EffectiveAddress(opcode.addressing_mode);
     pc = address;
 }
 
 void Cpu::LDX(Opcode opcode) {
-    word address{};
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Immediate:
-            address = pc++;
-            break;
-        case AddressingMode::ZeroPage:
-            address = ZeroPageAddressing();
-            break;
-        case AddressingMode::ZeroPageY:
-            address = ZeroPageYAddressing();
-            break;
-        case AddressingMode::Absolute:
-            address = AbsoluteAddressing();
-            break;
-        case AddressingMode::AbsoluteYIndexed:
-            address = AbsoluteYIndexedAddressing();
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode)
-    }
-
+    word address = EffectiveAddress(opcode.addressing_mode);
     x = bus->CpuRead(address);
-
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
-    UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0);
+    UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
 }
 
 void Cpu::STX(Opcode opcode) {
-    word address{};
-    switch (opcode.addressing_mode) {
-        case AddressingMode::ZeroPage:
-            address = ZeroPageAddressing();
-            break;
-        case AddressingMode::ZeroPageY:
-            address = ZeroPageYAddressing();
-            break;
-        case AddressingMode::Absolute:
-            address = AbsoluteAddressing();
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode)
-    }
-
+    word address = EffectiveAddress(opcode.addressing_mode);
     bus->CpuWrite(address, x);
 }
 
 void Cpu::JSR(Opcode opcode) {
     auto low = static_cast<word>(Fetch());
 
-    bus->Tick();  // Dummy read cycle (3)
+    bus->CpuRead(0x100 + s);  // Dummy read cycle (3)
 
     bus->CpuWrite(0x100 + s--, static_cast<byte>(pc >> 8));
     bus->CpuWrite(0x100 + s--, static_cast<byte>(pc));
 
-    auto high = static_cast<word>(Fetch()) << 8;
+    word high = static_cast<word>(Fetch()) << 8;
 
     pc = high | low;
 }
 
-void Cpu::NOP(Opcode opcode) {
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Implied:
-            bus->Tick();  // Dummy read
-            break;
+void Cpu::RTS(Opcode opcode) {
+    bus->CpuRead(pc);  // Fetch next opcode and discard it
 
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode)
-    }
+    bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
+
+    auto low = bus->CpuRead(0x100 + s++);
+    auto high = bus->CpuRead(0x100 + s);
+    pc = (high << 8) | low;
+
+    bus->CpuRead(pc++);
+}
+
+void Cpu::NOP(Opcode opcode) {
+    bus->Tick();
 }
 
 void Cpu::SEC(Opcode opcode) {
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Implied:
-            bus->Tick();  // Dummy read
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode)
-    }
-
+    bus->Tick();
     UpdateStatusFlag(StatusFlag::Carry, true);
 }
 
 void Cpu::CLC(Opcode opcode) {
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Implied:
-            bus->Tick();  // Dummy read
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode)
-    }
-
+    bus->Tick();
     UpdateStatusFlag(StatusFlag::Carry, false);
 }
 
 void Cpu::BCC(Opcode opcode) {
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Relative:
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
-    }
-
     RelativeBranchOnCondition(!IsSet(StatusFlag::Carry));
 }
 
 void Cpu::BCS(Opcode opcode) {
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Relative:
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
-    }
-
     RelativeBranchOnCondition(IsSet(StatusFlag::Carry));
 }
 
 void Cpu::BEQ(Opcode opcode) {
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Relative:
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
-    }
-
     RelativeBranchOnCondition(IsSet(StatusFlag::Zero));
 }
 
 void Cpu::BNE(Opcode opcode) {
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Relative:
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
-    }
-
     RelativeBranchOnCondition(!IsSet(StatusFlag::Zero));
 }
 
 void Cpu::BMI(Opcode opcode) {
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Relative:
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
-    }
-
     RelativeBranchOnCondition(IsSet(StatusFlag::Negative));
 }
 
 void Cpu::BPL(Opcode opcode) {
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Relative:
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
-    }
-
     RelativeBranchOnCondition(!IsSet(StatusFlag::Negative));
 }
 
 void Cpu::BVC(Opcode opcode) {
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Relative:
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
-    }
-
     RelativeBranchOnCondition(!IsSet(StatusFlag::Overflow));
 }
 
 void Cpu::BVS(Opcode opcode) {
-    switch (opcode.addressing_mode) {
-        case AddressingMode::Relative:
-            break;
-
-            NOT_SUPPORTED_ADDRESSING_MODE(opcode);
-    }
-
     RelativeBranchOnCondition(IsSet(StatusFlag::Overflow));
+}
+
+void Cpu::LDA(Opcode opcode) {
+    word address = EffectiveAddress(opcode.addressing_mode);
+    a = bus->CpuRead(address);
+    UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
+}
+
+void Cpu::STA(Opcode opcode) {
+    word address = EffectiveAddress(opcode.addressing_mode);
+    bus->CpuWrite(address, a);
+}
+
+void Cpu::BIT(Opcode opcode) {
+    word address = EffectiveAddress(opcode.addressing_mode);
+    auto operand = bus->CpuRead(address);
+
+    UpdateStatusFlag(StatusFlag::Negative, (operand & 0x80) != 0x00);
+    UpdateStatusFlag(StatusFlag::Overflow, (operand & 0x40) != 0x00);
+    UpdateStatusFlag(StatusFlag::Zero, (operand & a) == 0x00);
 }
 
 // Opcode helpers
 void Cpu::RelativeBranchOnCondition(bool condition) {
     // First change the type, then the size, then type again
-    auto offset = (word)(int8_t)Fetch();
+    auto offset = (word)(int16_t)(int8_t)Fetch();
 
     if (!condition)
         return;

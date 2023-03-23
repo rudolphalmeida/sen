@@ -169,16 +169,33 @@ class Cpu {
     std::shared_ptr<Bus> bus{};
 
     // Addressing Modes
+
+    // Takes 2 cycles
     word AbsoluteAddressing();
+    // Takes 4 cycles
     word IndirectAddressing();
+    // Takes 1 cycle
     word ZeroPageAddressing();
+    // Takes 2 cycles
+    word ZeroPageXAddressing();
+    // Takes 2 cycles
     word ZeroPageYAddressing();
+    // Takes 2 cycles; 3 if page crossed
+    word AbsoluteXIndexedAddressing();
+    // Takes 2 cycles; 3 if page crossed
     word AbsoluteYIndexedAddressing();
+    // Takes 2 cycles
+    word IndirectXAddressing();
+    // Takes 4 cycles; 5 if page crossed
+    word IndirectYAddressing();
+
+    word EffectiveAddress(AddressingMode mode);
 
     // Opcodes
     void BCC(Opcode opcode);
     void BCS(Opcode opcode);
     void BEQ(Opcode opcode);
+    void BIT(Opcode opcode);
     void BMI(Opcode opcode);
     void BNE(Opcode opcode);
     void BPL(Opcode opcode);
@@ -187,9 +204,12 @@ class Cpu {
     void CLC(Opcode opcode);
     void JMP(Opcode opcode);
     void JSR(Opcode opcode);
+    void LDA(Opcode opcode);
     void LDX(Opcode opcode);
     void NOP(Opcode opcode);
+    void RTS(Opcode opcode);
     void SEC(Opcode opcode);
+    void STA(Opcode opcode);
     void STX(Opcode opcode);
 
     // Opcode helpers
@@ -200,17 +220,9 @@ class Cpu {
 
     Cpu(std::shared_ptr<Bus> bus) : bus{std::move(bus)} { spdlog::debug("Initialized CPU"); }
 
-    bool IsSet(StatusFlag flag) const {
-        // These flags are unused in the NES
-        assert(flag != StatusFlag::_Decimal || flag != StatusFlag::_B);
-
-        return (p & static_cast<byte>(flag)) != 0;
-    }
+    bool IsSet(StatusFlag flag) const { return (p & static_cast<byte>(flag)) != 0; }
 
     void UpdateStatusFlag(StatusFlag flag, bool value) {
-        // These flags are unused in the NES
-        assert(flag != StatusFlag::_Decimal || flag != StatusFlag::_B);
-
         if (value) {
             p |= static_cast<byte>(flag);
         } else {
