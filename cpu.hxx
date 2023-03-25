@@ -192,6 +192,7 @@ class Cpu {
     word EffectiveAddress(AddressingMode mode);
 
     // Opcodes
+    void AND(Opcode opcode);
     void BCC(Opcode opcode);
     void BCS(Opcode opcode);
     void BEQ(Opcode opcode);
@@ -202,6 +203,8 @@ class Cpu {
     void BVC(Opcode opcode);
     void BVS(Opcode opcode);
     void CLC(Opcode opcode);
+    void CLD(Opcode opcode);
+    void CMP(Opcode opcode);
     void JMP(Opcode opcode);
     void JSR(Opcode opcode);
     void LDA(Opcode opcode);

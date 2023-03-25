@@ -293,6 +293,7 @@ void Cpu::Execute() {
 
 void Cpu::ExecuteOpcode(Opcode opcode) {
     switch (opcode.opcode_class) {
+        OPCODE_CASE(AND)
         OPCODE_CASE(BCC)
         OPCODE_CASE(BCS)
         OPCODE_CASE(BEQ)
@@ -303,6 +304,8 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(BVC)
         OPCODE_CASE(BVS)
         OPCODE_CASE(CLC)
+        OPCODE_CASE(CLD)
+        OPCODE_CASE(CMP)
         OPCODE_CASE(JMP)
         OPCODE_CASE(JSR)
         OPCODE_CASE(LDA)
@@ -490,6 +493,11 @@ void Cpu::CLC(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Carry, false);
 }
 
+void Cpu::CLD(Opcode opcode) {
+    bus->Tick();
+    UpdateStatusFlag(StatusFlag::Decimal, false);
+}
+
 void Cpu::SEI(Opcode opcode) {
     bus->Tick();
     UpdateStatusFlag(StatusFlag::InterruptDisable, true);
@@ -575,7 +583,29 @@ void Cpu::PHP(Opcode opcode) {
 void Cpu::PLP(Opcode opcode) {
     bus->CpuRead(pc);           // Fetch next opcode and discard it
     bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
-    p = bus->CpuRead(0x100 + s);
+    auto temp_p = bus->CpuRead(0x100 + s);
+    // Bits 54 of the popped value from the stack should be ignored
+    p = (p & 0x30) | (temp_p & 0xCF);
+}
+
+void Cpu::AND(Opcode opcode) {
+    auto address = EffectiveAddress(opcode.addressing_mode);
+    auto operand = bus->CpuRead(address);
+
+    a = a & operand;
+    UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
+}
+
+void Cpu::CMP(Opcode opcode) {
+    auto address = EffectiveAddress(opcode.addressing_mode);
+    auto operand = bus->CpuRead(address);
+
+    byte result = a - operand;
+    UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0x00);
+    // The carry flag is set if no borrow or greater than or equal for A - M
+    UpdateStatusFlag(StatusFlag::Carry, a >= operand);
 }
 
 // Opcode helpers
