@@ -293,6 +293,7 @@ void Cpu::Execute() {
 
 void Cpu::ExecuteOpcode(Opcode opcode) {
     switch (opcode.opcode_class) {
+        OPCODE_CASE(ADC)
         OPCODE_CASE(AND)
         OPCODE_CASE(BCC)
         OPCODE_CASE(BCS)
@@ -305,22 +306,39 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(BVS)
         OPCODE_CASE(CLC)
         OPCODE_CASE(CLD)
+        OPCODE_CASE(CLV)
         OPCODE_CASE(CMP)
+        OPCODE_CASE(CPX)
+        OPCODE_CASE(CPY)
+        OPCODE_CASE(DEX)
+        OPCODE_CASE(DEY)
+        OPCODE_CASE(EOR)
+        OPCODE_CASE(INX)
+        OPCODE_CASE(INY)
         OPCODE_CASE(JMP)
         OPCODE_CASE(JSR)
         OPCODE_CASE(LDA)
         OPCODE_CASE(LDX)
+        OPCODE_CASE(LDY)
         OPCODE_CASE(NOP)
+        OPCODE_CASE(ORA)
         OPCODE_CASE(PHA)
         OPCODE_CASE(PHP)
         OPCODE_CASE(PLA)
         OPCODE_CASE(PLP)
         OPCODE_CASE(RTS)
+        OPCODE_CASE(SBC)
         OPCODE_CASE(SEC)
         OPCODE_CASE(SED)
         OPCODE_CASE(SEI)
         OPCODE_CASE(STA)
         OPCODE_CASE(STX)
+        OPCODE_CASE(TAX)
+        OPCODE_CASE(TAY)
+        OPCODE_CASE(TSX)
+        OPCODE_CASE(TXA)
+        OPCODE_CASE(TXS)
+        OPCODE_CASE(TYA)
         default:
             spdlog::error("Unimplemented opcode {:#04X} found", opcode.opcode);
             std::exit(-1);
@@ -484,28 +502,33 @@ void Cpu::NOP(Opcode opcode) {
 }
 
 void Cpu::SEC(Opcode opcode) {
-    bus->Tick();
     UpdateStatusFlag(StatusFlag::Carry, true);
+    bus->Tick();
 }
 
 void Cpu::CLC(Opcode opcode) {
-    bus->Tick();
     UpdateStatusFlag(StatusFlag::Carry, false);
+    bus->Tick();
 }
 
 void Cpu::CLD(Opcode opcode) {
-    bus->Tick();
     UpdateStatusFlag(StatusFlag::Decimal, false);
+    bus->Tick();
+}
+
+void Cpu::CLV(Opcode opcode) {
+    UpdateStatusFlag(StatusFlag::Overflow, false);
+    bus->Tick();
 }
 
 void Cpu::SEI(Opcode opcode) {
-    bus->Tick();
     UpdateStatusFlag(StatusFlag::InterruptDisable, true);
+    bus->Tick();
 }
 
 void Cpu::SED(Opcode opcode) {
-    bus->Tick();
     UpdateStatusFlag(StatusFlag::Decimal, true);
+    bus->Tick();
 }
 
 void Cpu::BCC(Opcode opcode) {
@@ -597,15 +620,152 @@ void Cpu::AND(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
-void Cpu::CMP(Opcode opcode) {
+void Cpu::ORA(Opcode opcode) {
     auto address = EffectiveAddress(opcode.addressing_mode);
     auto operand = bus->CpuRead(address);
 
-    byte result = a - operand;
-    UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
+    a = a | operand;
+    UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
+}
+
+void Cpu::EOR(Opcode opcode) {
+    auto address = EffectiveAddress(opcode.addressing_mode);
+    auto operand = bus->CpuRead(address);
+
+    a = a ^ operand;
+    UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
+}
+
+void Cpu::CMP(Opcode opcode) {
+    CompareRegisterAndMemory(opcode, a);
+}
+
+void Cpu::CPX(Opcode opcode) {
+    CompareRegisterAndMemory(opcode, x);
+}
+
+void Cpu::CPY(Opcode opcode) {
+    CompareRegisterAndMemory(opcode, y);
+}
+
+void Cpu::ADC(Opcode opcode) {
+    auto address = EffectiveAddress(opcode.addressing_mode);
+
+    auto temp_a = static_cast<word>(a);
+    auto operand = static_cast<word>(bus->CpuRead(address));
+
+    word carry = IsSet(StatusFlag::Carry) ? 0x1 : 0x0;
+    word result = temp_a + operand + carry;
+
+    UpdateStatusFlag(StatusFlag::Zero, (result & 0xFF) == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0x00);
-    // The carry flag is set if no borrow or greater than or equal for A - M
-    UpdateStatusFlag(StatusFlag::Carry, a >= operand);
+    UpdateStatusFlag(StatusFlag::Carry, result > 0xFF);
+    // Reference:
+    // https://github.com/OneLoneCoder/olcNES/blob/663e3777191c011135dfb6d40c887ae126970dd7/Part%20%233%20-%20Buses%2C%20Rams%2C%20Roms%20%26%20Mappers/olc6502.cpp#L589
+    // http://www.6502.org/tutorials/vflag.html
+    UpdateStatusFlag(StatusFlag::Overflow,
+                     ((~(temp_a ^ operand) & (temp_a ^ result)) & 0x80) != 0x00);
+
+    a = static_cast<byte>(result);
+}
+
+void Cpu::SBC(Opcode opcode) {
+    auto address = EffectiveAddress(opcode.addressing_mode);
+
+    auto temp_a = static_cast<word>(a);
+    // Fetch operand and invert bottom 8 bits
+    auto operand = static_cast<word>(bus->CpuRead(address)) ^ 0x00FF;
+
+    word carry = IsSet(StatusFlag::Carry) ? 0x1 : 0x0;
+    word result = temp_a + operand + carry;
+
+    UpdateStatusFlag(StatusFlag::Zero, (result & 0xFF) == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0x00);
+    UpdateStatusFlag(StatusFlag::Carry, result > 0xFF);
+    // Reference:
+    // https://github.com/OneLoneCoder/olcNES/blob/663e3777191c011135dfb6d40c887ae126970dd7/Part%20%233%20-%20Buses%2C%20Rams%2C%20Roms%20%26%20Mappers/olc6502.cpp#L589
+    // http://www.6502.org/tutorials/vflag.html
+    UpdateStatusFlag(StatusFlag::Overflow,
+                     ((~(temp_a ^ operand) & (temp_a ^ result)) & 0x80) != 0x00);
+
+    a = static_cast<byte>(result);
+}
+
+void Cpu::LDY(Opcode opcode) {
+    auto address = EffectiveAddress(opcode.addressing_mode);
+    y = bus->CpuRead(address);
+    UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
+}
+
+void Cpu::INY(Opcode opcode) {
+    y++;
+    UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
+    bus->Tick();
+}
+
+void Cpu::INX(Opcode opcode) {
+    x++;
+    UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
+    bus->Tick();
+}
+
+void Cpu::DEY(Opcode opcode) {
+    y--;
+    UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
+    bus->Tick();
+}
+
+void Cpu::DEX(Opcode opcode) {
+    x--;
+    UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
+    bus->Tick();
+}
+
+void Cpu::TAX(Opcode opcode) {
+    x = a;
+    UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
+    bus->Tick();
+}
+
+void Cpu::TAY(Opcode opcode) {
+    y = a;
+    UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
+    bus->Tick();
+}
+
+void Cpu::TSX(Opcode opcode) {
+    x = s;
+    UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
+    bus->Tick();
+}
+
+void Cpu::TXA(Opcode opcode) {
+    a = x;
+    UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
+    bus->Tick();
+}
+
+void Cpu::TXS(Opcode opcode) {
+    s = x;
+    bus->Tick();
+}
+
+void Cpu::TYA(Opcode opcode) {
+    a = y;
+    UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
+    bus->Tick();
 }
 
 // Opcode helpers
@@ -627,4 +787,15 @@ void Cpu::RelativeBranchOnCondition(bool condition) {
         bus->Tick();  // Cycle 4 for page crossing
         pc = page_crossed;
     }
+}
+
+void Cpu::CompareRegisterAndMemory(Opcode opcode, byte reg) {
+    auto address = EffectiveAddress(opcode.addressing_mode);
+    auto operand = bus->CpuRead(address);
+
+    byte result = reg - operand;
+    UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0x00);
+    // The carry flag is set if no borrow or greater than or equal for A - M
+    UpdateStatusFlag(StatusFlag::Carry, reg >= operand);
 }

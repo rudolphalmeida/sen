@@ -192,6 +192,7 @@ class Cpu {
     word EffectiveAddress(AddressingMode mode);
 
     // Opcodes
+    void ADC(Opcode opcode);
     void AND(Opcode opcode);
     void BCC(Opcode opcode);
     void BCS(Opcode opcode);
@@ -204,25 +205,43 @@ class Cpu {
     void BVS(Opcode opcode);
     void CLC(Opcode opcode);
     void CLD(Opcode opcode);
+    void CLV(Opcode opcode);
     void CMP(Opcode opcode);
+    void CPX(Opcode opcode);
+    void CPY(Opcode opcode);
+    void DEX(Opcode opcode);
+    void DEY(Opcode opcode);
+    void EOR(Opcode opcode);
+    void INX(Opcode opcode);
+    void INY(Opcode opcode);
     void JMP(Opcode opcode);
     void JSR(Opcode opcode);
     void LDA(Opcode opcode);
     void LDX(Opcode opcode);
+    void LDY(Opcode opcode);
     void NOP(Opcode opcode);
+    void ORA(Opcode opcode);
     void PHA(Opcode opcode);
     void PHP(Opcode opcode);
     void PLA(Opcode opcode);
     void PLP(Opcode opcode);
     void RTS(Opcode opcode);
+    void SBC(Opcode opcode);
     void SEC(Opcode opcode);
     void SED(Opcode opcode);
     void SEI(Opcode opcode);
     void STA(Opcode opcode);
     void STX(Opcode opcode);
+    void TAX(Opcode opcode);
+    void TAY(Opcode opcode);
+    void TSX(Opcode opcode);
+    void TXA(Opcode opcode);
+    void TXS(Opcode opcode);
+    void TYA(Opcode opcode);
 
     // Opcode helpers
     void RelativeBranchOnCondition(bool condition);
+    void CompareRegisterAndMemory(Opcode opcode, byte reg);
 
    public:
     Cpu() = default;
