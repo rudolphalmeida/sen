@@ -12,11 +12,6 @@
         opc(opcode);       \
         break;
 
-#define NOT_SUPPORTED_ADDRESSING_MODE(opcode)                                           \
-    default:                                                                            \
-        spdlog::error("Unsupported addressing mode for opcode {:#04X}", opcode.opcode); \
-        std::exit(-1);
-
 inline word NonPageCrossingAdd(word value, word increment) {
     return (value & 0xFF00) | ((value + increment) & 0xFF);
 }
@@ -295,6 +290,7 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
     switch (opcode.opcode_class) {
         OPCODE_CASE(ADC)
         OPCODE_CASE(AND)
+        OPCODE_CASE(ASL)
         OPCODE_CASE(BCC)
         OPCODE_CASE(BCS)
         OPCODE_CASE(BEQ)
@@ -320,12 +316,16 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(LDA)
         OPCODE_CASE(LDX)
         OPCODE_CASE(LDY)
+        OPCODE_CASE(LSR)
         OPCODE_CASE(NOP)
         OPCODE_CASE(ORA)
         OPCODE_CASE(PHA)
         OPCODE_CASE(PHP)
         OPCODE_CASE(PLA)
         OPCODE_CASE(PLP)
+        OPCODE_CASE(ROL)
+        OPCODE_CASE(ROR)
+        OPCODE_CASE(RTI)
         OPCODE_CASE(RTS)
         OPCODE_CASE(SBC)
         OPCODE_CASE(SEC)
@@ -766,6 +766,111 @@ void Cpu::TYA(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
     bus->Tick();
+}
+
+void Cpu::RTI(Opcode opcode) {
+    bus->CpuRead(pc);             // Fetch next opcode and discard it
+    bus->CpuRead(0x100 + (++s));  // Dummy read cycle
+    auto temp_p = bus->CpuRead(0x100 + s++);
+    // Bits 54 of the popped value from the stack should be ignored
+    p = (p & 0x30) | (temp_p & 0xCF);
+
+    auto low = static_cast<word>(bus->CpuRead(0x100 + s++));
+    auto high = static_cast<word>(bus->CpuRead(0x100 + s));
+
+    pc = (high << 8) | low;
+}
+
+void Cpu::LSR(Opcode opcode) {
+    byte operand{};
+    word address{};
+    if (opcode.addressing_mode == AddressingMode::Accumulator) {
+        operand = a;
+    } else {
+        address = EffectiveAddress(opcode.addressing_mode);
+        operand = bus->CpuRead(address);
+    }
+
+    byte result = operand >> 1;
+    UpdateStatusFlag(StatusFlag::Negative, false);
+    UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
+    UpdateStatusFlag(StatusFlag::Carry, (operand & 0b1) != 0x00);
+    bus->Tick();  // Dummy read cycle
+
+    if (opcode.addressing_mode == AddressingMode::Accumulator) {
+        a = result;
+    } else {
+        bus->CpuWrite(address, result);
+    }
+}
+
+void Cpu::ASL(Opcode opcode) {
+    byte operand{};
+    word address{};
+    if (opcode.addressing_mode == AddressingMode::Accumulator) {
+        operand = a;
+    } else {
+        address = EffectiveAddress(opcode.addressing_mode);
+        operand = bus->CpuRead(address);
+    }
+
+    byte result = operand << 1;
+    UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0);
+    UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
+    UpdateStatusFlag(StatusFlag::Carry, (operand & 0x80) != 0x00);
+    bus->Tick();  // Dummy read cycle
+
+    if (opcode.addressing_mode == AddressingMode::Accumulator) {
+        a = result;
+    } else {
+        bus->CpuWrite(address, result);
+    }
+}
+
+void Cpu::ROL(Opcode opcode) {
+    byte operand{};
+    word address{};
+    if (opcode.addressing_mode == AddressingMode::Accumulator) {
+        operand = a;
+    } else {
+        address = EffectiveAddress(opcode.addressing_mode);
+        operand = bus->CpuRead(address);
+    }
+
+    byte result = (operand << 1) | (IsSet(StatusFlag::Carry) ? 0b1 : 0b0);
+    UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0);
+    UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
+    UpdateStatusFlag(StatusFlag::Carry, (operand & 0x80) != 0x00);
+    bus->Tick();  // Dummy read cycle
+
+    if (opcode.addressing_mode == AddressingMode::Accumulator) {
+        a = result;
+    } else {
+        bus->CpuWrite(address, result);
+    }
+}
+
+void Cpu::ROR(Opcode opcode) {
+    byte operand{};
+    word address{};
+    if (opcode.addressing_mode == AddressingMode::Accumulator) {
+        operand = a;
+    } else {
+        address = EffectiveAddress(opcode.addressing_mode);
+        operand = bus->CpuRead(address);
+    }
+
+    byte result = (operand >> 1) | (IsSet(StatusFlag::Carry) ? 0x80 : 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0);
+    UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
+    UpdateStatusFlag(StatusFlag::Carry, (operand & 0b1) != 0x00);
+    bus->Tick();  // Dummy read cycle
+
+    if (opcode.addressing_mode == AddressingMode::Accumulator) {
+        a = result;
+    } else {
+        bus->CpuWrite(address, result);
+    }
 }
 
 // Opcode helpers
