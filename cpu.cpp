@@ -403,9 +403,11 @@ word Cpu::AbsoluteYIndexedAddressing() {
 
 word Cpu::IndirectXAddressing() {
     auto operand = static_cast<word>(Fetch());
-    auto pointer = static_cast<word>(bus->CpuRead(operand));
-    auto low = static_cast<word>(NonPageCrossingAdd(pointer, x));
-    auto high = static_cast<word>(NonPageCrossingAdd(pointer, x + 1));
+    auto pointer = operand + x;
+    bus->CpuRead(operand);  // Dummy read cycle
+
+    auto low = static_cast<word>(bus->CpuRead(pointer & 0xFF));
+    auto high = static_cast<word>(bus->CpuRead((pointer + 1) & 0xFF));
 
     return (high << 8) | low;
 }

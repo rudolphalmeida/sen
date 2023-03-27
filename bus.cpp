@@ -3,35 +3,34 @@
 #include "bus.hxx"
 #include "util.hxx"
 
-byte Bus::CpuRead(word addr) {
+byte Bus::CpuRead(word address) {
     Tick();
-    if (inRange<word>(0x0000, addr, 0x1FFF)) {
-        return internal_ram[addr % 0x800];
-    } else if (inRange<word>(0x2000, addr, 0x3FFF)) {
-        spdlog::debug("Read from not implented PPU address {:#06X}", addr);
+    if (inRange<word>(0x0000, address, 0x1FFF)) {
+        return internal_ram[address % 0x800];
+    } else if (inRange<word>(0x2000, address, 0x3FFF)) {
+        return ppu->CpuRead(address);
+    } else if (inRange<word>(0x4000, address, 0x4017)) {
+        spdlog::debug("Read from not implemented IO address {:#06X}", address);
         return 0xFF;
-    } else if (inRange<word>(0x4000, addr, 0x4017)) {
-        spdlog::debug("Read from not implemented IO address {:#06X}", addr);
-        return 0xFF;
-    } else if (inRange<word>(0x4018, addr, 0x401F)) {
-        spdlog::debug("Read from not implemented CPU Test Mode {:#06X}", addr);
+    } else if (inRange<word>(0x4018, address, 0x401F)) {
+        spdlog::debug("Read from not implemented CPU Test Mode {:#06X}", address);
         return 0xFF;
     } else {
-        return cartridge.CpuRead(addr);
+        return cartridge.CpuRead(address);
     }
 }
 
-void Bus::CpuWrite(word addr, byte data) {
+void Bus::CpuWrite(word address, byte data) {
     Tick();
-    if (inRange<word>(0x0000, addr, 0x1FFF)) {
-        internal_ram[addr % 0x800] = data;
-    } else if (inRange<word>(0x2000, addr, 0x3FFF)) {
-        spdlog::debug("Write to not implented PPU address {:#06X} with {:#04X}", addr, data);
-    } else if (inRange<word>(0x4000, addr, 0x4017)) {
-        spdlog::debug("Write to not implemented IO address {:#06X} with {:#04X}", addr, data);
-    } else if (inRange<word>(0x4018, addr, 0x401F)) {
-        spdlog::debug("Write to not implemented CPU Test Mode {:#06X} with {:#04X}", addr, data);
+    if (inRange<word>(0x0000, address, 0x1FFF)) {
+        internal_ram[address % 0x800] = data;
+    } else if (inRange<word>(0x2000, address, 0x3FFF)) {
+        ppu->CpuWrite(address, data);
+    } else if (inRange<word>(0x4000, address, 0x4017)) {
+        spdlog::debug("Write to not implemented IO address {:#06X} with {:#04X}", address, data);
+    } else if (inRange<word>(0x4018, address, 0x401F)) {
+        spdlog::debug("Write to not implemented CPU Test Mode {:#06X} with {:#04X}", address, data);
     } else {
-        cartridge.CpuWrite(addr, data);
+        cartridge.CpuWrite(address, data);
     }
 }

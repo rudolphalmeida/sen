@@ -184,7 +184,7 @@ class Cpu {
     word AbsoluteXIndexedAddressing();
     // Takes 2 cycles; 3 if page crossed
     word AbsoluteYIndexedAddressing();
-    // Takes 2 cycles
+    // Takes 4 cycles
     word IndirectXAddressing();
     // Takes 4 cycles; 5 if page crossed
     word IndirectYAddressing();

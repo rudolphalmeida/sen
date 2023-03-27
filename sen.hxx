@@ -9,6 +9,7 @@
 #include "cartridge.hxx"
 #include "constants.hxx"
 #include "cpu.hxx"
+#include "ppu.hxx"
 
 struct RomArgs {
     std::vector<byte> rom;
@@ -20,6 +21,7 @@ Cartridge ParseRomFile(const RomArgs& rom_args);
 class Sen {
    private:
     std::shared_ptr<Bus> bus;
+    std::shared_ptr<Ppu> ppu;
     Cpu cpu;
 
    public:
