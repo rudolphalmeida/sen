@@ -3,8 +3,7 @@
 #include "bus.hxx"
 #include "util.hxx"
 
-byte Bus::CpuRead(word address) {
-    Tick();
+byte Bus::UntickedCpuRead(word address) {
     if (inRange<word>(0x0000, address, 0x1FFF)) {
         return internal_ram[address % 0x800];
     } else if (inRange<word>(0x2000, address, 0x3FFF)) {
@@ -20,8 +19,7 @@ byte Bus::CpuRead(word address) {
     }
 }
 
-void Bus::CpuWrite(word address, byte data) {
-    Tick();
+void Bus::UntickedCpuWrite(word address, byte data) {
     if (inRange<word>(0x0000, address, 0x1FFF)) {
         internal_ram[address % 0x800] = data;
     } else if (inRange<word>(0x2000, address, 0x3FFF)) {

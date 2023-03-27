@@ -20,8 +20,18 @@ class Bus {
         spdlog::debug("Initialized system bus");
     }
 
-    byte CpuRead(word addr);
-    void CpuWrite(word addr, byte data);
+    byte UntickedCpuRead(word address);
+    void UntickedCpuWrite(word address, byte data);
+
+    byte CpuRead(word address) {
+        Tick();
+        return UntickedCpuRead(address);
+    }
+
+    void CpuWrite(word address, byte data) {
+        Tick();
+        UntickedCpuWrite(address, data);
+    }
 
     void Tick() {
         cycles++;

@@ -306,9 +306,11 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(CMP)
         OPCODE_CASE(CPX)
         OPCODE_CASE(CPY)
+        OPCODE_CASE(DEC)
         OPCODE_CASE(DEX)
         OPCODE_CASE(DEY)
         OPCODE_CASE(EOR)
+        OPCODE_CASE(INC)
         OPCODE_CASE(INX)
         OPCODE_CASE(INY)
         OPCODE_CASE(JMP)
@@ -333,6 +335,7 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(SEI)
         OPCODE_CASE(STA)
         OPCODE_CASE(STX)
+        OPCODE_CASE(STY)
         OPCODE_CASE(TAX)
         OPCODE_CASE(TAY)
         OPCODE_CASE(TSX)
@@ -347,61 +350,65 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
 
 // Addressing Modes
 
-word Cpu::AbsoluteAddressing() {
+EffectiveAddress Cpu::AbsoluteAddressing() {
     auto low = Fetch();
     auto high = Fetch();
 
-    return static_cast<word>(high) << 8 | static_cast<word>(low);
+    return {static_cast<word>(high) << 8 | static_cast<word>(low), false};
 }
 
-word Cpu::IndirectAddressing() {
-    auto pointer = AbsoluteAddressing();
+EffectiveAddress Cpu::IndirectAddressing() {
+    auto [pointer, _] = AbsoluteAddressing();
 
     auto low = bus->CpuRead(pointer);
     auto high = bus->CpuRead(NonPageCrossingAdd(pointer, 1));
 
-    return static_cast<word>(high) << 8 | static_cast<word>(low);
+    return {static_cast<word>(high) << 8 | static_cast<word>(low), false};
 }
 
-word Cpu::ZeroPageAddressing() {
-    return static_cast<word>(Fetch());
+EffectiveAddress Cpu::ZeroPageAddressing() {
+    return {static_cast<word>(Fetch()), false};
 }
 
-word Cpu::ZeroPageXAddressing() {
-    auto address = ZeroPageAddressing();
+EffectiveAddress Cpu::ZeroPageXAddressing() {
+    auto [address, _] = ZeroPageAddressing();
     bus->Tick();  // Dummy read cycle
-    return NonPageCrossingAdd(address, x);
+    return {NonPageCrossingAdd(address, x), false};
 }
 
-word Cpu::ZeroPageYAddressing() {
-    auto address = ZeroPageAddressing();
+EffectiveAddress Cpu::ZeroPageYAddressing() {
+    auto [address, _] = ZeroPageAddressing();
     bus->Tick();  // Dummy read cycle
-    return NonPageCrossingAdd(address, y);
+    return {NonPageCrossingAdd(address, y), false};
 }
 
-word Cpu::AbsoluteXIndexedAddressing() {
-    auto address = AbsoluteAddressing();
+EffectiveAddress Cpu::AbsoluteXIndexedAddressing() {
+    auto [address, _] = AbsoluteAddressing();
 
+    bool page_crossed = false;
     if ((address + x) != NonPageCrossingAdd(address, x)) {
         // If a page was crossed we require an additional cycle
         bus->Tick();  // Dummy read cycle
+        page_crossed = true;
     }
 
-    return address + x;
+    return {address + x, page_crossed};
 }
 
-word Cpu::AbsoluteYIndexedAddressing() {
-    auto address = AbsoluteAddressing();
+EffectiveAddress Cpu::AbsoluteYIndexedAddressing() {
+    auto [address, _] = AbsoluteAddressing();
 
+    bool page_crossed = false;
     if ((address + y) != NonPageCrossingAdd(address, y)) {
         // If a page was crossed we require an additional cycle
         bus->Tick();  // Dummy read cycle
+        page_crossed = true;
     }
 
-    return address + y;
+    return {address + y, page_crossed};
 }
 
-word Cpu::IndirectXAddressing() {
+EffectiveAddress Cpu::IndirectXAddressing() {
     auto operand = static_cast<word>(Fetch());
     auto pointer = operand + x;
     bus->CpuRead(operand);  // Dummy read cycle
@@ -409,30 +416,31 @@ word Cpu::IndirectXAddressing() {
     auto low = static_cast<word>(bus->CpuRead(pointer & 0xFF));
     auto high = static_cast<word>(bus->CpuRead((pointer + 1) & 0xFF));
 
-    return (high << 8) | low;
+    return {(high << 8) | low, false};
 }
 
-word Cpu::IndirectYAddressing() {
+EffectiveAddress Cpu::IndirectYAddressing() {
     auto pointer = static_cast<word>(Fetch());
     auto low = static_cast<word>(bus->CpuRead(pointer));
-    auto high = static_cast<word>(bus->CpuRead(NonPageCrossingAdd(pointer, 1)));
+    auto high = static_cast<word>(bus->CpuRead((pointer + 1) & 0xFF));
 
-    word supplied = (high << 8) | NonPageCrossingAdd(low, y);
-    word corrected = ((high << 8) | low) + y;
-    bus->Tick();
+    word supplied = (high << 8) | (low + y);
+    word corrected = ((high << 8) | low) + static_cast<word>(y);
+    // The cycle for this will be executed by the operand fetch
+    bus->CpuRead(supplied);
 
     if (supplied != corrected) {
         bus->Tick();  // Extra tick due to page crossing
-        return corrected;
+        return {corrected, true};
     } else {
-        return supplied;
+        return {supplied, false};
     }
 }
 
-word Cpu::EffectiveAddress(AddressingMode mode) {
+EffectiveAddress Cpu::FetchEffectiveAddress(AddressingMode mode) {
     switch (mode) {
         case AddressingMode::Immediate:
-            return pc++;
+            return {pc++, false};
         case AddressingMode::ZeroPage:
             return ZeroPageAddressing();
         case AddressingMode::ZeroPageX:
@@ -458,19 +466,19 @@ word Cpu::EffectiveAddress(AddressingMode mode) {
 // Opcodes
 
 void Cpu::JMP(Opcode opcode) {
-    word address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     pc = address;
 }
 
 void Cpu::LDX(Opcode opcode) {
-    word address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     x = bus->CpuRead(address);
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
 }
 
 void Cpu::STX(Opcode opcode) {
-    word address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     bus->CpuWrite(address, x);
 }
 
@@ -566,19 +574,24 @@ void Cpu::BVS(Opcode opcode) {
 }
 
 void Cpu::LDA(Opcode opcode) {
-    word address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     a = bus->CpuRead(address);
     UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
 void Cpu::STA(Opcode opcode) {
-    word address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     bus->CpuWrite(address, a);
 }
 
+void Cpu::STY(Opcode opcode) {
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    bus->CpuWrite(address, y);
+}
+
 void Cpu::BIT(Opcode opcode) {
-    word address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     auto operand = bus->CpuRead(address);
 
     UpdateStatusFlag(StatusFlag::Negative, (operand & 0x80) != 0x00);
@@ -614,7 +627,7 @@ void Cpu::PLP(Opcode opcode) {
 }
 
 void Cpu::AND(Opcode opcode) {
-    auto address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     auto operand = bus->CpuRead(address);
 
     a = a & operand;
@@ -623,8 +636,9 @@ void Cpu::AND(Opcode opcode) {
 }
 
 void Cpu::ORA(Opcode opcode) {
-    auto address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     auto operand = bus->CpuRead(address);
+    ;
 
     a = a | operand;
     UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
@@ -632,7 +646,7 @@ void Cpu::ORA(Opcode opcode) {
 }
 
 void Cpu::EOR(Opcode opcode) {
-    auto address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     auto operand = bus->CpuRead(address);
 
     a = a ^ operand;
@@ -653,7 +667,7 @@ void Cpu::CPY(Opcode opcode) {
 }
 
 void Cpu::ADC(Opcode opcode) {
-    auto address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
 
     auto temp_a = static_cast<word>(a);
     auto operand = static_cast<word>(bus->CpuRead(address));
@@ -674,11 +688,11 @@ void Cpu::ADC(Opcode opcode) {
 }
 
 void Cpu::SBC(Opcode opcode) {
-    auto address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
 
     auto temp_a = static_cast<word>(a);
     // Fetch operand and invert bottom 8 bits
-    auto operand = static_cast<word>(bus->CpuRead(address)) ^ 0x00FF;
+    word operand = static_cast<word>(bus->CpuRead(address)) ^ 0x00FF;
 
     word carry = IsSet(StatusFlag::Carry) ? 0x1 : 0x0;
     word result = temp_a + operand + carry;
@@ -696,7 +710,7 @@ void Cpu::SBC(Opcode opcode) {
 }
 
 void Cpu::LDY(Opcode opcode) {
-    auto address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     y = bus->CpuRead(address);
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
@@ -714,6 +728,30 @@ void Cpu::INX(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
     bus->Tick();
+}
+
+void Cpu::INC(Opcode opcode) {
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    byte operand = bus->CpuRead(address);
+
+    bus->CpuWrite(address, operand);  // Dummy write cycle
+    operand++;
+    UpdateStatusFlag(StatusFlag::Zero, operand == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (operand & 0x80) != 0x00);
+
+    bus->CpuWrite(address, operand);
+}
+
+void Cpu::DEC(Opcode opcode) {
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    byte operand = bus->CpuRead(address);
+
+    bus->CpuWrite(address, operand);  // Dummy write cycle
+    operand--;
+    UpdateStatusFlag(StatusFlag::Zero, operand == 0x00);
+    UpdateStatusFlag(StatusFlag::Negative, (operand & 0x80) != 0x00);
+
+    bus->CpuWrite(address, operand);
 }
 
 void Cpu::DEY(Opcode opcode) {
@@ -789,7 +827,8 @@ void Cpu::LSR(Opcode opcode) {
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         operand = a;
     } else {
-        address = EffectiveAddress(opcode.addressing_mode);
+        auto [temp_address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+        address = temp_address;
         operand = bus->CpuRead(address);
     }
 
@@ -812,7 +851,8 @@ void Cpu::ASL(Opcode opcode) {
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         operand = a;
     } else {
-        address = EffectiveAddress(opcode.addressing_mode);
+        auto [temp_address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+        address = temp_address;
         operand = bus->CpuRead(address);
     }
 
@@ -835,7 +875,8 @@ void Cpu::ROL(Opcode opcode) {
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         operand = a;
     } else {
-        address = EffectiveAddress(opcode.addressing_mode);
+        auto [temp_address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+        address = temp_address;
         operand = bus->CpuRead(address);
     }
 
@@ -858,7 +899,8 @@ void Cpu::ROR(Opcode opcode) {
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         operand = a;
     } else {
-        address = EffectiveAddress(opcode.addressing_mode);
+        auto [temp_address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+        address = temp_address;
         operand = bus->CpuRead(address);
     }
 
@@ -897,7 +939,7 @@ void Cpu::RelativeBranchOnCondition(bool condition) {
 }
 
 void Cpu::CompareRegisterAndMemory(Opcode opcode, byte reg) {
-    auto address = EffectiveAddress(opcode.addressing_mode);
+    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     auto operand = bus->CpuRead(address);
 
     byte result = reg - operand;

@@ -2,11 +2,15 @@
 
 #include <cassert>
 #include <memory>
+#include <tuple>
 
 #include <spdlog/spdlog.h>
 
 #include "bus.hxx"
 #include "constants.hxx"
+
+// Effective address and if there was a page crossing
+using EffectiveAddress = std::tuple<word, bool>;
 
 enum class OpcodeClass {
     // Add Memory to Accumulator With Carry
@@ -171,25 +175,25 @@ class Cpu {
     // Addressing Modes
 
     // Takes 2 cycles
-    word AbsoluteAddressing();
+    EffectiveAddress AbsoluteAddressing();
     // Takes 4 cycles
-    word IndirectAddressing();
+    EffectiveAddress IndirectAddressing();
     // Takes 1 cycle
-    word ZeroPageAddressing();
+    EffectiveAddress ZeroPageAddressing();
     // Takes 2 cycles
-    word ZeroPageXAddressing();
+    EffectiveAddress ZeroPageXAddressing();
     // Takes 2 cycles
-    word ZeroPageYAddressing();
+    EffectiveAddress ZeroPageYAddressing();
     // Takes 2 cycles; 3 if page crossed
-    word AbsoluteXIndexedAddressing();
+    EffectiveAddress AbsoluteXIndexedAddressing();
     // Takes 2 cycles; 3 if page crossed
-    word AbsoluteYIndexedAddressing();
+    EffectiveAddress AbsoluteYIndexedAddressing();
     // Takes 4 cycles
-    word IndirectXAddressing();
+    EffectiveAddress IndirectXAddressing();
     // Takes 4 cycles; 5 if page crossed
-    word IndirectYAddressing();
+    EffectiveAddress IndirectYAddressing();
 
-    word EffectiveAddress(AddressingMode mode);
+    EffectiveAddress FetchEffectiveAddress(AddressingMode mode);
 
     // Opcodes
     void ADC(Opcode opcode);
@@ -210,9 +214,11 @@ class Cpu {
     void CMP(Opcode opcode);
     void CPX(Opcode opcode);
     void CPY(Opcode opcode);
+    void DEC(Opcode opcode);
     void DEX(Opcode opcode);
     void DEY(Opcode opcode);
     void EOR(Opcode opcode);
+    void INC(Opcode opcode);
     void INX(Opcode opcode);
     void INY(Opcode opcode);
     void JMP(Opcode opcode);
@@ -237,6 +243,7 @@ class Cpu {
     void SEI(Opcode opcode);
     void STA(Opcode opcode);
     void STX(Opcode opcode);
+    void STY(Opcode opcode);
     void TAX(Opcode opcode);
     void TAY(Opcode opcode);
     void TSX(Opcode opcode);
