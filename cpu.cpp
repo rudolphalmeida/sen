@@ -479,6 +479,10 @@ void Cpu::LDX(Opcode opcode) {
 
 void Cpu::STX(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    if (opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+        opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) {
+        bus->CpuRead(address);  // Dummy read cycle
+    }
     bus->CpuWrite(address, x);
 }
 
@@ -575,18 +579,30 @@ void Cpu::BVS(Opcode opcode) {
 
 void Cpu::LDA(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
-    a = bus->CpuRead(address);
+    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+        a = bus->UntickedCpuRead(address);
+    } else {
+        a = bus->CpuRead(address);
+    }
     UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
 void Cpu::STA(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    if (opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+        opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) {
+        bus->CpuRead(address);  // Dummy read cycle
+    }
     bus->CpuWrite(address, a);
 }
 
 void Cpu::STY(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    if (opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+        opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) {
+        bus->CpuRead(address);  // Dummy read cycle
+    }
     bus->CpuWrite(address, y);
 }
 
@@ -628,8 +644,12 @@ void Cpu::PLP(Opcode opcode) {
 
 void Cpu::AND(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
-    auto operand = bus->CpuRead(address);
-
+    byte operand{};
+    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+        operand = bus->UntickedCpuRead(address);
+    } else {
+        operand = bus->CpuRead(address);
+    }
     a = a & operand;
     UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
@@ -637,9 +657,12 @@ void Cpu::AND(Opcode opcode) {
 
 void Cpu::ORA(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
-    auto operand = bus->CpuRead(address);
-    ;
-
+    byte operand{};
+    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+        operand = bus->UntickedCpuRead(address);
+    } else {
+        operand = bus->CpuRead(address);
+    }
     a = a | operand;
     UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
@@ -647,8 +670,12 @@ void Cpu::ORA(Opcode opcode) {
 
 void Cpu::EOR(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
-    auto operand = bus->CpuRead(address);
-
+    byte operand{};
+    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+        operand = bus->UntickedCpuRead(address);
+    } else {
+        operand = bus->CpuRead(address);
+    }
     a = a ^ operand;
     UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
@@ -670,8 +697,12 @@ void Cpu::ADC(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
 
     auto temp_a = static_cast<word>(a);
-    auto operand = static_cast<word>(bus->CpuRead(address));
-
+    word operand{};
+    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+        operand = static_cast<word>(bus->UntickedCpuRead(address));
+    } else {
+        operand = static_cast<word>(bus->CpuRead(address));
+    }
     word carry = IsSet(StatusFlag::Carry) ? 0x1 : 0x0;
     word result = temp_a + operand + carry;
 
@@ -692,7 +723,13 @@ void Cpu::SBC(Opcode opcode) {
 
     auto temp_a = static_cast<word>(a);
     // Fetch operand and invert bottom 8 bits
-    word operand = static_cast<word>(bus->CpuRead(address)) ^ 0x00FF;
+    word operand{};
+    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+        operand = static_cast<word>(bus->UntickedCpuRead(address));
+    } else {
+        operand = static_cast<word>(bus->CpuRead(address));
+    }
+    operand ^= 0x00FF;
 
     word carry = IsSet(StatusFlag::Carry) ? 0x1 : 0x0;
     word result = temp_a + operand + carry;
@@ -940,7 +977,13 @@ void Cpu::RelativeBranchOnCondition(bool condition) {
 
 void Cpu::CompareRegisterAndMemory(Opcode opcode, byte reg) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
-    auto operand = bus->CpuRead(address);
+    word operand{};
+    if (opcode.opcode_class == OpcodeClass::CMP &&
+        opcode.addressing_mode == AddressingMode::IndirectY) {
+        operand = static_cast<word>(bus->UntickedCpuRead(address));
+    } else {
+        operand = static_cast<word>(bus->CpuRead(address));
+    }
 
     byte result = reg - operand;
     UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
