@@ -221,6 +221,7 @@ class Cpu {
     void INC(Opcode opcode);
     void INX(Opcode opcode);
     void INY(Opcode opcode);
+    void JAM(Opcode opcode);
     void JMP(Opcode opcode);
     void JSR(Opcode opcode);
     void LDA(Opcode opcode);

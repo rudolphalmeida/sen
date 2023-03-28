@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 
@@ -313,6 +314,7 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(INC)
         OPCODE_CASE(INX)
         OPCODE_CASE(INY)
+        OPCODE_CASE(JAM)
         OPCODE_CASE(JMP)
         OPCODE_CASE(JSR)
         OPCODE_CASE(LDA)
@@ -445,6 +447,8 @@ EffectiveAddress Cpu::FetchEffectiveAddress(AddressingMode mode) {
             return ZeroPageAddressing();
         case AddressingMode::ZeroPageX:
             return ZeroPageXAddressing();
+        case AddressingMode::ZeroPageY:
+            return ZeroPageYAddressing();
         case AddressingMode::Absolute:
             return AbsoluteAddressing();
         case AddressingMode::AbsoluteXIndexed:
@@ -478,9 +482,10 @@ void Cpu::LDX(Opcode opcode) {
 }
 
 void Cpu::STX(Opcode opcode) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
-    if (opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-        opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) {
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
+    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+         opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
+        !page_crossed) {
         bus->CpuRead(address);  // Dummy read cycle
     }
     bus->CpuWrite(address, x);
@@ -512,7 +517,14 @@ void Cpu::RTS(Opcode opcode) {
 }
 
 void Cpu::NOP(Opcode opcode) {
+    for (size_t i = 1; i < opcode.length; i++) {
+        Fetch();
+    }
     bus->Tick();
+}
+
+void Cpu::JAM(Opcode) {
+    spdlog::info("Executing a JAM opcode");
 }
 
 void Cpu::SEC(Opcode opcode) {
@@ -589,18 +601,20 @@ void Cpu::LDA(Opcode opcode) {
 }
 
 void Cpu::STA(Opcode opcode) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
-    if (opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-        opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) {
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
+    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+         opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
+        !page_crossed) {
         bus->CpuRead(address);  // Dummy read cycle
     }
     bus->CpuWrite(address, a);
 }
 
 void Cpu::STY(Opcode opcode) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
-    if (opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-        opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) {
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
+    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+         opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
+        !page_crossed) {
         bus->CpuRead(address);  // Dummy read cycle
     }
     bus->CpuWrite(address, y);
@@ -768,7 +782,12 @@ void Cpu::INX(Opcode opcode) {
 }
 
 void Cpu::INC(Opcode opcode) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
+    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+         opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
+        !page_crossed) {
+        bus->CpuRead(address);  // Dummy read cycle
+    }
     byte operand = bus->CpuRead(address);
 
     bus->CpuWrite(address, operand);  // Dummy write cycle
@@ -780,7 +799,12 @@ void Cpu::INC(Opcode opcode) {
 }
 
 void Cpu::DEC(Opcode opcode) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
+    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+         opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
+        !page_crossed) {
+        bus->CpuRead(address);  // Dummy read cycle
+    }
     byte operand = bus->CpuRead(address);
 
     bus->CpuWrite(address, operand);  // Dummy write cycle
@@ -864,8 +888,13 @@ void Cpu::LSR(Opcode opcode) {
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         operand = a;
     } else {
-        auto [temp_address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+        auto [temp_address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
         address = temp_address;
+        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+             opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
+            !page_crossed) {
+            bus->CpuRead(address);  // Dummy read cycle
+        }
         operand = bus->CpuRead(address);
     }
 
@@ -888,8 +917,13 @@ void Cpu::ASL(Opcode opcode) {
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         operand = a;
     } else {
-        auto [temp_address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+        auto [temp_address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
         address = temp_address;
+        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+             opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
+            !page_crossed) {
+            bus->CpuRead(address);  // Dummy read cycle
+        }
         operand = bus->CpuRead(address);
     }
 
@@ -912,8 +946,13 @@ void Cpu::ROL(Opcode opcode) {
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         operand = a;
     } else {
-        auto [temp_address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+        auto [temp_address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
         address = temp_address;
+        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+             opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
+            !page_crossed) {
+            bus->CpuRead(address);  // Dummy read cycle
+        }
         operand = bus->CpuRead(address);
     }
 
@@ -936,8 +975,13 @@ void Cpu::ROR(Opcode opcode) {
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         operand = a;
     } else {
-        auto [temp_address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+        auto [temp_address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
         address = temp_address;
+        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
+             opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
+            !page_crossed) {
+            bus->CpuRead(address);  // Dummy read cycle
+        }
         operand = bus->CpuRead(address);
     }
 
