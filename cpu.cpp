@@ -19,7 +19,7 @@ inline word NonPageCrossingAdd(word value, word increment) {
 
 std::array<Opcode, 256> OPCODES{
     {
-        {OpcodeClass::JAM, 0x0, AddressingMode::Implied, 1, 1},
+        {OpcodeClass::BRK, 0x0, AddressingMode::Implied, 1, 7},
         {OpcodeClass::ORA, 0x1, AddressingMode::IndirectX, 2, 6},
         {OpcodeClass::JAM, 0x2, AddressingMode::Implied, 1, 1},
         {OpcodeClass::JAM, 0x3, AddressingMode::Implied, 1, 1},
@@ -107,7 +107,7 @@ std::array<Opcode, 256> OPCODES{
         {OpcodeClass::EOR, 0x55, AddressingMode::ZeroPageX, 2, 4},
         {OpcodeClass::LSR, 0x56, AddressingMode::ZeroPageX, 2, 6},
         {OpcodeClass::JAM, 0x57, AddressingMode::Implied, 1, 1},
-        {OpcodeClass::JAM, 0x58, AddressingMode::Implied, 1, 1},
+        {OpcodeClass::CLI, 0x58, AddressingMode::Implied, 1, 2},
         {OpcodeClass::EOR, 0x59, AddressingMode::AbsoluteYIndexed, 3, 4},
         {OpcodeClass::NOP, 0x5A, AddressingMode::Implied, 1, 2},
         {OpcodeClass::JAM, 0x5B, AddressingMode::Implied, 1, 1},
@@ -279,6 +279,8 @@ std::array<Opcode, 256> OPCODES{
 };
 
 void Cpu::Execute() {
+    CheckForInterrupts();
+
     auto opcode = OPCODES[Fetch()];
 
     // Print the PC and CYC count from before the previous Fetch()
@@ -299,10 +301,12 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
         OPCODE_CASE(BMI)
         OPCODE_CASE(BNE)
         OPCODE_CASE(BPL)
+        OPCODE_CASE(BRK)
         OPCODE_CASE(BVC)
         OPCODE_CASE(BVS)
         OPCODE_CASE(CLC)
         OPCODE_CASE(CLD)
+        OPCODE_CASE(CLI)
         OPCODE_CASE(CLV)
         OPCODE_CASE(CMP)
         OPCODE_CASE(CPX)
@@ -469,6 +473,11 @@ EffectiveAddress Cpu::FetchEffectiveAddress(AddressingMode mode) {
 
 // Opcodes
 
+void Cpu::BRK(Opcode opcode) {
+    // TODO: Implement BRK opcode
+    spdlog::error("Hit unimplemented opcode BRK at PC: {:#06X}", pc - 1);
+}
+
 void Cpu::JMP(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     pc = address;
@@ -546,6 +555,11 @@ void Cpu::CLD(Opcode opcode) {
 
 void Cpu::CLV(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Overflow, false);
+    bus->Tick();
+}
+
+void Cpu::CLI(Opcode opcode) {
+    UpdateStatusFlag(StatusFlag::InterruptDisable, false);
     bus->Tick();
 }
 

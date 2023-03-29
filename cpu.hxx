@@ -33,6 +33,8 @@ enum class OpcodeClass {
     BNE,
     // Branch on Result Plus
     BPL,
+    // Force Break
+    BRK,
     // Branch on Overflow Clear
     BVC,
     // Branch on Overflow Set
@@ -41,6 +43,8 @@ enum class OpcodeClass {
     CLC,
     // Clear Decimal Mode
     CLD,
+    // Clear Interrupt Disable Bit
+    CLI,
     // Clear Overflow Bug
     CLV,
     // Compare Memory with Accumulator
@@ -206,10 +210,12 @@ class Cpu {
     void BMI(Opcode opcode);
     void BNE(Opcode opcode);
     void BPL(Opcode opcode);
+    void BRK(Opcode opcode);
     void BVC(Opcode opcode);
     void BVS(Opcode opcode);
     void CLC(Opcode opcode);
     void CLD(Opcode opcode);
+    void CLI(Opcode opcode);
     void CLV(Opcode opcode);
     void CMP(Opcode opcode);
     void CPX(Opcode opcode);
@@ -256,6 +262,8 @@ class Cpu {
     void RelativeBranchOnCondition(bool condition);
     void CompareRegisterAndMemory(Opcode opcode, byte reg);
 
+    void CheckForInterrupts() {}
+
    public:
     Cpu() = default;
 
@@ -272,7 +280,9 @@ class Cpu {
     }
 
     // Runs the CPU startup procedure. Should run for 7 NES cycles
-    void Start(){};
+    void Start() { spdlog::error("CPU start procedure not implemented"); };
+
+    void Reset() { spdlog::error("CPU reset procedure not implemented"); };
 
     byte Fetch() { return bus->CpuRead(pc++); }
 
