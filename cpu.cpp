@@ -283,7 +283,7 @@ std::array<Opcode, 256> OPCODES{
 };
 
 void Cpu::Start() {
-    // The CPU start procedure takes 7 minutes
+    // The CPU start procedure takes 7 NES cycles
     bus->CpuRead(0x0000);          // Address does not matter
     bus->CpuRead(0x0001);          // First start state
     bus->CpuRead(0x0100 + s);      // Second start state
