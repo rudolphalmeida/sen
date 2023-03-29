@@ -17,6 +17,7 @@ Sen::Sen(RomArgs rom_args) {
 }
 
 void Sen::Run() {
+    cpu.Start();
     while (true) {
         cpu.Execute();
     }

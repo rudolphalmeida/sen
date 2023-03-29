@@ -13,6 +13,10 @@
         opc(opcode);       \
         break;
 
+#define NMI_VECTOR ((word)0xFFFA)
+#define RES_VECTOR ((word)0xFFFC)
+#define IRQ_VECTOR ((word)0xFFFE)
+
 inline word NonPageCrossingAdd(word value, word increment) {
     return (value & 0xFF00) | ((value + increment) & 0xFF);
 }
@@ -276,6 +280,19 @@ std::array<Opcode, 256> OPCODES{
         {OpcodeClass::INC, 0xFE, AddressingMode::AbsoluteXIndexed, 3, 7},
         {OpcodeClass::JAM, 0xFF, AddressingMode::Implied, 1, 1},
     },
+};
+
+void Cpu::Start() {
+    // The CPU start procedure takes 7 minutes
+    bus->CpuRead(0x0000);          // Address does not matter
+    bus->CpuRead(0x0001);          // First start state
+    bus->CpuRead(0x0100 + s);      // Second start state
+    bus->CpuRead(0x0100 + s - 1);  // Third start state
+    bus->CpuRead(0x0100 + s - 2);  // Fourth start state
+    auto pcl = bus->CpuRead(RES_VECTOR);
+    auto pch = bus->CpuRead(RES_VECTOR + 1);
+    pc = (static_cast<word>(pch) << 8) | static_cast<word>(pcl);
+    spdlog::info("Starting execution at {:#06X}", pc);
 };
 
 void Cpu::Execute() {

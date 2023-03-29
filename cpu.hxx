@@ -170,9 +170,9 @@ class Cpu {
 
     byte a{0x00};           // Accumalator
     byte x{0x00}, y{0x00};  // General purpose registers
-    word pc{0xC000};        // Program counter
+    word pc{0x0000};        // Program counter
     byte s{0xFD};           // Stack pointer
-    byte p{0x24};           // Status register
+    byte p{0x34};           // Status register
 
     std::shared_ptr<Bus> bus{};
 
@@ -267,7 +267,7 @@ class Cpu {
    public:
     Cpu() = default;
 
-    Cpu(std::shared_ptr<Bus> bus) : bus{std::move(bus)} { spdlog::debug("Initialized CPU"); }
+    Cpu(std::shared_ptr<Bus> bus) : bus{std::move(bus)} { spdlog::debug("Initigalized CPU"); }
 
     bool IsSet(StatusFlag flag) const { return (p & static_cast<byte>(flag)) != 0; }
 
@@ -280,7 +280,7 @@ class Cpu {
     }
 
     // Runs the CPU startup procedure. Should run for 7 NES cycles
-    void Start() { spdlog::error("CPU start procedure not implemented"); };
+    void Start();
 
     void Reset() { spdlog::error("CPU reset procedure not implemented"); };
 

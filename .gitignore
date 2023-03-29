@@ -6,6 +6,7 @@
 log.txt
 
 nes-test-roms
+roms
 
 build
 cmake-build-*
