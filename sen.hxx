@@ -16,13 +16,15 @@ struct RomArgs {
     std::optional<std::vector<byte>> ram = std::nullopt;
 };
 
-Cartridge ParseRomFile(const RomArgs& rom_args);
+std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args);
 
 class Sen {
    private:
     std::shared_ptr<Bus> bus;
     std::shared_ptr<Ppu> ppu;
     Cpu cpu;
+
+    std::shared_ptr<bool> nmi_requested{};
 
    public:
     Sen(RomArgs rom_args);

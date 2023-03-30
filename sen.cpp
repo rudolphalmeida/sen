@@ -10,10 +10,12 @@
 #include "sen.hxx"
 
 Sen::Sen(RomArgs rom_args) {
+    nmi_requested = std::make_shared<bool>(false);
+
     auto cartridge = ParseRomFile(rom_args);
-    ppu = std::make_shared<Ppu>();
+    ppu = std::make_shared<Ppu>(cartridge, nmi_requested);
     bus = std::make_shared<Bus>(std::move(cartridge), ppu);
-    cpu = Cpu(bus);
+    cpu = Cpu(bus, nmi_requested);
 }
 
 void Sen::Run() {
@@ -23,7 +25,7 @@ void Sen::Run() {
     }
 }
 
-Cartridge ParseRomFile(const RomArgs& rom_args) {
+std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     auto rom_iter = rom_args.rom.cbegin();
 
     if (*rom_iter++ != '\x4E' || *rom_iter++ != '\x45' || *rom_iter++ != '\x53' ||
@@ -88,5 +90,5 @@ Cartridge ParseRomFile(const RomArgs& rom_args) {
 
     auto mapper = MapperFromInesNumber(mapper_number, prg_rom_banks, chr_rom_banks);
 
-    return Cartridge{header, prg_rom, chr_rom, std::move(mapper)};
+    return std::make_shared<Cartridge>(header, prg_rom, chr_rom, std::move(mapper));
 }

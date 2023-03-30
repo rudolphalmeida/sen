@@ -15,7 +15,7 @@ byte Bus::UntickedCpuRead(word address) {
         spdlog::debug("Read from not implemented CPU Test Mode {:#06X}", address);
         return 0xFF;
     } else {
-        return cartridge.CpuRead(address);
+        return cartridge->CpuRead(address);
     }
 }
 
@@ -29,6 +29,6 @@ void Bus::UntickedCpuWrite(word address, byte data) {
     } else if (inRange<word>(0x4018, address, 0x401F)) {
         spdlog::debug("Write to not implemented CPU Test Mode {:#06X} with {:#04X}", address, data);
     } else {
-        cartridge.CpuWrite(address, data);
+        cartridge->CpuWrite(address, data);
     }
 }

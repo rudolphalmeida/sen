@@ -175,6 +175,7 @@ class Cpu {
     byte p{0x34};           // Status register
 
     std::shared_ptr<Bus> bus{};
+    std::shared_ptr<bool> nmi_requested{};
 
     // Addressing Modes
 
@@ -267,7 +268,10 @@ class Cpu {
    public:
     Cpu() = default;
 
-    Cpu(std::shared_ptr<Bus> bus) : bus{std::move(bus)} { spdlog::debug("Initigalized CPU"); }
+    Cpu(std::shared_ptr<Bus> bus, std::shared_ptr<bool> nmi_requested)
+        : bus{std::move(bus)}, nmi_requested{std::move(nmi_requested)} {
+        spdlog::debug("Initigalized CPU");
+    }
 
     bool IsSet(StatusFlag flag) const { return (p & static_cast<byte>(flag)) != 0; }
 
