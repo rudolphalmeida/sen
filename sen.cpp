@@ -15,7 +15,7 @@ Sen::Sen(RomArgs rom_args) {
     auto cartridge = ParseRomFile(rom_args);
     ppu = std::make_shared<Ppu>(cartridge, nmi_requested);
     bus = std::make_shared<Bus>(std::move(cartridge), ppu);
-    cpu = Cpu(bus, nmi_requested);
+    cpu = Cpu<Bus>(bus, nmi_requested);
 }
 
 void Sen::Run() {
@@ -31,7 +31,7 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     if (*rom_iter++ != '\x4E' || *rom_iter++ != '\x45' || *rom_iter++ != '\x53' ||
         *rom_iter++ != '\x1A') {
         // ROM should begin with NES\x1A
-        spdlog::error("Provided ROM is not a valid NES ROM");
+        spdlog::error("Provided file is not a valid NES ROM");
         std::exit(-1);
     }
 

@@ -22,7 +22,7 @@ class Sen {
    private:
     std::shared_ptr<Bus> bus;
     std::shared_ptr<Ppu> ppu;
-    Cpu cpu;
+    Cpu<Bus> cpu;
 
     std::shared_ptr<bool> nmi_requested{};
 

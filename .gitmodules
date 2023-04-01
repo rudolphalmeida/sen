@@ -1,0 +1,7 @@
+[submodule "nes-test-roms"]
+	path = nes-test-roms
+    url = https://github.com/christopherpow/nes-test-roms
+
+[submodule "ProcessorTests"]
+	path = ProcessorTests
+    url = https://github.com/TomHarte/ProcessorTests

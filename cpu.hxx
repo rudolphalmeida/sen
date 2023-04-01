@@ -5,6 +5,7 @@
 #include <tuple>
 
 #include <spdlog/spdlog.h>
+#include <nlohmann/json.hpp>
 
 #include "bus.hxx"
 #include "constants.hxx"
@@ -164,17 +165,16 @@ enum class StatusFlag : byte {
     Negative = (1 << 7),          // N
 };
 
+template <typename BusType>
 class Cpu {
    private:
-    // Some of these values are hardcoded for testing with nestest.nes
-
     byte a{0x00};           // Accumalator
     byte x{0x00}, y{0x00};  // General purpose registers
     word pc{0x0000};        // Program counter
     byte s{0xFD};           // Stack pointer
     byte p{0x34};           // Status register
 
-    std::shared_ptr<Bus> bus{};
+    std::shared_ptr<BusType> bus{};
     std::shared_ptr<bool> nmi_requested{};
 
     // Addressing Modes
@@ -268,9 +268,9 @@ class Cpu {
    public:
     Cpu() = default;
 
-    Cpu(std::shared_ptr<Bus> bus, std::shared_ptr<bool> nmi_requested)
+    Cpu(std::shared_ptr<BusType> bus, std::shared_ptr<bool> nmi_requested)
         : bus{std::move(bus)}, nmi_requested{std::move(nmi_requested)} {
-        spdlog::debug("Initigalized CPU");
+        spdlog::debug("Initialized CPU");
     }
 
     bool IsSet(StatusFlag flag) const { return (p & static_cast<byte>(flag)) != 0; }
@@ -292,4 +292,7 @@ class Cpu {
 
     void Execute();
     void ExecuteOpcode(Opcode opcode);
+
+    // For setting random register state during opcode tests
+    friend void TestOpcode(nlohmann::json tests_data);
 };

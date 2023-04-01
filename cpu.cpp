@@ -7,6 +7,7 @@
 
 #include "constants.hxx"
 #include "cpu.hxx"
+#include "tests/flatbus.hxx"
 
 #define OPCODE_CASE(opc)   \
     case OpcodeClass::opc: \
@@ -282,7 +283,8 @@ std::array<Opcode, 256> OPCODES{
     },
 };
 
-void Cpu::Start() {
+template <typename BusType>
+void Cpu<BusType>::Start() {
     // The CPU start procedure takes 7 NES cycles
     bus->CpuRead(0x0000);          // Address does not matter
     bus->CpuRead(0x0001);          // First start state
@@ -295,18 +297,16 @@ void Cpu::Start() {
     spdlog::info("Starting execution at {:#06X}", pc);
 };
 
-void Cpu::Execute() {
+template <typename BusType>
+void Cpu<BusType>::Execute() {
     CheckForInterrupts();
 
     auto opcode = OPCODES[Fetch()];
-
-    // Print the PC and CYC count from before the previous Fetch()
-    fmt::print("{:04X}  {:02X} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}\n", pc - 1,
-               opcode.opcode, a, x, y, p, s, bus->cycles - 1);
     ExecuteOpcode(opcode);
 };
 
-void Cpu::ExecuteOpcode(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::ExecuteOpcode(Opcode opcode) {
     switch (opcode.opcode_class) {
         OPCODE_CASE(ADC)
         OPCODE_CASE(AND)
@@ -372,15 +372,16 @@ void Cpu::ExecuteOpcode(Opcode opcode) {
 }
 
 // Addressing Modes
-
-EffectiveAddress Cpu::AbsoluteAddressing() {
+template <typename BusType>
+EffectiveAddress Cpu<BusType>::AbsoluteAddressing() {
     auto low = Fetch();
     auto high = Fetch();
 
     return {static_cast<word>(high) << 8 | static_cast<word>(low), false};
 }
 
-EffectiveAddress Cpu::IndirectAddressing() {
+template <typename BusType>
+EffectiveAddress Cpu<BusType>::IndirectAddressing() {
     auto [pointer, _] = AbsoluteAddressing();
 
     auto low = bus->CpuRead(pointer);
@@ -389,23 +390,27 @@ EffectiveAddress Cpu::IndirectAddressing() {
     return {static_cast<word>(high) << 8 | static_cast<word>(low), false};
 }
 
-EffectiveAddress Cpu::ZeroPageAddressing() {
+template <typename BusType>
+EffectiveAddress Cpu<BusType>::ZeroPageAddressing() {
     return {static_cast<word>(Fetch()), false};
 }
 
-EffectiveAddress Cpu::ZeroPageXAddressing() {
+template <typename BusType>
+EffectiveAddress Cpu<BusType>::ZeroPageXAddressing() {
     auto [address, _] = ZeroPageAddressing();
     bus->Tick();  // Dummy read cycle
     return {NonPageCrossingAdd(address, x), false};
 }
 
-EffectiveAddress Cpu::ZeroPageYAddressing() {
+template <typename BusType>
+EffectiveAddress Cpu<BusType>::ZeroPageYAddressing() {
     auto [address, _] = ZeroPageAddressing();
     bus->Tick();  // Dummy read cycle
     return {NonPageCrossingAdd(address, y), false};
 }
 
-EffectiveAddress Cpu::AbsoluteXIndexedAddressing() {
+template <typename BusType>
+EffectiveAddress Cpu<BusType>::AbsoluteXIndexedAddressing() {
     auto [address, _] = AbsoluteAddressing();
 
     bool page_crossed = false;
@@ -418,7 +423,8 @@ EffectiveAddress Cpu::AbsoluteXIndexedAddressing() {
     return {address + x, page_crossed};
 }
 
-EffectiveAddress Cpu::AbsoluteYIndexedAddressing() {
+template <typename BusType>
+EffectiveAddress Cpu<BusType>::AbsoluteYIndexedAddressing() {
     auto [address, _] = AbsoluteAddressing();
 
     bool page_crossed = false;
@@ -431,7 +437,8 @@ EffectiveAddress Cpu::AbsoluteYIndexedAddressing() {
     return {address + y, page_crossed};
 }
 
-EffectiveAddress Cpu::IndirectXAddressing() {
+template <typename BusType>
+EffectiveAddress Cpu<BusType>::IndirectXAddressing() {
     auto operand = static_cast<word>(Fetch());
     auto pointer = operand + x;
     bus->CpuRead(operand);  // Dummy read cycle
@@ -442,7 +449,8 @@ EffectiveAddress Cpu::IndirectXAddressing() {
     return {(high << 8) | low, false};
 }
 
-EffectiveAddress Cpu::IndirectYAddressing() {
+template <typename BusType>
+EffectiveAddress Cpu<BusType>::IndirectYAddressing() {
     auto pointer = static_cast<word>(Fetch());
     auto low = static_cast<word>(bus->CpuRead(pointer));
     auto high = static_cast<word>(bus->CpuRead((pointer + 1) & 0xFF));
@@ -460,7 +468,8 @@ EffectiveAddress Cpu::IndirectYAddressing() {
     }
 }
 
-EffectiveAddress Cpu::FetchEffectiveAddress(AddressingMode mode) {
+template <typename BusType>
+EffectiveAddress Cpu<BusType>::FetchEffectiveAddress(AddressingMode mode) {
     switch (mode) {
         case AddressingMode::Immediate:
             return {pc++, false};
@@ -489,25 +498,28 @@ EffectiveAddress Cpu::FetchEffectiveAddress(AddressingMode mode) {
 }
 
 // Opcodes
-
-void Cpu::BRK(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::BRK(Opcode opcode) {
     // TODO: Implement BRK opcode
     spdlog::error("Hit unimplemented opcode BRK at PC: {:#06X}", pc - 1);
 }
 
-void Cpu::JMP(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::JMP(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     pc = address;
 }
 
-void Cpu::LDX(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::LDX(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     x = bus->CpuRead(address);
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
 }
 
-void Cpu::STX(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::STX(Opcode opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
          opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
@@ -516,8 +528,8 @@ void Cpu::STX(Opcode opcode) {
     }
     bus->CpuWrite(address, x);
 }
-
-void Cpu::JSR(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::JSR(Opcode opcode) {
     auto low = static_cast<word>(Fetch());
 
     bus->CpuRead(0x100 + s);  // Dummy read cycle (3)
@@ -530,7 +542,8 @@ void Cpu::JSR(Opcode opcode) {
     pc = high | low;
 }
 
-void Cpu::RTS(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::RTS(Opcode opcode) {
     bus->CpuRead(pc);  // Fetch next opcode and discard it
 
     bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
@@ -542,7 +555,8 @@ void Cpu::RTS(Opcode opcode) {
     bus->CpuRead(pc++);
 }
 
-void Cpu::NOP(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::NOP(Opcode opcode) {
     if (opcode.addressing_mode != AddressingMode::Implied) {
         auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
         bus->CpuRead(address);
@@ -551,78 +565,95 @@ void Cpu::NOP(Opcode opcode) {
     }
 }
 
-void Cpu::JAM(Opcode) {
+template <typename BusType>
+void Cpu<BusType>::JAM(Opcode) {
     spdlog::info("Executing a JAM opcode");
 }
 
-void Cpu::SEC(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::SEC(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Carry, true);
     bus->Tick();
 }
 
-void Cpu::CLC(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::CLC(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Carry, false);
     bus->Tick();
 }
 
-void Cpu::CLD(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::CLD(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Decimal, false);
     bus->Tick();
 }
 
-void Cpu::CLV(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::CLV(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Overflow, false);
     bus->Tick();
 }
 
-void Cpu::CLI(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::CLI(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::InterruptDisable, false);
     bus->Tick();
 }
 
-void Cpu::SEI(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::SEI(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::InterruptDisable, true);
     bus->Tick();
 }
 
-void Cpu::SED(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::SED(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Decimal, true);
     bus->Tick();
 }
 
-void Cpu::BCC(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::BCC(Opcode opcode) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Carry));
 }
 
-void Cpu::BCS(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::BCS(Opcode opcode) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Carry));
 }
 
-void Cpu::BEQ(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::BEQ(Opcode opcode) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Zero));
 }
 
-void Cpu::BNE(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::BNE(Opcode opcode) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Zero));
 }
 
-void Cpu::BMI(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::BMI(Opcode opcode) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Negative));
 }
 
-void Cpu::BPL(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::BPL(Opcode opcode) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Negative));
 }
 
-void Cpu::BVC(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::BVC(Opcode opcode) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Overflow));
 }
 
-void Cpu::BVS(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::BVS(Opcode opcode) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Overflow));
 }
 
-void Cpu::LDA(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::LDA(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     if (opcode.addressing_mode == AddressingMode::IndirectY) {
         a = bus->UntickedCpuRead(address);
@@ -633,7 +664,8 @@ void Cpu::LDA(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
-void Cpu::STA(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::STA(Opcode opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
          opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
@@ -643,7 +675,8 @@ void Cpu::STA(Opcode opcode) {
     bus->CpuWrite(address, a);
 }
 
-void Cpu::STY(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::STY(Opcode opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
          opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
@@ -653,7 +686,8 @@ void Cpu::STY(Opcode opcode) {
     bus->CpuWrite(address, y);
 }
 
-void Cpu::BIT(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::BIT(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     auto operand = bus->CpuRead(address);
 
@@ -662,12 +696,14 @@ void Cpu::BIT(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Zero, (operand & a) == 0x00);
 }
 
-void Cpu::PHA(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::PHA(Opcode opcode) {
     bus->CpuRead(pc);  // Fetch next opcode and discard it
     bus->CpuWrite(0x100 + s--, a);
 }
 
-void Cpu::PLA(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::PLA(Opcode opcode) {
     bus->CpuRead(pc);           // Fetch next opcode and discard it
     bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
     a = bus->CpuRead(0x100 + s);
@@ -675,13 +711,15 @@ void Cpu::PLA(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
-void Cpu::PHP(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::PHP(Opcode opcode) {
     bus->CpuRead(pc);                                     // Fetch next opcode and discard it
     byte temp_p = p | static_cast<byte>(StatusFlag::_B);  // Ensure bits 45 are set before push
     bus->CpuWrite(0x100 + s--, temp_p);
 }
 
-void Cpu::PLP(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::PLP(Opcode opcode) {
     bus->CpuRead(pc);           // Fetch next opcode and discard it
     bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
     auto temp_p = bus->CpuRead(0x100 + s);
@@ -689,7 +727,8 @@ void Cpu::PLP(Opcode opcode) {
     p = (p & 0x30) | (temp_p & 0xCF);
 }
 
-void Cpu::AND(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::AND(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     byte operand{};
     if (opcode.addressing_mode == AddressingMode::IndirectY) {
@@ -702,7 +741,8 @@ void Cpu::AND(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
-void Cpu::ORA(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::ORA(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     byte operand{};
     if (opcode.addressing_mode == AddressingMode::IndirectY) {
@@ -715,7 +755,8 @@ void Cpu::ORA(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
-void Cpu::EOR(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::EOR(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     byte operand{};
     if (opcode.addressing_mode == AddressingMode::IndirectY) {
@@ -728,19 +769,23 @@ void Cpu::EOR(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
-void Cpu::CMP(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::CMP(Opcode opcode) {
     CompareRegisterAndMemory(opcode, a);
 }
 
-void Cpu::CPX(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::CPX(Opcode opcode) {
     CompareRegisterAndMemory(opcode, x);
 }
 
-void Cpu::CPY(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::CPY(Opcode opcode) {
     CompareRegisterAndMemory(opcode, y);
 }
 
-void Cpu::ADC(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::ADC(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
 
     auto temp_a = static_cast<word>(a);
@@ -765,7 +810,8 @@ void Cpu::ADC(Opcode opcode) {
     a = static_cast<byte>(result);
 }
 
-void Cpu::SBC(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::SBC(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
 
     auto temp_a = static_cast<word>(a);
@@ -793,28 +839,32 @@ void Cpu::SBC(Opcode opcode) {
     a = static_cast<byte>(result);
 }
 
-void Cpu::LDY(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::LDY(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     y = bus->CpuRead(address);
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
 }
 
-void Cpu::INY(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::INY(Opcode opcode) {
     y++;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
     bus->Tick();
 }
 
-void Cpu::INX(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::INX(Opcode opcode) {
     x++;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
     bus->Tick();
 }
 
-void Cpu::INC(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::INC(Opcode opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
          opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
@@ -831,7 +881,8 @@ void Cpu::INC(Opcode opcode) {
     bus->CpuWrite(address, operand);
 }
 
-void Cpu::DEC(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::DEC(Opcode opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
          opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
@@ -848,61 +899,70 @@ void Cpu::DEC(Opcode opcode) {
     bus->CpuWrite(address, operand);
 }
 
-void Cpu::DEY(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::DEY(Opcode opcode) {
     y--;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
     bus->Tick();
 }
 
-void Cpu::DEX(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::DEX(Opcode opcode) {
     x--;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
     bus->Tick();
 }
 
-void Cpu::TAX(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::TAX(Opcode opcode) {
     x = a;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
     bus->Tick();
 }
 
-void Cpu::TAY(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::TAY(Opcode opcode) {
     y = a;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
     bus->Tick();
 }
 
-void Cpu::TSX(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::TSX(Opcode opcode) {
     x = s;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
     bus->Tick();
 }
 
-void Cpu::TXA(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::TXA(Opcode opcode) {
     a = x;
     UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
     bus->Tick();
 }
 
-void Cpu::TXS(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::TXS(Opcode opcode) {
     s = x;
     bus->Tick();
 }
 
-void Cpu::TYA(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::TYA(Opcode opcode) {
     a = y;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
     bus->Tick();
 }
 
-void Cpu::RTI(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::RTI(Opcode opcode) {
     bus->CpuRead(pc);             // Fetch next opcode and discard it
     bus->CpuRead(0x100 + (++s));  // Dummy read cycle
     auto temp_p = bus->CpuRead(0x100 + s++);
@@ -915,7 +975,8 @@ void Cpu::RTI(Opcode opcode) {
     pc = (high << 8) | low;
 }
 
-void Cpu::LSR(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::LSR(Opcode opcode) {
     byte operand{};
     word address{};
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
@@ -944,7 +1005,8 @@ void Cpu::LSR(Opcode opcode) {
     }
 }
 
-void Cpu::ASL(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::ASL(Opcode opcode) {
     byte operand{};
     word address{};
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
@@ -973,7 +1035,8 @@ void Cpu::ASL(Opcode opcode) {
     }
 }
 
-void Cpu::ROL(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::ROL(Opcode opcode) {
     byte operand{};
     word address{};
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
@@ -1002,7 +1065,8 @@ void Cpu::ROL(Opcode opcode) {
     }
 }
 
-void Cpu::ROR(Opcode opcode) {
+template <typename BusType>
+void Cpu<BusType>::ROR(Opcode opcode) {
     byte operand{};
     word address{};
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
@@ -1032,7 +1096,9 @@ void Cpu::ROR(Opcode opcode) {
 }
 
 // Opcode helpers
-void Cpu::RelativeBranchOnCondition(bool condition) {
+
+template <typename BusType>
+void Cpu<BusType>::RelativeBranchOnCondition(bool condition) {
     // First change the type, then the size, then type again
     auto offset = (word)(int16_t)(int8_t)Fetch();
 
@@ -1052,7 +1118,8 @@ void Cpu::RelativeBranchOnCondition(bool condition) {
     }
 }
 
-void Cpu::CompareRegisterAndMemory(Opcode opcode, byte reg) {
+template <typename BusType>
+void Cpu<BusType>::CompareRegisterAndMemory(Opcode opcode, byte reg) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     word operand{};
     if (opcode.opcode_class == OpcodeClass::CMP &&
@@ -1068,3 +1135,6 @@ void Cpu::CompareRegisterAndMemory(Opcode opcode, byte reg) {
     // The carry flag is set if no borrow or greater than or equal for A - M
     UpdateStatusFlag(StatusFlag::Carry, reg >= operand);
 }
+
+template class Cpu<Bus>;
+template class Cpu<FlatBus>;
