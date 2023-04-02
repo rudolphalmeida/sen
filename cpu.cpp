@@ -455,16 +455,16 @@ EffectiveAddress Cpu<BusType>::IndirectYAddressing() {
     auto low = static_cast<word>(bus->CpuRead(pointer));
     auto high = static_cast<word>(bus->CpuRead((pointer + 1) & 0xFF));
 
-    word supplied = (high << 8) | (low + y);
-    word corrected = ((high << 8) | low) + static_cast<word>(y);
-    // The cycle for this will be executed by the operand fetch
-    bus->CpuRead(supplied);
+    word effective = ((high << 8) | low);
+    word non_page_crossed_address = NonPageCrossingAdd(effective, static_cast<word>(y));
+    word page_crossed_address = effective + static_cast<word>(y);
+    bus->CpuRead(non_page_crossed_address);
 
-    if (supplied != corrected) {
-        bus->Tick();  // Extra tick due to page crossing
-        return {corrected, true};
+    if (non_page_crossed_address != page_crossed_address) {
+        bus->CpuRead(page_crossed_address);  // Extra tick due to page crossing
+        return {page_crossed_address, true};
     } else {
-        return {supplied, false};
+        return {non_page_crossed_address, false};
     }
 }
 
@@ -567,7 +567,11 @@ void Cpu<BusType>::NOP(Opcode opcode) {
 
 template <typename BusType>
 void Cpu<BusType>::JAM(Opcode) {
-    spdlog::info("Executing a JAM opcode");
+    spdlog::info("Uh oh... JAMming CPU");
+    // These two reads are based on ProcessorTests
+    bus->CpuRead(pc);
+    bus->CpuRead(pc);
+    pc--;  // The PC should not be incremented after a JAM opcode
 }
 
 template <typename BusType>

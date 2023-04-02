@@ -2,8 +2,13 @@
 #include <fstream>
 #include <memory>
 
+#include <fmt/core.h>
+#include <fmt/format.h>
+#include <spdlog/cfg/env.h>
+#include <spdlog/spdlog.h>
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
+#include <stdexcept>
 
 #define CPU_TEST
 
@@ -11,6 +16,11 @@
 #include "../constants.hxx"
 #include "../cpu.hxx"
 #include "flatbus.hxx"
+
+nlohmann::json LoadTestCasesJsonFile(byte opcode) {
+    std::ifstream tests_json_file(fmt::format("./ProcessorTests/6502/v1/{:02x}.json", opcode));
+    return nlohmann::json::parse(tests_json_file);
+}
 
 void TestOpcode(nlohmann::json tests_data) {
     auto nmi_requested = std::make_shared<bool>(false);
@@ -49,12 +59,30 @@ void TestOpcode(nlohmann::json tests_data) {
     }
 }
 
-#define OPCODE_TEST(opc)                                                         \
-    TEST_CASE("Test opcode " #opc, "[opcodeTest" #opc "]") {                     \
-        std::ifstream tests_json_file("./ProcessorTests/6502/v1/" #opc ".json"); \
-        auto tests_data = nlohmann::json::parse(tests_json_file);                \
-        TestOpcode(tests_data);                                                  \
+#define OPCODE_TEST(opc)                                     \
+    TEST_CASE("Test opcode " #opc, "[opcodeTest" #opc "]") { \
+        spdlog::cfg::load_env_levels();                      \
+        TestOpcode(LoadTestCasesJsonFile(opc));              \
     }
 
-OPCODE_TEST(01)
-OPCODE_TEST(02)
+// Only testing for the legal opcodes and JAMs
+
+OPCODE_TEST(0x01)
+OPCODE_TEST(0x02)
+OPCODE_TEST(0x04)
+OPCODE_TEST(0x05)
+OPCODE_TEST(0x06)
+OPCODE_TEST(0x08)
+OPCODE_TEST(0x09)
+OPCODE_TEST(0x0A)
+OPCODE_TEST(0x0D)
+OPCODE_TEST(0x0E)
+
+OPCODE_TEST(0x10)
+OPCODE_TEST(0x11)
+OPCODE_TEST(0x15)
+OPCODE_TEST(0x16)
+OPCODE_TEST(0x18)
+OPCODE_TEST(0x19)
+OPCODE_TEST(0x1D)
+OPCODE_TEST(0x1E)
