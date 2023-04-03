@@ -499,7 +499,7 @@ EffectiveAddress Cpu<BusType>::FetchEffectiveAddress(AddressingMode mode) {
 
 // Opcodes
 template <typename BusType>
-void Cpu<BusType>::BRK(Opcode opcode) {
+void Cpu<BusType>::BRK(Opcode) {
     // TODO: Implement BRK opcode
     spdlog::error("Hit unimplemented opcode BRK at PC: {:#06X}", pc - 1);
 }
@@ -529,7 +529,7 @@ void Cpu<BusType>::STX(Opcode opcode) {
     bus->CpuWrite(address, x);
 }
 template <typename BusType>
-void Cpu<BusType>::JSR(Opcode opcode) {
+void Cpu<BusType>::JSR(Opcode) {
     auto low = static_cast<word>(Fetch());
 
     bus->CpuRead(0x100 + s);  // Dummy read cycle (3)
@@ -543,7 +543,7 @@ void Cpu<BusType>::JSR(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::RTS(Opcode opcode) {
+void Cpu<BusType>::RTS(Opcode) {
     bus->CpuRead(pc);  // Fetch next opcode and discard it
 
     bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
@@ -575,84 +575,84 @@ void Cpu<BusType>::JAM(Opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::SEC(Opcode opcode) {
+void Cpu<BusType>::SEC(Opcode) {
     UpdateStatusFlag(StatusFlag::Carry, true);
     bus->Tick();
 }
 
 template <typename BusType>
-void Cpu<BusType>::CLC(Opcode opcode) {
+void Cpu<BusType>::CLC(Opcode) {
     UpdateStatusFlag(StatusFlag::Carry, false);
     bus->Tick();
 }
 
 template <typename BusType>
-void Cpu<BusType>::CLD(Opcode opcode) {
+void Cpu<BusType>::CLD(Opcode) {
     UpdateStatusFlag(StatusFlag::Decimal, false);
     bus->Tick();
 }
 
 template <typename BusType>
-void Cpu<BusType>::CLV(Opcode opcode) {
+void Cpu<BusType>::CLV(Opcode) {
     UpdateStatusFlag(StatusFlag::Overflow, false);
     bus->Tick();
 }
 
 template <typename BusType>
-void Cpu<BusType>::CLI(Opcode opcode) {
+void Cpu<BusType>::CLI(Opcode) {
     UpdateStatusFlag(StatusFlag::InterruptDisable, false);
     bus->Tick();
 }
 
 template <typename BusType>
-void Cpu<BusType>::SEI(Opcode opcode) {
+void Cpu<BusType>::SEI(Opcode) {
     UpdateStatusFlag(StatusFlag::InterruptDisable, true);
     bus->Tick();
 }
 
 template <typename BusType>
-void Cpu<BusType>::SED(Opcode opcode) {
+void Cpu<BusType>::SED(Opcode) {
     UpdateStatusFlag(StatusFlag::Decimal, true);
     bus->Tick();
 }
 
 template <typename BusType>
-void Cpu<BusType>::BCC(Opcode opcode) {
+void Cpu<BusType>::BCC(Opcode) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Carry));
 }
 
 template <typename BusType>
-void Cpu<BusType>::BCS(Opcode opcode) {
+void Cpu<BusType>::BCS(Opcode) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Carry));
 }
 
 template <typename BusType>
-void Cpu<BusType>::BEQ(Opcode opcode) {
+void Cpu<BusType>::BEQ(Opcode) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Zero));
 }
 
 template <typename BusType>
-void Cpu<BusType>::BNE(Opcode opcode) {
+void Cpu<BusType>::BNE(Opcode) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Zero));
 }
 
 template <typename BusType>
-void Cpu<BusType>::BMI(Opcode opcode) {
+void Cpu<BusType>::BMI(Opcode) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Negative));
 }
 
 template <typename BusType>
-void Cpu<BusType>::BPL(Opcode opcode) {
+void Cpu<BusType>::BPL(Opcode) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Negative));
 }
 
 template <typename BusType>
-void Cpu<BusType>::BVC(Opcode opcode) {
+void Cpu<BusType>::BVC(Opcode) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Overflow));
 }
 
 template <typename BusType>
-void Cpu<BusType>::BVS(Opcode opcode) {
+void Cpu<BusType>::BVS(Opcode) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Overflow));
 }
 
@@ -706,13 +706,13 @@ void Cpu<BusType>::BIT(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::PHA(Opcode opcode) {
+void Cpu<BusType>::PHA(Opcode) {
     bus->CpuRead(pc);  // Fetch next opcode and discard it
     bus->CpuWrite(0x100 + s--, a);
 }
 
 template <typename BusType>
-void Cpu<BusType>::PLA(Opcode opcode) {
+void Cpu<BusType>::PLA(Opcode) {
     bus->CpuRead(pc);           // Fetch next opcode and discard it
     bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
     a = bus->CpuRead(0x100 + s);
@@ -721,14 +721,14 @@ void Cpu<BusType>::PLA(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::PHP(Opcode opcode) {
+void Cpu<BusType>::PHP(Opcode) {
     bus->CpuRead(pc);                                     // Fetch next opcode and discard it
     byte temp_p = p | static_cast<byte>(StatusFlag::_B);  // Ensure bits 45 are set before push
     bus->CpuWrite(0x100 + s--, temp_p);
 }
 
 template <typename BusType>
-void Cpu<BusType>::PLP(Opcode opcode) {
+void Cpu<BusType>::PLP(Opcode) {
     bus->CpuRead(pc);           // Fetch next opcode and discard it
     bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
     auto temp_p = bus->CpuRead(0x100 + s);
@@ -804,8 +804,7 @@ void Cpu<BusType>::ADC(Opcode opcode) {
     }
 
     auto temp_a = static_cast<word>(a);
-    word carry = IsSet(StatusFlag::Carry) ? 0x1 : 0x0;
-    word result = temp_a + operand + carry;
+    word result = temp_a + operand + static_cast<word>(p & static_cast<byte>(StatusFlag::Carry));
 
     UpdateStatusFlag(StatusFlag::Zero, (result & 0xFF) == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0x00);
@@ -816,14 +815,12 @@ void Cpu<BusType>::ADC(Opcode opcode) {
     UpdateStatusFlag(StatusFlag::Overflow,
                      ((~(temp_a ^ operand) & (temp_a ^ result)) & 0x80) != 0x00);
 
-    a = static_cast<byte>(result);
+    a = static_cast<byte>(result & 0xFF);
 }
 
 template <typename BusType>
 void Cpu<BusType>::SBC(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
-
-    auto temp_a = static_cast<word>(a);
     // Fetch operand and invert bottom 8 bits
     word operand{};
     if (opcode.addressing_mode == AddressingMode::IndirectY) {
@@ -833,8 +830,8 @@ void Cpu<BusType>::SBC(Opcode opcode) {
     }
     operand ^= 0x00FF;
 
-    word carry = IsSet(StatusFlag::Carry) ? 0x1 : 0x0;
-    word result = temp_a + operand + carry;
+    auto temp_a = static_cast<word>(a);
+    word result = temp_a + operand + static_cast<word>(p & static_cast<byte>(StatusFlag::Carry));
 
     UpdateStatusFlag(StatusFlag::Zero, (result & 0xFF) == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0x00);
@@ -857,7 +854,7 @@ void Cpu<BusType>::LDY(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::INY(Opcode opcode) {
+void Cpu<BusType>::INY(Opcode) {
     y++;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
@@ -865,7 +862,7 @@ void Cpu<BusType>::INY(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::INX(Opcode opcode) {
+void Cpu<BusType>::INX(Opcode) {
     x++;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
@@ -909,7 +906,7 @@ void Cpu<BusType>::DEC(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::DEY(Opcode opcode) {
+void Cpu<BusType>::DEY(Opcode) {
     y--;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
@@ -917,7 +914,7 @@ void Cpu<BusType>::DEY(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::DEX(Opcode opcode) {
+void Cpu<BusType>::DEX(Opcode) {
     x--;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
@@ -925,7 +922,7 @@ void Cpu<BusType>::DEX(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::TAX(Opcode opcode) {
+void Cpu<BusType>::TAX(Opcode) {
     x = a;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
@@ -933,7 +930,7 @@ void Cpu<BusType>::TAX(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::TAY(Opcode opcode) {
+void Cpu<BusType>::TAY(Opcode) {
     y = a;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
@@ -941,7 +938,7 @@ void Cpu<BusType>::TAY(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::TSX(Opcode opcode) {
+void Cpu<BusType>::TSX(Opcode) {
     x = s;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
@@ -949,7 +946,7 @@ void Cpu<BusType>::TSX(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::TXA(Opcode opcode) {
+void Cpu<BusType>::TXA(Opcode) {
     a = x;
     UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
@@ -957,13 +954,13 @@ void Cpu<BusType>::TXA(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::TXS(Opcode opcode) {
+void Cpu<BusType>::TXS(Opcode) {
     s = x;
     bus->Tick();
 }
 
 template <typename BusType>
-void Cpu<BusType>::TYA(Opcode opcode) {
+void Cpu<BusType>::TYA(Opcode) {
     a = y;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
@@ -971,7 +968,7 @@ void Cpu<BusType>::TYA(Opcode opcode) {
 }
 
 template <typename BusType>
-void Cpu<BusType>::RTI(Opcode opcode) {
+void Cpu<BusType>::RTI(Opcode) {
     bus->CpuRead(pc);             // Fetch next opcode and discard it
     bus->CpuRead(0x100 + (++s));  // Dummy read cycle
     auto temp_p = bus->CpuRead(0x100 + s++);

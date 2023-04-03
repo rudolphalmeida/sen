@@ -41,6 +41,11 @@ void TestOpcode(nlohmann::json tests_data) {
             bus->UntickedCpuWrite(static_cast<word>(ram_state[0]), static_cast<byte>(ram_state[1]));
         }
 
+        if (cpu.IsSet(StatusFlag::Decimal)) {
+            // Do not test if the decimal flag is set because the NES does not use it
+            continue;
+        }
+
         cpu.Execute();
 
         auto final_state = test_case["final"];

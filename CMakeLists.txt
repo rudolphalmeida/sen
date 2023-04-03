@@ -8,6 +8,8 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
+add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+
 add_library(libsen
     constants.hxx
     tests/flatbus.hxx

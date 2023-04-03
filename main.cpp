@@ -26,13 +26,13 @@ RomArgs ReadCmdArgs(int argc, char** argv) {
 
     try {
         parser.ParseCLI(argc, argv);
-    } catch (args::Help) {
+    } catch (const args::Help&) {
         std::cout << parser;
-    } catch (args::ParseError e) {
+    } catch (const args::ParseError& e) {
         std::cerr << e.what() << std::endl;
         std::cerr << parser;
         std::exit(-1);
-    } catch (args::ValidationError e) {
+    } catch (const args::ValidationError& e) {
         std::cerr << e.what() << std::endl;
         std::cerr << parser;
         std::exit(-1);
