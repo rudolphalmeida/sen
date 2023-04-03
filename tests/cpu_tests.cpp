@@ -18,7 +18,7 @@
 #include "flatbus.hxx"
 
 nlohmann::json LoadTestCasesJsonFile(byte opcode) {
-    std::ifstream tests_json_file(fmt::format("./ProcessorTests/6502/v1/{:02x}.json", opcode));
+    std::ifstream tests_json_file(fmt::format("./ProcessorTests/nes6502/v1/{:02x}.json", opcode));
     return nlohmann::json::parse(tests_json_file);
 }
 
@@ -39,11 +39,6 @@ void TestOpcode(nlohmann::json tests_data) {
         cpu.p = initial_state["p"];
         for (auto ram_state : initial_state["ram"]) {
             bus->UntickedCpuWrite(static_cast<word>(ram_state[0]), static_cast<byte>(ram_state[1]));
-        }
-
-        if (cpu.IsSet(StatusFlag::Decimal)) {
-            // Do not test if the decimal flag is set because the NES does not use it
-            continue;
         }
 
         cpu.Execute();
