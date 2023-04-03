@@ -676,7 +676,12 @@ void Cpu<BusType>::STA(Opcode opcode) {
         !page_crossed) {
         bus->CpuRead(address);  // Dummy read cycle
     }
-    bus->CpuWrite(address, a);
+
+    if (opcode.addressing_mode == AddressingMode::IndirectY && page_crossed) {
+        bus->UntickedCpuWrite(address, a);
+    } else {
+        bus->CpuWrite(address, a);
+    }
 }
 
 template <typename BusType>
@@ -791,14 +796,14 @@ void Cpu<BusType>::CPY(Opcode opcode) {
 template <typename BusType>
 void Cpu<BusType>::ADC(Opcode opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
-
-    auto temp_a = static_cast<word>(a);
     word operand{};
     if (opcode.addressing_mode == AddressingMode::IndirectY) {
         operand = static_cast<word>(bus->UntickedCpuRead(address));
     } else {
         operand = static_cast<word>(bus->CpuRead(address));
     }
+
+    auto temp_a = static_cast<word>(a);
     word carry = IsSet(StatusFlag::Carry) ? 0x1 : 0x0;
     word result = temp_a + operand + carry;
 
