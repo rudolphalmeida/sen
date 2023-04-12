@@ -1,6 +1,7 @@
 #include <array>
 #include <fstream>
 #include <memory>
+#include <stdexcept>
 
 #include <fmt/core.h>
 #include <fmt/format.h>
@@ -8,7 +9,6 @@
 #include <spdlog/spdlog.h>
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
-#include <stdexcept>
 
 #define CPU_TEST
 

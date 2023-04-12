@@ -18,7 +18,8 @@ add_library(libsen
     cartridge.hxx cartridge.cpp
     mapper.hxx mapper.cpp
     cpu.hxx cpu.cpp
-    bus.hxx bus.cpp)
+    bus.hxx bus.cpp
+    ppu.hxx ppu.cpp)
 target_link_libraries(libsen PRIVATE
     spdlog::spdlog
     spdlog::spdlog_header_only
