@@ -56,7 +56,7 @@ class Ppu {
     byte ppustatus{0x1F};
     byte oamaddr{};
     PpuAddrLatch ppuaddr{};
-    std::optional<byte> ppudata_buf;  // PPUDATA read buffer
+    std::optional<byte> ppudata_buf = std::nullopt;  // PPUDATA read buffer
     PpuScrollLatch ppuscroll{};
 
     std::shared_ptr<Cartridge> cartridge{};
