@@ -28,12 +28,13 @@ void Ppu::Tick() {
         return;
     }
 
-    // Trigger NMI if enabled
-    if (NmiAtVBlank() && scanline == VBLANK_START_SCANLINE &&
-        cycles_into_scanline == VBLANK_SET_RESET_CYCLE) {
-        spdlog::debug("Requesting NMI interrupt");
-        *nmi_requested = true;  // Trigger NMI in CPU
+    if (scanline == VBLANK_START_SCANLINE && cycles_into_scanline == VBLANK_SET_RESET_CYCLE) {
         ppustatus |= 0x80;
+        // Trigger NMI if enabled
+        if (NmiAtVBlank()) {
+            spdlog::debug("Requesting NMI interrupt");
+            *nmi_requested = true;  // Trigger NMI in CPU
+        }
     }
 
     // Reset Vblank flag before rendering starts for the next frame
@@ -47,6 +48,7 @@ byte Ppu::CpuRead(word address) {
     switch (0x2000 + (address & 0b111)) {
         case 0x2002:
             io_data_bus = (ppustatus & 0xE0) | (io_data_bus & 0x1F);
+            spdlog::debug("Reading PPUSTATUS: {:#010b}", io_data_bus);
             ppustatus &= 0x7F;  // Reading this register clears bit 7
             ppuaddr.ResetLatch();
             ppuscroll.ResetLatch();

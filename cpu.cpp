@@ -14,10 +14,6 @@
         opc(opcode);       \
         break;
 
-#define NMI_VECTOR ((word)0xFFFA)
-#define RES_VECTOR ((word)0xFFFC)
-#define IRQ_VECTOR ((word)0xFFFE)
-
 inline word NonPageCrossingAdd(word value, word increment) {
     return (value & 0xFF00) | ((value + increment) & 0xFF);
 }
@@ -291,8 +287,8 @@ void Cpu<BusType>::Start() {
     bus->CpuRead(0x0100 + s);      // Second start state
     bus->CpuRead(0x0100 + s - 1);  // Third start state
     bus->CpuRead(0x0100 + s - 2);  // Fourth start state
-    auto pcl = bus->CpuRead(RES_VECTOR);
-    auto pch = bus->CpuRead(RES_VECTOR + 1);
+    auto pcl = bus->CpuRead(RESET_VECTOR);
+    auto pch = bus->CpuRead(RESET_VECTOR + 1);
     pc = (static_cast<word>(pch) << 8) | static_cast<word>(pcl);
     spdlog::info("Starting execution at {:#06X}", pc);
 };
@@ -304,6 +300,28 @@ void Cpu<BusType>::Execute() {
     auto opcode = OPCODES[Fetch()];
     ExecuteOpcode(opcode);
 };
+
+template <typename BusType>
+void Cpu<BusType>::CheckForInterrupts() {
+    if (*nmi_requested) {
+        *nmi_requested = false;
+
+        bus->CpuRead(pc);
+        bus->CpuRead(pc);
+        bus->CpuWrite(0x100 + s--, static_cast<byte>(pc >> 8));
+        bus->CpuWrite(0x100 + s--, static_cast<byte>(pc));
+
+        UpdateStatusFlag(StatusFlag::InterruptDisable, true);
+        // Ensure the B flag is not set when pushing
+        UpdateStatusFlag(StatusFlag::_B, false);
+        p |= (1 << 5);  // The unused flag is set when pushing by NMI
+        bus->CpuWrite(0x100 + s--, p);
+
+        auto pcl = bus->CpuRead(NMI_VECTOR);
+        auto pch = bus->CpuRead(NMI_VECTOR + 1);
+        pc = (static_cast<word>(pch) << 8) | static_cast<word>(pcl);
+    }
+}
 
 template <typename BusType>
 void Cpu<BusType>::ExecuteOpcode(Opcode opcode) {
@@ -500,8 +518,21 @@ EffectiveAddress Cpu<BusType>::FetchEffectiveAddress(AddressingMode mode) {
 // Opcodes
 template <typename BusType>
 void Cpu<BusType>::BRK(Opcode) {
-    // TODO: Implement BRK opcode
-    spdlog::error("Hit unimplemented opcode BRK at PC: {:#06X}", pc - 1);
+    Fetch();
+    bus->CpuWrite(0x100 + s--, static_cast<byte>(pc >> 8));
+    bus->CpuWrite(0x100 + s--, static_cast<byte>(pc));
+
+    // NMI and IRQ can hijack BRK interrupt if they are pending here
+    // TODO: Implement IRQ interrupt although it should not matter since both
+    //       use the same vector
+    auto interrupt_vector = *nmi_requested ? NMI_VECTOR : IRQ_VECTOR;
+    byte temp_p = p | static_cast<byte>(StatusFlag::_B);  // Ensure bits 45 are set before push
+    bus->CpuWrite(0x100 + s--, temp_p);
+    UpdateStatusFlag(StatusFlag::InterruptDisable, true);
+
+    auto pcl = bus->CpuRead(interrupt_vector);
+    auto pch = bus->CpuRead(interrupt_vector + 1);
+    pc = (static_cast<word>(pch) << 8) | static_cast<word>(pcl);
 }
 
 template <typename BusType>
@@ -567,7 +598,6 @@ void Cpu<BusType>::NOP(Opcode opcode) {
 
 template <typename BusType>
 void Cpu<BusType>::JAM(Opcode) {
-    spdlog::info("Uh oh... JAMming CPU");
     // These two reads are based on ProcessorTests
     bus->CpuRead(pc);
     bus->CpuRead(pc);

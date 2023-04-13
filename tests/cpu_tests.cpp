@@ -67,6 +67,7 @@ void TestOpcode(nlohmann::json tests_data) {
 
 // Only testing for the legal opcodes and JAMs
 
+OPCODE_TEST(0x00)
 OPCODE_TEST(0x01)
 OPCODE_TEST(0x02)
 OPCODE_TEST(0x04)

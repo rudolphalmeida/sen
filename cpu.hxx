@@ -263,9 +263,13 @@ class Cpu {
     void RelativeBranchOnCondition(bool condition);
     void CompareRegisterAndMemory(Opcode opcode, byte reg);
 
-    void CheckForInterrupts() {}
+    void CheckForInterrupts();
 
    public:
+    static const word NMI_VECTOR = 0xFFFA;
+    static const word RESET_VECTOR = 0xFFFC;
+    static const word IRQ_VECTOR = 0xFFFE;
+
     Cpu() = default;
 
     Cpu(std::shared_ptr<BusType> bus, std::shared_ptr<bool> nmi_requested)
