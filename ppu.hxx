@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 
@@ -59,6 +60,12 @@ class Ppu {
     std::optional<byte> ppudata_buf = std::nullopt;  // PPUDATA read buffer
     PpuScrollLatch ppuscroll{};
 
+    uint64_t frame_count{};  // Alse used to determine if even or odd frame
+
+    // The first `Tick()` will put us at the start of pre-render line (261)
+    unsigned int scanline{260};
+    unsigned int cycles_into_scanline{340};
+
     std::shared_ptr<Cartridge> cartridge{};
     std::shared_ptr<bool> nmi_requested{};
 
@@ -97,12 +104,19 @@ class Ppu {
     bool InVblank() const { return false; }
 
    public:
+    const unsigned int SCANLINES_PER_FRAME = 262;
+    const unsigned int PPU_CLOCK_CYCLES_PER_SCANLINE = 341;
+    const unsigned int PRE_RENDER_SCANLINE = 261;
+    const unsigned int POST_RENDER_SCANLINE = 240;
+    const unsigned int VBLANK_START_SCANLINE = 241;
+    const unsigned int VBLANK_SET_RESET_CYCLE = 1;
+
     Ppu() = default;
 
     Ppu(std::shared_ptr<Cartridge> cartridge, std::shared_ptr<bool> nmi_requested)
         : cartridge{std::move(cartridge)}, nmi_requested{std::move(nmi_requested)} {}
 
-    void Tick() {}
+    void Tick();
 
     byte CpuRead(word address);
     void CpuWrite(word address, byte data);

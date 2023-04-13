@@ -36,6 +36,9 @@ class Bus {
     void Tick() {
         cycles++;
 #ifndef CPU_TEST
+        // Each CPU cycle is 3 PPU cycles
+        ppu->Tick();
+        ppu->Tick();
         ppu->Tick();
 #endif
     }

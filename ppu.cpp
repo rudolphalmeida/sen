@@ -3,6 +3,46 @@
 #include "ppu.hxx"
 #include "util.hxx"
 
+void Ppu::Tick() {
+    cycles_into_scanline++;
+
+    if (scanline == PRE_RENDER_SCANLINE                                 // The pre-render scanlines
+        && cycles_into_scanline == (PPU_CLOCK_CYCLES_PER_SCANLINE - 1)  // cycle at the end
+        && (frame_count % 2) != 0)                                      // is skipped on odd frames
+    {
+        cycles_into_scanline++;
+    }
+
+    if (cycles_into_scanline == PPU_CLOCK_CYCLES_PER_SCANLINE) {
+        scanline++;
+        cycles_into_scanline = 0;
+
+        if (scanline == SCANLINES_PER_FRAME) {
+            spdlog::debug("Beginning new frame: {}", frame_count);
+            frame_count++;
+            scanline = 0;
+        }
+    }
+
+    if (scanline == POST_RENDER_SCANLINE) {  // The PPU idles during the post-render line
+        return;
+    }
+
+    // Trigger NMI if enabled
+    if (NmiAtVBlank() && scanline == VBLANK_START_SCANLINE &&
+        cycles_into_scanline == VBLANK_SET_RESET_CYCLE) {
+        spdlog::debug("Requesting NMI interrupt");
+        *nmi_requested = true;  // Trigger NMI in CPU
+        ppustatus |= 0x80;
+    }
+
+    // Reset Vblank flag before rendering starts for the next frame
+    if (scanline == PRE_RENDER_SCANLINE && cycles_into_scanline == VBLANK_SET_RESET_CYCLE) {
+        spdlog::debug("Resetting Vblank status");
+        ppustatus &= 0x7F;
+    }
+}
+
 byte Ppu::CpuRead(word address) {
     switch (0x2000 + (address & 0b111)) {
         case 0x2002:
