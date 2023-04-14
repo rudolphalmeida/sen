@@ -148,12 +148,24 @@ void ShowMenuBar() {
             if (ImGui::MenuItem("Open Recent")) {
             }
             if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
+                spdlog::error("Exit clicked!");
             }
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("View")) {
-            if (ImGui::MenuItem("Scale")) {
+            if (ImGui::BeginMenu("Scale")) {
+                if (ImGui::MenuItem("240p (1x)")) {
+                }
+                if (ImGui::MenuItem("480p (2x)")) {
+                }
+                if (ImGui::MenuItem("720p (3x)")) {
+                }
+                if (ImGui::MenuItem("960p (4x)")) {
+                }
+                if (ImGui::MenuItem("1200p (5x)")) {
+                }
+                ImGui::EndMenu();
             }
             if (ImGui::MenuItem("CPU State")) {
             }
