@@ -4,6 +4,7 @@
 .cache
 
 log.txt
+imgui.ini
 
 nes-test-roms
 roms

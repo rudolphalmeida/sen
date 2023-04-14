@@ -7,6 +7,9 @@ find_package(args CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
+find_package(OpenGL REQUIRED)
 
 add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 
@@ -34,6 +37,10 @@ target_link_libraries(sen PRIVATE
     spdlog::spdlog_header_only
     taywee::args
     nlohmann_json::nlohmann_json
+    imgui::imgui
+    OpenGL::GL
+    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
+    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
 
 add_executable(cpu_tests tests/cpu_tests.cpp)
