@@ -10,6 +10,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
+find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 
 add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 
@@ -39,6 +40,7 @@ target_link_libraries(sen PRIVATE
     nlohmann_json::nlohmann_json
     imgui::imgui
     OpenGL::GL
+    unofficial::nativefiledialog::nfd
     $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )

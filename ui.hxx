@@ -1,5 +1,9 @@
 #pragma once
 
+#include <filesystem>
+#include <memory>
+#include <optional>
+
 #include <SDL.h>
 #include <SDL_error.h>
 #include <SDL_opengl.h>
@@ -9,7 +13,6 @@
 #include <imgui_impl_sdl2.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
-#include <memory>
 
 #include "constants.hxx"
 #include "sen.hxx"
@@ -35,6 +38,8 @@ class Ui {
     std::unique_ptr<UiRenderingContext> rendering_context{};
     bool done{false};
     unsigned int scale_factor{3};
+
+    std::optional<std::filesystem::path> loaded_rom_file_path = std::nullopt;
 
     void ShowMenuBar();
 

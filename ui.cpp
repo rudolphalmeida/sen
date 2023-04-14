@@ -1,11 +1,15 @@
-#include "ui.hxx"
+#include <cstddef>
+#include <memory>
+#include <optional>
+
 #include <SDL_video.h>
 #include <fmt/format.h>
 #include <imgui.h>
+#include <nfd.h>
 #include <spdlog/spdlog.h>
-#include <cstddef>
-#include <memory>
+
 #include "constants.hxx"
+#include "ui.hxx"
 
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 
@@ -129,11 +133,35 @@ void Ui::ShowMenuBar() {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open", "Ctrl+O")) {
+                nfdchar_t* selected_path = NULL;
+                nfdresult_t result = NFD_OpenDialog("nes", NULL, &selected_path);
+
+                if (result == NFD_OKAY) {
+                    loaded_rom_file_path = std::make_optional<std::filesystem::path>(selected_path);
+                    free(selected_path);
+                    spdlog::info("Loading file {}", loaded_rom_file_path->c_str());
+                } else if (result == NFD_CANCEL) {
+                    spdlog::debug("User pressed cancel");
+                } else {
+                    spdlog::error("Error: {}\n", NFD_GetError());
+                }
             }
             if (ImGui::MenuItem("Open Recent")) {
             }
             if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
                 done = true;
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Emulation")) {
+            if (ImGui::MenuItem("Start")) {
+            }
+            if (ImGui::MenuItem("Pause")) {
+            }
+            if (ImGui::MenuItem("Reset")) {
+            }
+            if (ImGui::MenuItem("End")) {
             }
             ImGui::EndMenu();
         }
