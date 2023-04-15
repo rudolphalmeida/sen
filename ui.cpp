@@ -104,20 +104,35 @@ void Ui::Run() {
 
         ShowMenuBar();
 
-        // TODO: Show CPU debug frame
-        {}
+        {
+            if (show_cpu_registers && ImGui::Begin("CPU Registers", &show_cpu_registers)) {
+            }
+            ImGui::End();
+        }
 
-        // TODO: Show PPU debug frame
-        {}
+        {
+            if (show_ppu_registers && ImGui::Begin("PPU Registers", &show_ppu_registers)) {
+            }
+            ImGui::End();
+        }
 
-        // TODO: Show VRAM viewer
-        {}
+        {
+            if (show_vram && ImGui::Begin("VRAM", &show_vram)) {
+            }
+            ImGui::End();
+        }
 
-        // TODO: Show Memory state viewer
-        {}
+        {
+            if (show_memory && ImGui::Begin("Memory", &show_memory)) {
+            }
+            ImGui::End();
+        }
 
-        // TODO: Show Cartridge viewer
-        {}
+        {
+            if (show_cart_info && ImGui::Begin("Cartridge Info", &show_cart_info)) {
+            }
+            ImGui::End();
+        }
 
         // Rendering
         ImGui::Render();
@@ -179,15 +194,20 @@ void Ui::ShowMenuBar() {
 
                 ImGui::EndMenu();
             }
-            if (ImGui::MenuItem("CPU State")) {
+            if (ImGui::MenuItem("CPU Registers", nullptr, show_cpu_registers)) {
+                show_cpu_registers = !show_cpu_registers;
             }
-            if (ImGui::MenuItem("PPU State")) {
+            if (ImGui::MenuItem("PPU Registers", nullptr, show_ppu_registers)) {
+                show_ppu_registers = !show_ppu_registers;
             }
-            if (ImGui::MenuItem("VRAM Viewer")) {
+            if (ImGui::MenuItem("VRAM Viewer", nullptr, show_vram)) {
+                show_vram = !show_vram;
             }
-            if (ImGui::MenuItem("Memory Viewer")) {
+            if (ImGui::MenuItem("Memory Viewer", nullptr, show_memory)) {
+                show_memory = !show_memory;
             }
-            if (ImGui::MenuItem("Cartridge Info")) {
+            if (ImGui::MenuItem("Cartridge Info", nullptr, show_cart_info)) {
+                show_cart_info = !show_cart_info;
             }
             ImGui::EndMenu();
         }

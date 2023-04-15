@@ -41,6 +41,12 @@ class Ui {
 
     std::optional<std::filesystem::path> loaded_rom_file_path = std::nullopt;
 
+    bool show_cpu_registers{false};
+    bool show_ppu_registers{false};
+    bool show_vram{false};
+    bool show_memory{false};
+    bool show_cart_info{false};
+
     void ShowMenuBar();
 
    public:
