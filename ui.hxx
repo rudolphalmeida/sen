@@ -40,6 +40,8 @@ class Ui {
     unsigned int scale_factor{3};
 
     std::optional<std::filesystem::path> loaded_rom_file_path = std::nullopt;
+    std::optional<Sen> emulator_context = std::nullopt;
+    bool emulation_running{false};
 
     bool show_cpu_registers{false};
     bool show_ppu_registers{false};
@@ -48,6 +50,11 @@ class Ui {
     bool show_cart_info{false};
 
     void ShowMenuBar();
+
+    void StartEmulation();
+    void PauseEmulation();
+    void ResetEmulation();
+    void StopEmulation();
 
    public:
     Ui();

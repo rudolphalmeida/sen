@@ -3,13 +3,16 @@
 #include <optional>
 
 #include <SDL_video.h>
+#include <fmt/core.h>
 #include <fmt/format.h>
 #include <imgui.h>
 #include <nfd.h>
 #include <spdlog/spdlog.h>
 
 #include "constants.hxx"
+#include "sen.hxx"
 #include "ui.hxx"
+#include "util.hxx"
 
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 
@@ -155,6 +158,13 @@ void Ui::ShowMenuBar() {
                     loaded_rom_file_path = std::make_optional<std::filesystem::path>(selected_path);
                     free(selected_path);
                     spdlog::info("Loading file {}", loaded_rom_file_path->c_str());
+
+                    auto rom = read_binary_file(loaded_rom_file_path.value());
+                    auto rom_args = RomArgs{rom};
+                    emulator_context = std::make_optional<Sen>(rom_args);
+
+                    auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().c_str());
+                    SDL_SetWindowTitle(rendering_context->window, title.c_str());
                 } else if (result == NFD_CANCEL) {
                     spdlog::debug("User pressed cancel");
                 } else {
@@ -170,13 +180,18 @@ void Ui::ShowMenuBar() {
         }
 
         if (ImGui::BeginMenu("Emulation")) {
-            if (ImGui::MenuItem("Start")) {
+            if (ImGui::MenuItem("Start", nullptr, false,
+                                !emulation_running && emulator_context.has_value())) {
+                StartEmulation();
             }
-            if (ImGui::MenuItem("Pause")) {
+            if (ImGui::MenuItem("Pause", nullptr, false, emulation_running)) {
+                PauseEmulation();
             }
-            if (ImGui::MenuItem("Reset")) {
+            if (ImGui::MenuItem("Reset", nullptr, false, emulation_running)) {
+                ResetEmulation();
             }
-            if (ImGui::MenuItem("End")) {
+            if (ImGui::MenuItem("Stop", nullptr, false, emulation_running)) {
+                StopEmulation();
             }
             ImGui::EndMenu();
         }
@@ -220,3 +235,11 @@ void Ui::ShowMenuBar() {
         ImGui::EndMenuBar();
     }
 }
+
+void Ui::StartEmulation() {}
+
+void Ui::PauseEmulation() {}
+
+void Ui::ResetEmulation() {}
+
+void Ui::StopEmulation() {}
