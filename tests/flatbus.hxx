@@ -1,6 +1,6 @@
 #include <array>
 
-#include "constants.hxx"
+#include "../constants.hxx"
 
 class FlatBus {
    private:

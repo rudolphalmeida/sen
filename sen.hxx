@@ -20,14 +20,19 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args);
 
 class Sen {
    private:
+    unsigned int carry_over_cycles{};
+
     std::shared_ptr<Bus> bus;
     std::shared_ptr<Ppu> ppu;
     Cpu<Bus> cpu;
 
     std::shared_ptr<bool> nmi_requested{};
 
+    static const unsigned int CYCLES_PER_FRAME{29780};
+
    public:
     Sen(RomArgs rom_args);
 
-    void Run();
+    void Start() { cpu.Start(); }
+    void RunForOneFrame();
 };

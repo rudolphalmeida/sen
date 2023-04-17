@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <array>
 
 #include <spdlog/spdlog.h>
 

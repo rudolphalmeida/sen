@@ -18,11 +18,15 @@ Sen::Sen(RomArgs rom_args) {
     cpu = Cpu<Bus>(bus, nmi_requested);
 }
 
-void Sen::Run() {
-    cpu.Start();
-    while (true) {
+void Sen::RunForOneFrame() {
+    auto cpu_cycles = bus->cycles;
+    auto target_cycles = cpu_cycles + CYCLES_PER_FRAME - carry_over_cycles;
+    
+    while (bus->cycles < target_cycles) {
         cpu.Execute();
     }
+
+    carry_over_cycles = bus->cycles - target_cycles;
 }
 
 std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {

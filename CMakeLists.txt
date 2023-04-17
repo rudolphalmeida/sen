@@ -12,16 +12,13 @@ find_package(imgui CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 
-add_compile_options(-Wall -Wextra -Wpedantic -Werror)
-
 add_library(libsen
     constants.hxx
-    tests/flatbus.hxx
     sen.hxx sen.cpp
     util.hxx util.cpp
     cartridge.hxx cartridge.cpp
     mapper.hxx mapper.cpp
-    cpu.hxx cpu.cpp
+    cpu.hxx
     bus.hxx bus.cpp
     ppu.hxx ppu.cpp)
 target_link_libraries(libsen PRIVATE
@@ -45,5 +42,5 @@ target_link_libraries(sen PRIVATE
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
 
-add_executable(cpu_tests tests/cpu_tests.cpp)
+add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)
 target_link_libraries(cpu_tests PRIVATE libsen Catch2::Catch2WithMain nlohmann_json::nlohmann_json)

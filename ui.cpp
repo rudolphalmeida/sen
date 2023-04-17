@@ -100,6 +100,10 @@ void Ui::Run() {
                 done = true;
         }
 
+        if (emulation_running) {
+            emulator_context->RunForOneFrame();
+        }
+
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
@@ -108,34 +112,46 @@ void Ui::Run() {
         ShowMenuBar();
 
         {
-            if (show_cpu_registers && ImGui::Begin("CPU Registers", &show_cpu_registers)) {
+            if (show_cpu_registers) {
+                if (ImGui::Begin("CPU Registers", &show_cpu_registers)) {
+                }
+                ImGui::End();
             }
-            ImGui::End();
         }
 
         {
-            if (show_ppu_registers && ImGui::Begin("PPU Registers", &show_ppu_registers)) {
+            if (show_ppu_registers) {
+                if (ImGui::Begin("PPU Registers", &show_ppu_registers)) {
+                }
+                ImGui::End();
             }
-            ImGui::End();
         }
 
         {
-            if (show_vram && ImGui::Begin("VRAM", &show_vram)) {
+            if (show_vram) {
+                if (ImGui::Begin("VRAM", &show_vram)) {
+                }
+                ImGui::End();
             }
-            ImGui::End();
         }
 
         {
-            if (show_memory && ImGui::Begin("Memory", &show_memory)) {
+            if (show_memory) {
+                if (ImGui::Begin("Memory", &show_memory)) {
+                }
+                ImGui::End();
             }
-            ImGui::End();
         }
 
         {
-            if (show_cart_info && ImGui::Begin("Cartridge Info", &show_cart_info)) {
+            if (show_cart_info) {
+                if (ImGui::Begin("Cartridge Info", &show_cart_info)) {
+                }
+                ImGui::End();
             }
-            ImGui::End();
         }
+
+        ImGui::EndFrame();
 
         // Rendering
         ImGui::Render();
@@ -157,13 +173,13 @@ void Ui::ShowMenuBar() {
                 if (result == NFD_OKAY) {
                     loaded_rom_file_path = std::make_optional<std::filesystem::path>(selected_path);
                     free(selected_path);
-                    spdlog::info("Loading file {}", loaded_rom_file_path->c_str());
+                    spdlog::info("Loading file {}", loaded_rom_file_path->string());
 
                     auto rom = read_binary_file(loaded_rom_file_path.value());
                     auto rom_args = RomArgs{rom};
                     emulator_context = std::make_optional<Sen>(rom_args);
 
-                    auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().c_str());
+                    auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
                     SDL_SetWindowTitle(rendering_context->window, title.c_str());
                 } else if (result == NFD_CANCEL) {
                     spdlog::debug("User pressed cancel");
@@ -200,7 +216,7 @@ void Ui::ShowMenuBar() {
             if (ImGui::BeginMenu("Scale")) {
                 for (size_t i = 0; i < 5; i++) {
                     if (ImGui::MenuItem(SCALING_FACTORS[i], nullptr, scale_factor == i + 1)) {
-                        scale_factor = i + 1;
+                        scale_factor = static_cast<unsigned int>(i + 1);
                         spdlog::info("Changing window scale to {}", scale_factor);
                         SDL_SetWindowSize(rendering_context->window, NES_WIDTH * scale_factor,
                                           NES_HEIGHT * scale_factor);
@@ -236,7 +252,10 @@ void Ui::ShowMenuBar() {
     }
 }
 
-void Ui::StartEmulation() {}
+void Ui::StartEmulation() {
+    emulation_running = true;
+    emulator_context->Start();
+}
 
 void Ui::PauseEmulation() {}
 

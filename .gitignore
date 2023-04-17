@@ -1,6 +1,7 @@
 .DS_Store
 .vscode
 .idea
+.vs
 .cache
 
 log.txt
@@ -12,3 +13,4 @@ ProcessorTests
 
 build
 cmake-build-*
+CMakeSettings.json
