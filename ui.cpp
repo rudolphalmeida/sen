@@ -112,8 +112,16 @@ void Ui::Run() {
         ShowMenuBar();
 
         {
-            if (show_cpu_registers) {
+            if (show_cpu_registers && emulator_context != nullptr) {
                 if (ImGui::Begin("CPU Registers", &show_cpu_registers)) {
+                    auto cpu_state = debugger.GetCpuState();
+
+                    ImGui::Value("A", static_cast<unsigned int>(cpu_state.a));
+                    ImGui::Value("X", static_cast<unsigned int>(cpu_state.x));
+                    ImGui::Value("Y", static_cast<unsigned int>(cpu_state.y));
+                    ImGui::Value("S", static_cast<unsigned int>(cpu_state.s));
+                    ImGui::Value("PC", static_cast<unsigned int>(cpu_state.pc));
+
                 }
                 ImGui::End();
             }
@@ -177,7 +185,8 @@ void Ui::ShowMenuBar() {
 
                     auto rom = read_binary_file(loaded_rom_file_path.value());
                     auto rom_args = RomArgs{rom};
-                    emulator_context = std::make_optional<Sen>(rom_args);
+                    emulator_context = std::make_shared<Sen>(rom_args);
+                    debugger = Debugger(emulator_context);
 
                     auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
                     SDL_SetWindowTitle(rendering_context->window, title.c_str());
@@ -197,7 +206,7 @@ void Ui::ShowMenuBar() {
 
         if (ImGui::BeginMenu("Emulation")) {
             if (ImGui::MenuItem("Start", nullptr, false,
-                                !emulation_running && emulator_context.has_value())) {
+                                !emulation_running && emulator_context != nullptr)) {
                 StartEmulation();
             }
             if (ImGui::MenuItem("Pause", nullptr, false, emulation_running)) {

@@ -309,6 +309,7 @@ class Cpu {
 
     // For setting random register state during opcode tests
     friend void TestOpcode(nlohmann::json tests_data);
+    friend class Debugger;
 };
 
 inline word NonPageCrossingAdd(word value, word increment) {

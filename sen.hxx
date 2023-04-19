@@ -35,4 +35,6 @@ class Sen {
 
     void Start() { cpu.Start(); }
     void RunForOneFrame();
+
+    friend class Debugger;
 };

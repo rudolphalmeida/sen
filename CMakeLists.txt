@@ -18,7 +18,7 @@ add_library(libsen
     util.hxx util.cpp
     cartridge.hxx cartridge.cpp
     mapper.hxx mapper.cpp
-    cpu.hxx
+    cpu.hxx debugger.hxx
     bus.hxx bus.cpp
     ppu.hxx ppu.cpp)
 target_link_libraries(libsen PRIVATE

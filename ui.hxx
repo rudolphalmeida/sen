@@ -17,6 +17,7 @@
 #include "constants.hxx"
 #include "sen.hxx"
 #include "util.hxx"
+#include "debugger.hxx"
 
 struct UiRenderingContext {
     SDL_Window* window{};
@@ -40,10 +41,12 @@ class Ui {
     unsigned int scale_factor{3};
 
     std::optional<std::filesystem::path> loaded_rom_file_path = std::nullopt;
-    std::optional<Sen> emulator_context = std::nullopt;
+    std::shared_ptr<Sen> emulator_context{};
     bool emulation_running{false};
 
-    bool show_cpu_registers{false};
+    Debugger debugger{};
+
+    bool show_cpu_registers{true};
     bool show_ppu_registers{false};
     bool show_vram{false};
     bool show_memory{false};
