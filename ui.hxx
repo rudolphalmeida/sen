@@ -4,40 +4,21 @@
 #include <memory>
 #include <optional>
 
-#include <SDL.h>
-#include <SDL_error.h>
-#include <SDL_opengl.h>
-#include <SDL_video.h>
+#include <GLFW/glfw3.h>
 #include <imgui.h>
+#include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-#include <imgui_impl_sdl2.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
 
 #include "constants.hxx"
+#include "debugger.hxx"
 #include "sen.hxx"
 #include "util.hxx"
-#include "debugger.hxx"
-
-struct UiRenderingContext {
-    SDL_Window* window{};
-    SDL_GLContext gl_context{};
-    ImGuiIO& io;
-
-    UiRenderingContext(SDL_Window* window, SDL_GLContext gl_context, ImGuiIO& io)
-        : window{window}, gl_context{gl_context}, io{io} {}
-
-    ~UiRenderingContext() {
-        SDL_GL_DeleteContext(gl_context);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-    }
-};
 
 class Ui {
    private:
-    std::unique_ptr<UiRenderingContext> rendering_context{};
-    bool done{false};
+    GLFWwindow* window{};
     unsigned int scale_factor{3};
 
     std::optional<std::filesystem::path> loaded_rom_file_path = std::nullopt;
@@ -67,7 +48,10 @@ class Ui {
     ~Ui() {
         // Cleanup
         ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplSDL2_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
+
+        glfwDestroyWindow(window);
+        glfwTerminate();
     }
 };

@@ -2,7 +2,7 @@
 #include <memory>
 #include <optional>
 
-#include <SDL_video.h>
+#include <GLFW/glfw3.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include <imgui.h>
@@ -16,47 +16,44 @@
 
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 
+static void glfw_error_callback(int error, const char* description) {
+    spdlog::error("GLFW error ({}): {}", error, description);
+}
+
 Ui::Ui() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
-        spdlog::error("Failed to init SDL2: {}", SDL_GetError());
-        throw new std::runtime_error("Failed to init SDL2");
+    glfwSetErrorCallback(glfw_error_callback);
+    if (!glfwInit()) {
+        std::exit(-1);
     }
-    spdlog::info("Initialized SDL2");
+    spdlog::info("Initialized GLFW");
 
 #if defined(__APPLE__)
-    // GL 3.2 Core + GLSL 150
+    // GL 3.2 + GLSL 150
     const char* glsl_version = "#version 150";
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,
-                        SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);  // Always required on Mac
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #else
     // GL 3.0 + GLSL 130
     const char* glsl_version = "#version 130";
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 #endif
 
-// From 2.0.18: Enable native IME.
-#ifdef SDL_HINT_IME_SHOW_UI
-    SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
-#endif
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    // Create window with graphics context
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window =
-        SDL_CreateWindow("sen - NES Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                         NES_WIDTH * scale_factor, NES_HEIGHT * scale_factor, window_flags);
-    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-    SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1);  // Enable vsync
-    spdlog::info("Initialized SDL2 window and OpenGL context");
+    window = glfwCreateWindow(NES_WIDTH * scale_factor, NES_HEIGHT * scale_factor,
+                              "sen - NES Emulator", nullptr, nullptr);
+    if (window == nullptr) {
+        spdlog::error("Failed to create GLFW3 window");
+        std::exit(-1);
+    }
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);  // Enable vsync
+    spdlog::info("Initialized GLFW window and OpenGL context");
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -70,35 +67,15 @@ Ui::Ui() {
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
     spdlog::info("Using ImGui dark style");
-    // ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
-
-    this->rendering_context = std::make_unique<UiRenderingContext>(window, gl_context, io);
 }
 
 void Ui::Run() {
-    while (!done) {
-        // Poll and handle events (inputs, window resize, etc.)
-        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui
-        // wants to use your inputs.
-        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main
-        // application, or clear/overwrite your copy of the mouse data.
-        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main
-        // application, or clear/overwrite your copy of the keyboard data. Generally you may always
-        // pass all inputs to dear imgui, and hide them from your application based on those two
-        // flags.
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_QUIT)
-                done = true;
-            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                event.window.windowID == SDL_GetWindowID(rendering_context->window))
-                done = true;
-        }
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
 
         if (emulation_running) {
             emulator_context->RunForOneFrame();
@@ -106,7 +83,7 @@ void Ui::Run() {
 
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
         ShowMenuBar();
@@ -121,7 +98,6 @@ void Ui::Run() {
                     ImGui::Value("Y", static_cast<unsigned int>(cpu_state.y));
                     ImGui::Value("S", static_cast<unsigned int>(cpu_state.s));
                     ImGui::Value("PC", static_cast<unsigned int>(cpu_state.pc));
-
                 }
                 ImGui::End();
             }
@@ -163,12 +139,14 @@ void Ui::Run() {
 
         // Rendering
         ImGui::Render();
-        glViewport(0, 0, (int)rendering_context->io.DisplaySize.x,
-                   (int)rendering_context->io.DisplaySize.y);
+        int display_w, display_h;
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        SDL_GL_SwapWindow(rendering_context->window);
+
+        glfwSwapBuffers(window);
     }
 }
 void Ui::ShowMenuBar() {
@@ -189,7 +167,7 @@ void Ui::ShowMenuBar() {
                     debugger = Debugger(emulator_context);
 
                     auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
-                    SDL_SetWindowTitle(rendering_context->window, title.c_str());
+                    glfwSetWindowTitle(window, title.c_str());
                 } else if (result == NFD_CANCEL) {
                     spdlog::debug("User pressed cancel");
                 } else {
@@ -199,7 +177,7 @@ void Ui::ShowMenuBar() {
             if (ImGui::MenuItem("Open Recent")) {
             }
             if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
-                done = true;
+                glfwSetWindowShouldClose(window, true);
             }
             ImGui::EndMenu();
         }
@@ -227,7 +205,7 @@ void Ui::ShowMenuBar() {
                     if (ImGui::MenuItem(SCALING_FACTORS[i], nullptr, scale_factor == i + 1)) {
                         scale_factor = static_cast<unsigned int>(i + 1);
                         spdlog::info("Changing window scale to {}", scale_factor);
-                        SDL_SetWindowSize(rendering_context->window, NES_WIDTH * scale_factor,
+                        glfwSetWindowSize(window, NES_WIDTH * scale_factor,
                                           NES_HEIGHT * scale_factor);
                     }
                 }

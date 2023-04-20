@@ -3,12 +3,12 @@ project(sen VERSION 0.1.0)
 
 set(CMAKE_CXX_STANDARD 20)
 
-find_package(args CONFIG REQUIRED)
+# set(CMAKE_FIND_DEBUG_MODE 1)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(SDL2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 
@@ -24,7 +24,6 @@ add_library(libsen
 target_link_libraries(libsen PRIVATE
     spdlog::spdlog
     spdlog::spdlog_header_only
-    taywee::args
     nlohmann_json::nlohmann_json)
 target_include_directories(libsen PUBLIC .)
 
@@ -33,13 +32,11 @@ target_link_libraries(sen PRIVATE
     libsen
     spdlog::spdlog
     spdlog::spdlog_header_only
-    taywee::args
     nlohmann_json::nlohmann_json
     imgui::imgui
     OpenGL::GL
     unofficial::nativefiledialog::nfd
-    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
-    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+    glfw
 )
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)
