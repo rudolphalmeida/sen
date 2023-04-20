@@ -27,7 +27,7 @@ target_link_libraries(libsen PRIVATE
     nlohmann_json::nlohmann_json)
 target_include_directories(libsen PUBLIC .)
 
-add_executable(sen main.cpp ui.hxx ui.cpp)
+add_executable(sen main.cpp ui.hxx ui.cpp imgui_memory_editor.h)
 target_link_libraries(sen PRIVATE
     libsen
     spdlog::spdlog
