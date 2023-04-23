@@ -18,7 +18,6 @@ void Ppu::Tick() {
         cycles_into_scanline = 0;
 
         if (scanline == SCANLINES_PER_FRAME) {
-            spdlog::debug("Beginning new frame: {}", frame_count);
             frame_count++;
             scanline = 0;
         }
@@ -32,14 +31,12 @@ void Ppu::Tick() {
         ppustatus |= 0x80;
         // Trigger NMI if enabled
         if (NmiAtVBlank()) {
-            spdlog::debug("Requesting NMI interrupt");
             *nmi_requested = true;  // Trigger NMI in CPU
         }
     }
 
     // Reset Vblank flag before rendering starts for the next frame
     if (scanline == PRE_RENDER_SCANLINE && cycles_into_scanline == VBLANK_SET_RESET_CYCLE) {
-        spdlog::debug("Resetting Vblank status");
         ppustatus &= 0x7F;
     }
 }
@@ -48,7 +45,6 @@ byte Ppu::CpuRead(word address) {
     switch (0x2000 + (address & 0b111)) {
         case 0x2002:
             io_data_bus = (ppustatus & 0xE0) | (io_data_bus & 0x1F);
-            spdlog::debug("Reading PPUSTATUS: {:#010b}", io_data_bus);
             ppustatus &= 0x7F;  // Reading this register clears bit 7
             ppuaddr.ResetLatch();
             ppuscroll.ResetLatch();
@@ -131,6 +127,7 @@ void Ppu::PpuWrite(word address, byte data) {
     if (inRange<word>(0x0000, address, 0x1FFF)) {
         cartridge->PpuWrite(address, data);
     } else if (inRange<word>(0x2000, address, 0x2FFF)) {
+        spdlog::info("Write to VRAM: {:#06X} with {:#04X}", address, data);
         vram[address - 0x2000] = data;
     } else if (inRange<word>(0x3000, address, 0x3EFF)) {
         vram[address - 0x3000] = data;

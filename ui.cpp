@@ -187,6 +187,12 @@ void Ui::Run() {
 
                         ImGui::EndTable();
                     }
+
+                    for (auto& executed_opcode : cpu_state.executed_opcodes.values) {
+                        Opcode opcode = OPCODES[executed_opcode.opcode];
+                        ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc, opcode.label,
+                                    executed_opcode.arg1, executed_opcode.arg2);
+                    }
                 }
                 ImGui::End();
             }

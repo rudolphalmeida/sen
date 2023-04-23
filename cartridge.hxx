@@ -1,10 +1,11 @@
 #pragma once
 
-#include <spdlog/spdlog.h>
 #include <cstddef>
 #include <memory>
 #include <optional>
 #include <vector>
+
+#include <spdlog/spdlog.h>
 
 #include "constants.hxx"
 #include "mapper.hxx"
@@ -49,12 +50,8 @@ struct Cartridge {
           chr_ram{std::move(chr_ram)} {}
 
     byte CpuRead(word addr) { return prg_rom[mapper->MapCpuAddr(addr)]; }
-    void CpuWrite(word addr, byte data) { 
-        spdlog::error("Write to PRG ROM area. Address: {:#06X} Data: {:#04X}", addr, data);
-    }
+    void CpuWrite(word addr, byte data) {}
 
     byte PpuRead(word addr) { return chr_rom[addr]; }
-    void PpuWrite(word addr, byte data) {
-        spdlog::error("Write to CHR-ROM address {:#06X} with data {:#04X}", addr, data);
-    }
+    void PpuWrite(word addr, byte data) {}
 };

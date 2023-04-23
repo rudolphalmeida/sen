@@ -9,6 +9,7 @@
 #include <spdlog/spdlog.h>
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
+#include "debugger.hxx"
 
 #define CPU_TEST
 
@@ -29,14 +30,15 @@ void TestOpcode(nlohmann::json tests_data) {
         auto bus = std::make_shared<FlatBus>();
         REQUIRE(bus->cycles == 0);  // Tests require cycles to start at zero
         Cpu<FlatBus> cpu{bus, nmi_requested};
+        auto cpu_state = Debugger::GetCpuState(cpu);
 
         auto initial_state = test_case["initial"];
-        cpu.pc = initial_state["pc"];
-        cpu.s = initial_state["s"];
-        cpu.a = initial_state["a"];
-        cpu.x = initial_state["x"];
-        cpu.y = initial_state["y"];
-        cpu.p = initial_state["p"];
+        cpu_state.pc = initial_state["pc"];
+        cpu_state.s = initial_state["s"];
+        cpu_state.a = initial_state["a"];
+        cpu_state.x = initial_state["x"];
+        cpu_state.y = initial_state["y"];
+        cpu_state.p = initial_state["p"];
         for (auto ram_state : initial_state["ram"]) {
             bus->UntickedCpuWrite(static_cast<word>(ram_state[0]), static_cast<byte>(ram_state[1]));
         }
@@ -44,12 +46,12 @@ void TestOpcode(nlohmann::json tests_data) {
         cpu.Execute();
 
         auto final_state = test_case["final"];
-        REQUIRE(cpu.pc == final_state["pc"]);
-        REQUIRE(cpu.s == final_state["s"]);
-        REQUIRE(cpu.a == final_state["a"]);
-        REQUIRE(cpu.x == final_state["x"]);
-        REQUIRE(cpu.y == final_state["y"]);
-        REQUIRE(cpu.p == final_state["p"]);
+        REQUIRE(cpu_state.pc == final_state["pc"]);
+        REQUIRE(cpu_state.s == final_state["s"]);
+        REQUIRE(cpu_state.a == final_state["a"]);
+        REQUIRE(cpu_state.x == final_state["x"]);
+        REQUIRE(cpu_state.y == final_state["y"]);
+        REQUIRE(cpu_state.p == final_state["p"]);
         for (auto ram_state : final_state["ram"]) {
             REQUIRE(bus->UntickedCpuRead(static_cast<word>(ram_state[0])) ==
                     static_cast<byte>(ram_state[1]));

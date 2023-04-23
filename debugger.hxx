@@ -2,8 +2,10 @@
 
 #include <memory>
 
-#include "sen.hxx"
 #include "constants.hxx"
+#include "cpu.hxx"
+#include "sen.hxx"
+#include "util.hxx"
 
 struct CpuState {
     byte& a;
@@ -11,29 +13,36 @@ struct CpuState {
     byte& y;
     byte& s;
     word& pc;
-
     byte& p;
+    FixedSizeQueue<ExecutedOpcode> executed_opcodes;
 };
 
 class Debugger {
    private:
     std::shared_ptr<Sen> emulator_context{};
 
-    public:
+   public:
     Debugger() = default;
-     Debugger(std::shared_ptr<Sen> emulator_context)
-         : emulator_context{std::move(emulator_context)} {}
+    Debugger(std::shared_ptr<Sen> emulator_context)
+        : emulator_context{std::move(emulator_context)} {}
 
-    CpuState GetCpuState() {
-         return CpuState {
-             .a = emulator_context->cpu.a,
-             .x = emulator_context->cpu.x,
-             .y = emulator_context->cpu.y,
-             .s = emulator_context->cpu.s,
-             .pc = emulator_context->cpu.pc,
-             .p = emulator_context->cpu.p,
-         };
+    template <typename BusType>
+    static CpuState GetCpuState(Cpu<BusType>& cpu) {
+        return CpuState{
+            .a = cpu.a,
+            .x = cpu.x,
+            .y = cpu.y,
+            .s = cpu.s,
+            .pc = cpu.pc,
+            .p = cpu.p,
+            .executed_opcodes = cpu.executed_opcodes,
+        };
     }
+
+    CpuState GetCpuState() { return GetCpuState(this->emulator_context->cpu); }
+
+    CpuState GetCpuState() const { return GetCpuState(this->emulator_context->cpu); }
+
     void GetPpuState() const {}
     void GetCartridgeInfo() const {}
 };
