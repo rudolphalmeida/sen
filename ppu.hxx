@@ -1,9 +1,9 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <array>
 
 #include <spdlog/spdlog.h>
 
@@ -103,6 +103,8 @@ class Ppu {
 
     // TODO: Unstub me
     bool InVblank() const { return false; }
+
+    friend class Debugger;
 
    public:
     const unsigned int SCANLINES_PER_FRAME = 262;

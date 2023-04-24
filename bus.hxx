@@ -42,4 +42,6 @@ class Bus {
         ppu->Tick();
 #endif
     }
+
+    friend class Debugger;
 };

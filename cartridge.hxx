@@ -54,4 +54,6 @@ struct Cartridge {
 
     byte PpuRead(word addr) { return chr_rom[addr]; }
     void PpuWrite(word addr, byte data) {}
+
+    friend class Debugger;
 };

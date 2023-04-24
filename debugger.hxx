@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <memory>
+#include <span>
 
 #include "constants.hxx"
 #include "cpu.hxx"
@@ -15,6 +17,11 @@ struct CpuState {
     word& pc;
     byte& p;
     FixedSizeQueue<ExecutedOpcode> executed_opcodes;
+};
+
+struct PatternTablesState {
+    std::span<byte, 4096> left;
+    std::span<byte, 4096> right;
 };
 
 class Debugger {
@@ -38,10 +45,14 @@ class Debugger {
             .executed_opcodes = cpu.executed_opcodes,
         };
     }
-
     CpuState GetCpuState() { return GetCpuState(this->emulator_context->cpu); }
-
     CpuState GetCpuState() const { return GetCpuState(this->emulator_context->cpu); }
+
+    PatternTablesState GetPatternTableState() const {
+        auto chr_mem = emulator_context->bus->cartridge->chr_rom;
+        return {.left = std::span<byte, 4096>{&chr_mem[0x0000], 0x1000},
+                .right = std::span<byte, 4096>{&chr_mem[0x1000], 0x1000}};
+    }
 
     void GetPpuState() const {}
     void GetCartridgeInfo() const {}

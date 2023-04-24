@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <span>
+#include <vector>
 
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -15,6 +17,12 @@
 #include "debugger.hxx"
 #include "sen.hxx"
 #include "util.hxx"
+
+struct Pixel {
+    byte r{};
+    byte g{};
+    byte b{};
+};
 
 class Ui {
    private:
@@ -29,9 +37,13 @@ class Ui {
 
     bool show_cpu_registers{true};
     bool show_ppu_registers{false};
-    bool show_vram{false};
+    bool show_pattern_tables{false};
     bool show_memory{false};
     bool show_cart_info{false};
+
+    unsigned int pattern_table_left_texture{};
+    unsigned int pattern_table_right_texture{};
+    std::vector<Pixel> RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table) const;
 
     void ShowMenuBar();
 

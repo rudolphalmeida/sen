@@ -1,7 +1,9 @@
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 
+#include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
@@ -9,10 +11,10 @@
 #include <nfd.h>
 #include <spdlog/spdlog.h>
 
-#include "cpu.hxx"
 #include "imgui_memory_editor.h"
 
 #include "constants.hxx"
+#include "cpu.hxx"
 #include "sen.hxx"
 #include "ui.hxx"
 #include "util.hxx"
@@ -38,12 +40,11 @@ Ui::Ui() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
 #else
-    // GL 3.0 + GLSL 130
-    const char* glsl_version = "#version 130";
+    // GL 3.2 + GLSL 150
+    const char* glsl_version = "#version 150";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-    // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
 #endif
 
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
@@ -74,6 +75,21 @@ Ui::Ui() {
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
+
+    // Setup OpenGL textures for drawing
+    glGenTextures(1, &pattern_table_left_texture);
+    glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glGenTextures(1, &pattern_table_right_texture);
+    glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
 void Ui::Run() {
@@ -207,8 +223,24 @@ void Ui::Run() {
         }
 
         {
-            if (show_vram) {
-                if (ImGui::Begin("VRAM", &show_vram)) {
+            if (show_pattern_tables) {
+                if (ImGui::Begin("Pattern Tables", &show_pattern_tables)) {
+                    auto pattern_table_state = debugger.GetPatternTableState();
+                    auto left_pixels = RenderPixelsForPatternTable(pattern_table_state.left);
+                    glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                                 reinterpret_cast<unsigned char*>(left_pixels.data()));
+
+                    ImGui::Text("Pattern Table 0");
+                    ImGui::Image((void*)(intptr_t)pattern_table_left_texture, ImVec2(512, 512));
+
+                    auto right_pixels = RenderPixelsForPatternTable(pattern_table_state.right);
+                    glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                                 reinterpret_cast<unsigned char*>(right_pixels.data()));
+
+                    ImGui::Text("Pattern Table 1");
+                    ImGui::Image((void*)(intptr_t)pattern_table_right_texture, ImVec2(512, 512));
                 }
                 ImGui::End();
             }
@@ -313,8 +345,8 @@ void Ui::ShowMenuBar() {
             if (ImGui::MenuItem("PPU Registers", nullptr, show_ppu_registers)) {
                 show_ppu_registers = !show_ppu_registers;
             }
-            if (ImGui::MenuItem("VRAM Viewer", nullptr, show_vram)) {
-                show_vram = !show_vram;
+            if (ImGui::MenuItem("Pattern Tables", nullptr, show_pattern_tables)) {
+                show_pattern_tables = !show_pattern_tables;
             }
             if (ImGui::MenuItem("Memory Viewer", nullptr, show_memory)) {
                 show_memory = !show_memory;
@@ -332,6 +364,52 @@ void Ui::ShowMenuBar() {
         }
         ImGui::EndMenuBar();
     }
+}
+
+std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table) const {
+    std::vector<Pixel> pixels(128 * 128);
+
+    for (size_t column = 0; column < 128; column++) {
+        size_t tile_column = column / 8;
+        size_t pixel_column_in_tile = column % 8;
+
+        for (size_t row = 0; row < 128; row++) {
+            size_t tile_row = row / 8;
+            size_t pixel_row_in_tile = row % 8;
+
+            size_t tile_offset = tile_row + tile_column * 16;
+            size_t pixel_row_bitplane_0_index = tile_offset * 16 + pixel_row_in_tile;
+            size_t pixel_row_bitplane_1_index = pixel_row_bitplane_0_index + 8;
+
+            byte pixel_row_bitplane_0 = pattern_table[pixel_row_bitplane_0_index];
+            byte pixel_row_bitplane_1 = pattern_table[pixel_row_bitplane_1_index];
+
+            byte pixel_msb =
+                (pixel_row_bitplane_1 & (1 << pixel_column_in_tile)) != 0 ? 0b10 : 0b00;
+            byte pixel_lsb =
+                (pixel_row_bitplane_0 & (1 << pixel_column_in_tile)) != 0 ? 0b01 : 0b00;
+
+            byte palette_index = pixel_msb | pixel_lsb;
+            size_t pixel_index = row + column * 128;
+
+            switch (palette_index) {
+                case 0b00:
+                    pixels[pixel_index] = Pixel{0x00, 0x00, 0x00};
+                    break;
+                case 0b01:
+                    pixels[pixel_index] = Pixel{0x66, 0x66, 0x66};
+                    break;
+                case 0b10:
+                    pixels[pixel_index] = Pixel{0xBB, 0xBB, 0xBB};
+                    break;
+                case 0b11:
+                    pixels[pixel_index] = Pixel{0xFF, 0xFF, 0xFF};
+                    break;
+            }
+        }
+    }
+
+    return pixels;
 }
 
 void Ui::StartEmulation() {
