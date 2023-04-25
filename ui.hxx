@@ -35,10 +35,11 @@ class Ui {
 
     Debugger debugger{};
 
-    bool show_cpu_registers{true};
+    bool show_cpu_registers{false};
     bool show_ppu_registers{false};
     bool show_pattern_tables{false};
-    bool show_memory{false};
+    bool show_cpu_memory{false};
+    bool show_ppu_memory{false};
     bool show_cart_info{false};
 
     unsigned int pattern_table_left_texture{};

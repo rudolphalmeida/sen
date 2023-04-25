@@ -21,7 +21,7 @@ Sen::Sen(RomArgs rom_args) {
 void Sen::RunForOneFrame() {
     auto cpu_cycles = bus->cycles;
     auto target_cycles = cpu_cycles + CYCLES_PER_FRAME - carry_over_cycles;
-    
+
     while (bus->cycles < target_cycles) {
         cpu.Execute();
     }
@@ -86,11 +86,13 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     std::vector<byte> prg_rom;
     prg_rom.reserve(prg_rom_size);
     std::copy_n(rom_iter, prg_rom_size, std::back_inserter(prg_rom));
+    rom_iter += prg_rom_size;
 
     // Read CHR-ROM
     std::vector<byte> chr_rom;
     chr_rom.reserve(chr_rom_size);
     std::copy_n(rom_iter, chr_rom_size, std::back_inserter(chr_rom));
+    rom_iter += chr_rom_size;
 
     auto mapper = MapperFromInesNumber(mapper_number, prg_rom_banks, chr_rom_banks);
 

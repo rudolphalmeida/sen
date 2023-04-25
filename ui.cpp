@@ -225,19 +225,8 @@ void Ui::Run() {
         {
             if (show_pattern_tables) {
                 if (ImGui::Begin("Pattern Tables", &show_pattern_tables)) {
-                    auto pattern_table_state = debugger.GetPatternTableState();
-                    auto left_pixels = RenderPixelsForPatternTable(pattern_table_state.left);
-                    glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                                 reinterpret_cast<unsigned char*>(left_pixels.data()));
-
                     ImGui::Text("Pattern Table 0");
                     ImGui::Image((void*)(intptr_t)pattern_table_left_texture, ImVec2(512, 512));
-
-                    auto right_pixels = RenderPixelsForPatternTable(pattern_table_state.right);
-                    glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                                 reinterpret_cast<unsigned char*>(right_pixels.data()));
 
                     ImGui::Text("Pattern Table 1");
                     ImGui::Image((void*)(intptr_t)pattern_table_right_texture, ImVec2(512, 512));
@@ -247,8 +236,22 @@ void Ui::Run() {
         }
 
         {
-            if (show_memory) {
-                if (ImGui::Begin("Memory", &show_memory)) {
+            if (show_cpu_memory) {
+                if (ImGui::Begin("CPU Memory", &show_cpu_memory)) {
+                }
+                ImGui::End();
+            }
+        }
+
+        {
+            if (show_ppu_memory) {
+                if (ImGui::Begin("PPU Memory", &show_ppu_memory)) {
+                    static std::vector<byte> ppu_memory;
+                    ppu_memory.reserve(0x4000);
+                    debugger.LoadPpuMemory(ppu_memory);
+                    static MemoryEditor ppu_mem_edit;
+                    ppu_mem_edit.ReadOnly = true;
+                    ppu_mem_edit.DrawContents(ppu_memory.data(), 0x4000);
                 }
                 ImGui::End();
             }
@@ -292,6 +295,18 @@ void Ui::ShowMenuBar() {
                     auto rom_args = RomArgs{rom};
                     emulator_context = std::make_shared<Sen>(rom_args);
                     debugger = Debugger(emulator_context);
+
+                    // Load pattern tables only once for now
+                    auto pattern_table_state = debugger.GetPatternTableState();
+                    auto left_pixels = RenderPixelsForPatternTable(pattern_table_state.left);
+                    glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                                 reinterpret_cast<unsigned char*>(left_pixels.data()));
+
+                    auto right_pixels = RenderPixelsForPatternTable(pattern_table_state.right);
+                    glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                                 reinterpret_cast<unsigned char*>(right_pixels.data()));
 
                     auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
                     glfwSetWindowTitle(window, title.c_str());
@@ -348,8 +363,11 @@ void Ui::ShowMenuBar() {
             if (ImGui::MenuItem("Pattern Tables", nullptr, show_pattern_tables)) {
                 show_pattern_tables = !show_pattern_tables;
             }
-            if (ImGui::MenuItem("Memory Viewer", nullptr, show_memory)) {
-                show_memory = !show_memory;
+            if (ImGui::MenuItem("CPU Memory Viewer", nullptr, show_cpu_memory)) {
+                show_cpu_memory = !show_cpu_memory;
+            }
+            if (ImGui::MenuItem("PPU Memory Viewer", nullptr, show_ppu_memory)) {
+                show_ppu_memory = !show_ppu_memory;
             }
             if (ImGui::MenuItem("Cartridge Info", nullptr, show_cart_info)) {
                 show_cart_info = !show_cart_info;
@@ -377,8 +395,8 @@ std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern
             size_t tile_row = row / 8;
             size_t pixel_row_in_tile = row % 8;
 
-            size_t tile_offset = tile_row + tile_column * 16;
-            size_t pixel_row_bitplane_0_index = tile_offset * 16 + pixel_row_in_tile;
+            size_t tile_index = tile_row + tile_column * 16;
+            size_t pixel_row_bitplane_0_index = tile_index * 16 + pixel_row_in_tile;
             size_t pixel_row_bitplane_1_index = pixel_row_bitplane_0_index + 8;
 
             byte pixel_row_bitplane_0 = pattern_table[pixel_row_bitplane_0_index];
@@ -394,16 +412,16 @@ std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern
 
             switch (palette_index) {
                 case 0b00:
-                    pixels[pixel_index] = Pixel{0x00, 0x00, 0x00};
+                    pixels[pixel_index] = Pixel{92, 148, 252};
                     break;
                 case 0b01:
-                    pixels[pixel_index] = Pixel{0x66, 0x66, 0x66};
+                    pixels[pixel_index] = Pixel{128, 208, 16};
                     break;
                 case 0b10:
-                    pixels[pixel_index] = Pixel{0xBB, 0xBB, 0xBB};
+                    pixels[pixel_index] = Pixel{0, 168, 0};
                     break;
                 case 0b11:
-                    pixels[pixel_index] = Pixel{0xFF, 0xFF, 0xFF};
+                    pixels[pixel_index] = Pixel{0, 0, 0};
                     break;
             }
         }

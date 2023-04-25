@@ -127,7 +127,6 @@ void Ppu::PpuWrite(word address, byte data) {
     if (inRange<word>(0x0000, address, 0x1FFF)) {
         cartridge->PpuWrite(address, data);
     } else if (inRange<word>(0x2000, address, 0x2FFF)) {
-        spdlog::info("Write to VRAM: {:#06X} with {:#04X}", address, data);
         vram[address - 0x2000] = data;
     } else if (inRange<word>(0x3000, address, 0x3EFF)) {
         vram[address - 0x3000] = data;

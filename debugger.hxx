@@ -24,6 +24,10 @@ struct PatternTablesState {
     std::span<byte, 4096> right;
 };
 
+struct PpuMemory {
+    std::vector<byte> ppu_memory;
+};
+
 class Debugger {
    private:
     std::shared_ptr<Sen> emulator_context{};
@@ -52,6 +56,12 @@ class Debugger {
         auto chr_mem = emulator_context->bus->cartridge->chr_rom;
         return {.left = std::span<byte, 4096>{&chr_mem[0x0000], 0x1000},
                 .right = std::span<byte, 4096>{&chr_mem[0x1000], 0x1000}};
+    }
+
+    void LoadPpuMemory(std::vector<byte>& buffer) const {
+        for (word i = 0; i < 0x4000; i++) {
+            buffer[i] = emulator_context->ppu->PpuRead(i);
+        }
     }
 
     void GetPpuState() const {}
