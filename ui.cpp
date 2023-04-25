@@ -106,7 +106,7 @@ void Ui::Run() {
         ImGui::NewFrame();
 
         ShowMenuBar();
-        // ImGui::ShowDemoWindow();
+        ImGui::ShowDemoWindow();
 
         {
             if (show_cpu_registers && emulator_context != nullptr) {
@@ -206,8 +206,20 @@ void Ui::Run() {
 
                     for (auto& executed_opcode : cpu_state.executed_opcodes.values) {
                         Opcode opcode = OPCODES[executed_opcode.opcode];
-                        ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc, opcode.label,
-                                    executed_opcode.arg1, executed_opcode.arg2);
+                        switch (opcode.length) {
+                            case 1:
+                                ImGui::Text("0x%.4X: %s", executed_opcode.pc, opcode.label);
+                                break;
+                            case 2:
+                                ImGui::Text("0x%.4X: %s 0x%.2X", executed_opcode.pc, opcode.label,
+                                            executed_opcode.arg1);
+                                break;
+                            case 3:
+                                ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc,
+                                            opcode.label, executed_opcode.arg1,
+                                            executed_opcode.arg2);
+                                break;
+                        }
                     }
                 }
                 ImGui::End();
@@ -225,11 +237,35 @@ void Ui::Run() {
         {
             if (show_pattern_tables) {
                 if (ImGui::Begin("Pattern Tables", &show_pattern_tables)) {
-                    ImGui::Text("Pattern Table 0");
-                    ImGui::Image((void*)(intptr_t)pattern_table_left_texture, ImVec2(512, 512));
+                    if (ImGui::BeginTabBar("pattern_tables")) {
+                        auto pattern_table_state = debugger.GetPatternTableState();
+                        if (ImGui::BeginTabItem("Pattern Table 0")) {
+                            auto left_pixels =
+                                RenderPixelsForPatternTable(pattern_table_state.left);
+                            glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
+                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB,
+                                         GL_UNSIGNED_BYTE,
+                                         reinterpret_cast<unsigned char*>(left_pixels.data()));
 
-                    ImGui::Text("Pattern Table 1");
-                    ImGui::Image((void*)(intptr_t)pattern_table_right_texture, ImVec2(512, 512));
+                            ImGui::Image((void*)(intptr_t)pattern_table_left_texture,
+                                         ImVec2(512, 512));
+                            ImGui::EndTabItem();
+                        }
+
+                        if (ImGui::BeginTabItem("Pattern Table 1")) {
+                            auto right_pixels =
+                                RenderPixelsForPatternTable(pattern_table_state.right);
+                            glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
+                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB,
+                                         GL_UNSIGNED_BYTE,
+                                         reinterpret_cast<unsigned char*>(right_pixels.data()));
+                            ImGui::Image((void*)(intptr_t)pattern_table_right_texture,
+                                         ImVec2(512, 512));
+                            ImGui::EndTabItem();
+                        }
+
+                        ImGui::EndTabBar();
+                    }
                 }
                 ImGui::End();
             }
@@ -295,18 +331,6 @@ void Ui::ShowMenuBar() {
                     auto rom_args = RomArgs{rom};
                     emulator_context = std::make_shared<Sen>(rom_args);
                     debugger = Debugger(emulator_context);
-
-                    // Load pattern tables only once for now
-                    auto pattern_table_state = debugger.GetPatternTableState();
-                    auto left_pixels = RenderPixelsForPatternTable(pattern_table_state.left);
-                    glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                                 reinterpret_cast<unsigned char*>(left_pixels.data()));
-
-                    auto right_pixels = RenderPixelsForPatternTable(pattern_table_state.right);
-                    glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                                 reinterpret_cast<unsigned char*>(right_pixels.data()));
 
                     auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
                     glfwSetWindowTitle(window, title.c_str());
@@ -432,10 +456,11 @@ std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern
 
 void Ui::StartEmulation() {
     emulation_running = true;
-    emulator_context->Start();
 }
 
-void Ui::PauseEmulation() {}
+void Ui::PauseEmulation() {
+    emulation_running = false;
+}
 
 void Ui::ResetEmulation() {}
 

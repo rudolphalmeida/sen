@@ -1,6 +1,7 @@
 #pragma once
 
 #include <spdlog/spdlog.h>
+#include <cstdint>
 
 #include "cartridge.hxx"
 #include "constants.hxx"
@@ -13,7 +14,7 @@ class Bus {
     std::shared_ptr<Ppu> ppu;
 
    public:
-    unsigned int cycles{0};  // CPU cycles executed since startup
+    uint64_t cycles{0};  // CPU cycles executed since startup
 
     Bus(std::shared_ptr<Cartridge> cartridge, std::shared_ptr<Ppu> ppu)
         : cartridge{std::move(cartridge)}, internal_ram(0x800, 0xFF), ppu{std::move(ppu)} {

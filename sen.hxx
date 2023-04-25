@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -20,7 +21,8 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args);
 
 class Sen {
    private:
-    unsigned int carry_over_cycles{};
+    uint64_t carry_over_cycles{};
+    bool running{false};
 
     std::shared_ptr<Bus> bus;
     std::shared_ptr<Ppu> ppu;
@@ -28,12 +30,11 @@ class Sen {
 
     std::shared_ptr<bool> nmi_requested{};
 
-    static const unsigned int CYCLES_PER_FRAME{29780};
+    static const uint64_t CYCLES_PER_FRAME{29780};
 
    public:
     Sen(RomArgs rom_args);
 
-    void Start() { cpu.Start(); }
     void RunForOneFrame();
 
     friend class Debugger;

@@ -19,6 +19,11 @@ Sen::Sen(RomArgs rom_args) {
 }
 
 void Sen::RunForOneFrame() {
+    if (!running) {
+        running = true;
+        cpu.Start();
+    }
+
     auto cpu_cycles = bus->cycles;
     auto target_cycles = cpu_cycles + CYCLES_PER_FRAME - carry_over_cycles;
 
