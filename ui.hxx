@@ -47,6 +47,7 @@ class Ui {
     std::vector<Pixel> RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table) const;
 
     void ShowMenuBar();
+    bool show_imgui_demo{false};
 
     void StartEmulation();
     void PauseEmulation();

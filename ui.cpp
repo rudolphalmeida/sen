@@ -106,7 +106,10 @@ void Ui::Run() {
         ImGui::NewFrame();
 
         ShowMenuBar();
-        ImGui::ShowDemoWindow();
+
+        if (show_imgui_demo) {
+            ImGui::ShowDemoWindow(&show_imgui_demo);
+        }
 
         {
             if (show_cpu_registers && emulator_context != nullptr) {
@@ -400,6 +403,9 @@ void Ui::ShowMenuBar() {
         }
 
         if (ImGui::BeginMenu("Help")) {
+            if (ImGui::MenuItem("ImGui Demo", nullptr, show_imgui_demo)) {
+                show_imgui_demo = !show_imgui_demo;
+            }
             if (ImGui::MenuItem("About")) {
             }
             ImGui::EndMenu();
@@ -417,19 +423,18 @@ std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern
 
         for (size_t row = 0; row < 128; row++) {
             size_t tile_row = row / 8;
-            size_t pixel_row_in_tile = row % 8;
+            size_t pixel_row_in_tile = 7 - (row % 8);
 
+            // TODO: Find out why this works correctly with pixel_{column,row}_in_tile
             size_t tile_index = tile_row + tile_column * 16;
-            size_t pixel_row_bitplane_0_index = tile_index * 16 + pixel_row_in_tile;
+            size_t pixel_row_bitplane_0_index = tile_index * 16 + pixel_column_in_tile;
             size_t pixel_row_bitplane_1_index = pixel_row_bitplane_0_index + 8;
 
             byte pixel_row_bitplane_0 = pattern_table[pixel_row_bitplane_0_index];
             byte pixel_row_bitplane_1 = pattern_table[pixel_row_bitplane_1_index];
 
-            byte pixel_msb =
-                (pixel_row_bitplane_1 & (1 << pixel_column_in_tile)) != 0 ? 0b10 : 0b00;
-            byte pixel_lsb =
-                (pixel_row_bitplane_0 & (1 << pixel_column_in_tile)) != 0 ? 0b01 : 0b00;
+            byte pixel_msb = (pixel_row_bitplane_1 & (1 << pixel_row_in_tile)) != 0 ? 0b10 : 0b00;
+            byte pixel_lsb = (pixel_row_bitplane_0 & (1 << pixel_row_in_tile)) != 0 ? 0b01 : 0b00;
 
             byte palette_index = pixel_msb | pixel_lsb;
             size_t pixel_index = row + column * 128;
