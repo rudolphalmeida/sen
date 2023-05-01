@@ -22,6 +22,8 @@ struct CpuState {
 struct PatternTablesState {
     std::span<byte, 4096> left;
     std::span<byte, 4096> right;
+
+    std::span<byte, 0x20> palettes;
 };
 
 struct PpuMemory {
@@ -55,7 +57,8 @@ class Debugger {
     PatternTablesState GetPatternTableState() const {
         auto chr_mem = emulator_context->bus->cartridge->chr_rom;
         return {.left = std::span<byte, 4096>{&chr_mem[0x0000], 0x1000},
-                .right = std::span<byte, 4096>{&chr_mem[0x1000], 0x1000}};
+                .right = std::span<byte, 4096>{&chr_mem[0x1000], 0x1000},
+                .palettes = std::span<byte, 0x20>{&emulator_context->ppu->palette_table[0], 0x20}};
     }
 
     void LoadPpuMemory(std::vector<byte>& buffer) const {

@@ -240,8 +240,8 @@ void Ui::Run() {
         {
             if (show_pattern_tables) {
                 if (ImGui::Begin("Pattern Tables", &show_pattern_tables)) {
+                    auto pattern_table_state = debugger.GetPatternTableState();
                     if (ImGui::BeginTabBar("pattern_tables")) {
-                        auto pattern_table_state = debugger.GetPatternTableState();
                         if (ImGui::BeginTabItem("Pattern Table 0")) {
                             auto left_pixels =
                                 RenderPixelsForPatternTable(pattern_table_state.left);
@@ -268,6 +268,12 @@ void Ui::Run() {
                         }
 
                         ImGui::EndTabBar();
+                    }
+
+                    auto palettes = pattern_table_state.palettes;
+                    for (size_t pallette_number = 0; pallette_number < 8; pallette_number++) {
+                        // Skip the first byte for Universal background color
+                        auto palette_start = 1 + (pallette_number * 3);
                     }
                 }
                 ImGui::End();
