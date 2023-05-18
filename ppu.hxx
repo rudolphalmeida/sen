@@ -10,41 +10,6 @@
 #include "cartridge.hxx"
 #include "constants.hxx"
 
-struct PpuAddrLatch {
-    bool high_byte{true};
-    word addr{};
-
-    operator word() const { return addr; }
-    void ResetLatch() { high_byte = true; }
-
-    void WriteByte(byte value) {
-        if (high_byte) {
-            addr = (addr & 0x00FF) | (static_cast<word>(value) << 8);
-        } else {
-            addr = (addr & 0xFF00) | static_cast<word>(value);
-        }
-        high_byte = !high_byte;
-        addr &= 0x3FFF;  // Addresses are mirrored after 0x3FFF
-    }
-
-    void IncrementBy(word value) { addr = (addr + value) & 0x3FFF; }
-};
-
-struct PpuScrollLatch {
-    bool write_x{true};
-    byte x_scroll{}, y_scroll{};
-
-    void ResetLatch() { write_x = true; }
-    void WriteByte(byte value) {
-        if (write_x) {
-            x_scroll = value;
-        } else {
-            y_scroll = value;
-        }
-        write_x = !write_x;
-    }
-};
-
 class Ppu {
    private:
     std::array<byte, 32> palette_table{};
@@ -57,9 +22,28 @@ class Ppu {
     byte ppumask{};
     byte ppustatus{0x1F};
     byte oamaddr{};
-    PpuAddrLatch ppuaddr{};
     std::optional<byte> ppudata_buf = std::nullopt;  // PPUDATA read buffer
-    PpuScrollLatch ppuscroll{};
+
+    // Rendering registers
+    union {
+        word value;
+        struct {
+            byte low;
+            byte high;
+        } as_bytes;
+        struct {
+            byte coarse_x_scroll : 5;
+            byte coarse_y_scroll_low : 3;
+            byte coarse_y_scroll_high : 2;
+            byte nametable_select : 2;
+            byte fine_y_scroll : 3;
+            byte : 1;
+
+            byte coarse_y_scroll() const { return coarse_y_scroll_high << 3 | coarse_y_scroll_low; }
+        } as_scroll;
+    } v{.value = 0x0000}, t{.value = 0x0000};  // Current, Temporary VRAM address (15 bits)
+    byte fine_x{};                             // (x) Fine X (3 bits)
+    bool write_toggle{false};                  // (w) 1 bit
 
     uint64_t frame_count{};  // Alse used to determine if even or odd frame
 

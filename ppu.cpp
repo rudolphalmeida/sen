@@ -46,14 +46,13 @@ byte Ppu::CpuRead(word address) {
         case 0x2002:
             io_data_bus = (ppustatus & 0xE0) | (io_data_bus & 0x1F);
             ppustatus &= 0x7F;  // Reading this register clears bit 7
-            ppuaddr.ResetLatch();
-            ppuscroll.ResetLatch();
+            write_toggle = false;
             break;
         case 0x2004:
             io_data_bus = oam[oamaddr];
             break;
         case 0x2007:
-            auto ppu_address = static_cast<word>(ppuaddr);
+            auto ppu_address = v.value;
             if (ppu_address > 0x3EFF) {  // Reading palettes
                 io_data_bus = PpuRead(ppu_address);
             } else if (ppudata_buf) {
@@ -64,7 +63,7 @@ byte Ppu::CpuRead(word address) {
                 // Read value into PPUDATA read buffer
                 ppudata_buf.emplace(PpuRead(ppu_address));
             }
-            ppuaddr.IncrementBy(VramAddressIncrement());
+            v.value += VramAddressIncrement();
             break;
     }
 
@@ -83,6 +82,7 @@ void Ppu::CpuWrite(word address, byte data) {
                 *nmi_requested = true;  // will immediately generate an NMI
             }
             ppuctrl = data;
+            t.as_scroll.nametable_select = data & 0b11;
             break;
         case 0x2001:
             ppumask = data;
@@ -95,14 +95,28 @@ void Ppu::CpuWrite(word address, byte data) {
             oam[oamaddr++] = data;
             break;
         case 0x2005:
-            ppuscroll.WriteByte(data);
+            if (write_toggle) {  // Second Write
+                t.as_scroll.fine_y_scroll = data & 0b111;
+                t.as_scroll.coarse_y_scroll_low = (data & 0x38) >> 3;
+                t.as_scroll.coarse_y_scroll_high = (data & 0xC0) >> 6;
+            } else {  // First Write
+                fine_x = data & 0b111;
+                t.as_scroll.coarse_x_scroll = (data & 0xF8) >> 3;
+            }
+            write_toggle = !write_toggle;
             break;
         case 0x2006:
-            ppuaddr.WriteByte(data);
+            if (write_toggle) {  // Second Write
+                t.as_bytes.low = data;
+                v.value = t.value;
+            } else {  // First Write
+                t.as_bytes.high = data & 0x3F;
+            }
+            write_toggle = !write_toggle;
             break;
         case 0x2007:
-            PpuWrite(static_cast<word>(ppuaddr), data);
-            ppuaddr.IncrementBy(VramAddressIncrement());
+            PpuWrite(v.value, data);
+            v.value += VramAddressIncrement();
             break;
         default:
             spdlog::debug("Write to not implented PPU address {:#06X} with {:#04X}", address, data);
