@@ -24,7 +24,7 @@ struct Pixel {
     byte b{};
 };
 
-static const Pixel palette_colors[0x40] = {
+static const Pixel PALETTE_COLORS[0x40] = {
     Pixel{84, 84, 84},    Pixel{0, 30, 116},    Pixel{8, 16, 144},    Pixel{48, 0, 136},
     Pixel{68, 0, 100},    Pixel{92, 0, 48},     Pixel{84, 4, 0},      Pixel{60, 24, 0},
     Pixel{32, 42, 0},     Pixel{8, 58, 0},      Pixel{0, 64, 0},      Pixel{0, 60, 0},
@@ -60,7 +60,10 @@ class Ui {
 
     unsigned int pattern_table_left_texture{};
     unsigned int pattern_table_right_texture{};
-    std::vector<Pixel> RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table) const;
+
+    std::vector<Pixel> RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table,
+                                                   std::span<byte, 32> nes_palette,
+                                                   int palette_id) const;
 
     void ShowMenuBar();
     bool show_imgui_demo{false};

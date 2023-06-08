@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <span>
 
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
@@ -235,10 +236,22 @@ void Ui::Run() {
             if (show_pattern_tables) {
                 if (ImGui::Begin("Pattern Tables", &show_pattern_tables)) {
                     auto pattern_table_state = debugger.GetPatternTableState();
+                    static int pallette_id = 0;
+                    if (ImGui::InputInt("Palette ID", &pallette_id)) {
+                        if (pallette_id < 0) {
+                            pallette_id = 0;
+                        }
+
+                        if (pallette_id > 7) {
+                            pallette_id = 7;
+                        }
+                    }
+
                     if (ImGui::BeginTabBar("pattern_tables")) {
                         if (ImGui::BeginTabItem("Pattern Table 0")) {
-                            auto left_pixels =
-                                RenderPixelsForPatternTable(pattern_table_state.left);
+                            auto left_pixels = RenderPixelsForPatternTable(
+                                pattern_table_state.left, pattern_table_state.palettes,
+                                pallette_id);
                             glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
                             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB,
                                          GL_UNSIGNED_BYTE,
@@ -250,8 +263,9 @@ void Ui::Run() {
                         }
 
                         if (ImGui::BeginTabItem("Pattern Table 1")) {
-                            auto right_pixels =
-                                RenderPixelsForPatternTable(pattern_table_state.right);
+                            auto right_pixels = RenderPixelsForPatternTable(
+                                pattern_table_state.right, pattern_table_state.palettes,
+                                pallette_id);
                             glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
                             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB,
                                          GL_UNSIGNED_BYTE,
@@ -262,12 +276,6 @@ void Ui::Run() {
                         }
 
                         ImGui::EndTabBar();
-                    }
-
-                    auto palettes = pattern_table_state.palettes;
-                    for (size_t pallette_number = 0; pallette_number < 8; pallette_number++) {
-                        // Skip the first byte for Universal background color
-                        auto palette_start = 1 + (pallette_number * 3);
                     }
                 }
                 ImGui::End();
@@ -414,7 +422,9 @@ void Ui::ShowMenuBar() {
     }
 }
 
-std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table) const {
+std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table,
+                                                   std::span<byte, 32> nes_palette,
+                                                   int palette_id) const {
     std::vector<Pixel> pixels(128 * 128);
 
     for (size_t column = 0; column < 128; column++) {
@@ -436,23 +446,13 @@ std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern
             byte pixel_msb = (pixel_row_bitplane_1 & (1 << pixel_row_in_tile)) != 0 ? 0b10 : 0b00;
             byte pixel_lsb = (pixel_row_bitplane_0 & (1 << pixel_row_in_tile)) != 0 ? 0b01 : 0b00;
 
-            byte palette_index = pixel_msb | pixel_lsb;
+            byte color_index = pixel_msb | pixel_lsb;
             size_t pixel_index = row + column * 128;
 
-            switch (palette_index) {
-                case 0b00:
-                    pixels[pixel_index] = Pixel{92, 148, 252};
-                    break;
-                case 0b01:
-                    pixels[pixel_index] = Pixel{128, 208, 16};
-                    break;
-                case 0b10:
-                    pixels[pixel_index] = Pixel{0, 168, 0};
-                    break;
-                case 0b11:
-                    pixels[pixel_index] = Pixel{0, 0, 0};
-                    break;
-            }
+            // Skip the first byte for Universal background color
+            auto nes_palette_color_index = 1 + (palette_id * 3) + color_index;
+
+            pixels[pixel_index] = PALETTE_COLORS[nes_palette[nes_palette_color_index]];
         }
     }
 
