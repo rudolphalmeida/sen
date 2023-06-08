@@ -4,6 +4,34 @@
 #include "util.hxx"
 
 void Ppu::Tick() {
+    TickCounters();
+
+    if (ShowBackground() || ShowSprites()) {
+        if (inRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE - 1) ||
+            scanline == PRE_RENDER_SCANLINE) {
+            // PPU is accessing memory
+
+            if (inRange<unsigned int>(1, cycles_into_scanline, 256)) {
+                // PPU is outputting pixels
+            }
+
+            if (inRange<unsigned int>(321, cycles_into_scanline, 336)) {
+                // Fetch first two tiles on next scanline
+            }
+
+            if (inRange<unsigned int>(337, cycles_into_scanline, 340)) {
+                // Unused nametable fetches
+            }
+
+            if (scanline == PRE_RENDER_SCANLINE &&
+                inRange<unsigned int>(280, cycles_into_scanline, 304)) {
+                // vert(v) == vert(t) each tick
+            }
+        }
+    }
+}
+
+void Ppu::TickCounters() {
     cycles_into_scanline++;
 
     if (scanline == PRE_RENDER_SCANLINE                                 // The pre-render scanlines

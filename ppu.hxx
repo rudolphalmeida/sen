@@ -85,8 +85,12 @@ class Ppu {
     bool EmphasizeGreen() const { return (ppumask & 0x40) != 0x00; }
     bool EmphasizeBlue() const { return (ppumask & 0x80) != 0x00; }
 
-    // TODO: Unstub me
-    bool InVblank() const { return false; }
+    bool InVblank() const {
+        // Bit 7 is set during VBlank
+        return (ppustatus & 0x80) != 0x00;
+    }
+
+    void TickCounters();
 
     friend class Debugger;
 
