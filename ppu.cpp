@@ -13,6 +13,20 @@ void Ppu::Tick() {
 
             if (inRange<unsigned int>(1, cycles_into_scanline, 256)) {
                 // PPU is outputting pixels
+                switch ((cycles_into_scanline - 1) % 8) {  // 0, 1, ..., 7
+                    case 1:
+                        // Fetch NT byte
+                        break;
+                    case 3:
+                        // Fetch AT byte
+                        break;
+                    case 5:
+                        // Fetch BG lsbits
+                        break;
+                    case 7:
+                        // Fetch BG msbits & Increment coarse X
+                        break;
+                }
             }
 
             if (inRange<unsigned int>(321, cycles_into_scanline, 336)) {

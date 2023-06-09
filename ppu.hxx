@@ -40,6 +40,10 @@ class Ppu {
             byte : 1;
 
             byte coarse_y_scroll() const { return coarse_y_scroll_high << 3 | coarse_y_scroll_low; }
+            void coarse_y_scroll(byte value) {
+                coarse_y_scroll_low = value;
+                coarse_y_scroll_high = (value >> 3);
+            }
         } as_scroll;
     } v{.value = 0x0000}, t{.value = 0x0000};  // Current, Temporary VRAM address (15 bits)
     byte fine_x{};                             // (x) Fine X (3 bits)

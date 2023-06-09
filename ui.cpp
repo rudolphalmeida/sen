@@ -450,7 +450,7 @@ std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern
             size_t pixel_index = row + column * 128;
 
             // Skip the first byte for Universal background color
-            auto nes_palette_color_index = 1 + (palette_id * 3) + color_index;
+            auto nes_palette_color_index = (palette_id * 4) + color_index;
 
             pixels[pixel_index] = PALETTE_COLORS[nes_palette[nes_palette_color_index]];
         }
