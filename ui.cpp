@@ -100,13 +100,21 @@ void Ui::Run() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        auto& io = ImGui::GetIO();
-        ImGui::SetNextWindowSize(io.DisplaySize, ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowPos(ImVec2(0, 0));
+#ifdef IMGUI_HAS_VIEWPORT
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->GetWorkPos());
+        ImGui::SetNextWindowSize(viewport->GetWorkSize());
+        ImGui::SetNextWindowViewport(viewport->ID);
+#else
+        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+#endif
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+
         if (ImGui::Begin("sen", nullptr,
                          ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |
                              ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove |
-                             ImGuiWindowFlags_NoTitleBar)) {
+                             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
             ShowMenuBar();
 
             {
@@ -162,6 +170,7 @@ void Ui::Run() {
             }
         }
         ImGui::End();
+        ImGui::PopStyleVar(2);
 
         ImGui::EndFrame();
 
