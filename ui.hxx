@@ -43,7 +43,7 @@ static const Pixel PALETTE_COLORS[0x40] = {
 class Ui {
    private:
     GLFWwindow* window{};
-    unsigned int scale_factor{3};
+    unsigned int scale_factor{4};
 
     std::optional<std::filesystem::path> loaded_rom_file_path = std::nullopt;
     std::shared_ptr<Sen> emulator_context{};
@@ -66,6 +66,12 @@ class Ui {
                                                    int palette_id) const;
 
     void ShowMenuBar();
+    void ShowCpuState();
+    void ShowPpuState();
+    void ShowPatternTables();
+    void ShowCpuMemory() {}
+    void ShowPpuMemory();
+    void ShowCartInfo() {}
     bool show_imgui_demo{false};
 
     void StartEmulation();

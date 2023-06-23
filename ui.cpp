@@ -44,7 +44,7 @@ Ui::Ui() {
 
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    window = glfwCreateWindow(NES_WIDTH * scale_factor, NES_HEIGHT * scale_factor,
+    window = glfwCreateWindow(NES_WIDTH * scale_factor + 405, NES_HEIGHT * scale_factor,
                               "sen - NES Emulator", nullptr, nullptr);
     if (window == nullptr) {
         spdlog::error("Failed to create GLFW3 window");
@@ -100,217 +100,68 @@ void Ui::Run() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ShowMenuBar();
+        auto& io = ImGui::GetIO();
+        ImGui::SetNextWindowSize(io.DisplaySize, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        if (ImGui::Begin("sen", nullptr,
+                         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |
+                             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove |
+                             ImGuiWindowFlags_NoTitleBar)) {
+            ShowMenuBar();
 
-        if (show_imgui_demo) {
-            ImGui::ShowDemoWindow(&show_imgui_demo);
-        }
+            {
+                ImGui::BeginChild("left-debug-pane", ImVec2(400, 0), true);
 
-        {
-            if (show_cpu_registers && emulator_context != nullptr) {
-                if (ImGui::Begin("CPU Registers", &show_cpu_registers)) {
-                    auto cpu_state = debugger.GetCpuState();
-
-                    if (ImGui::BeginTable("cpu_registers", 2,
-                                          ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-                        ImGui::TableSetupColumn("Register");
-                        ImGui::TableSetupColumn("Value");
-                        ImGui::TableHeadersRow();
-
-                        ImGui::TableNextColumn();
-                        ImGui::Text("A");
-                        ImGui::TableNextColumn();
-                        ImGui::Text("0x%.2X", cpu_state.a);
-
-                        ImGui::TableNextRow();
-
-                        ImGui::TableNextColumn();
-                        ImGui::Text("X");
-                        ImGui::TableNextColumn();
-                        ImGui::Text("0x%.2X", cpu_state.x);
-
-                        ImGui::TableNextRow();
-
-                        ImGui::TableNextColumn();
-                        ImGui::Text("Y");
-                        ImGui::TableNextColumn();
-                        ImGui::Text("0x%.2X", cpu_state.y);
-
-                        ImGui::TableNextRow();
-
-                        ImGui::TableNextColumn();
-                        ImGui::Text("S");
-                        ImGui::TableNextColumn();
-                        ImGui::Text("0x%.2X", cpu_state.s);
-
-                        ImGui::TableNextRow();
-
-                        ImGui::TableNextColumn();
-                        ImGui::Text("PC");
-                        ImGui::TableNextColumn();
-                        ImGui::Text("0x%.4X", cpu_state.pc);
-
-                        ImGui::TableNextRow();
-
-                        ImGui::TableNextColumn();
-                        ImGui::Text("P");
-                        ImGui::TableNextColumn();
-
-                        ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
-
-                        if ((cpu_state.p & static_cast<byte>(StatusFlag::Carry)) != 0) {
-                            ImGui::Text("C");
-                        } else {
-                            ImGui::TextColored(gray, "C");
-                        }
-                        ImGui::SameLine();
-
-                        if ((cpu_state.p & static_cast<byte>(StatusFlag::Zero)) != 0) {
-                            ImGui::Text("Z");
-                        } else {
-                            ImGui::TextColored(gray, "Z");
-                        }
-                        ImGui::SameLine();
-
-                        if ((cpu_state.p & static_cast<byte>(StatusFlag::InterruptDisable)) != 0) {
-                            ImGui::Text("I");
-                        } else {
-                            ImGui::TextColored(gray, "I");
-                        }
-                        ImGui::SameLine();
-
-                        if ((cpu_state.p & static_cast<byte>(StatusFlag::Decimal)) != 0) {
-                            ImGui::Text("D");
-                        } else {
-                            ImGui::TextColored(gray, "D");
-                        }
-                        ImGui::SameLine();
-
-                        if ((cpu_state.p & static_cast<byte>(StatusFlag::Overflow)) != 0) {
-                            ImGui::Text("V");
-                        } else {
-                            ImGui::TextColored(gray, "V");
-                        }
-                        ImGui::SameLine();
-
-                        if ((cpu_state.p & static_cast<byte>(StatusFlag::Negative)) != 0) {
-                            ImGui::Text("N");
-                        } else {
-                            ImGui::TextColored(gray, "N");
-                        }
-
-                        ImGui::EndTable();
+                if (ImGui::BeginTabBar("debug_tabs", ImGuiTabBarFlags_None)) {
+                    if (ImGui::BeginTabItem("CPU")) {
+                        ShowCpuState();
+                        ImGui::EndTabItem();
                     }
 
-                    for (auto& executed_opcode : cpu_state.executed_opcodes.values) {
-                        Opcode opcode = OPCODES[executed_opcode.opcode];
-                        switch (opcode.length) {
-                            case 1:
-                                ImGui::Text("0x%.4X: %s", executed_opcode.pc, opcode.label);
-                                break;
-                            case 2:
-                                ImGui::Text("0x%.4X: %s 0x%.2X", executed_opcode.pc, opcode.label,
-                                            executed_opcode.arg1);
-                                break;
-                            case 3:
-                                ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc,
-                                            opcode.label, executed_opcode.arg1,
-                                            executed_opcode.arg2);
-                                break;
-                        }
-                    }
-                }
-                ImGui::End();
-            }
-        }
-
-        {
-            if (show_ppu_registers) {
-                if (ImGui::Begin("PPU Registers", &show_ppu_registers)) {
-                }
-                ImGui::End();
-            }
-        }
-
-        {
-            if (show_pattern_tables) {
-                if (ImGui::Begin("Pattern Tables", &show_pattern_tables)) {
-                    auto pattern_table_state = debugger.GetPatternTableState();
-                    static int pallette_id = 0;
-                    if (ImGui::InputInt("Palette ID", &pallette_id)) {
-                        if (pallette_id < 0) {
-                            pallette_id = 0;
-                        }
-
-                        if (pallette_id > 7) {
-                            pallette_id = 7;
-                        }
+                    if (ImGui::BeginTabItem("PPU")) {
+                        ShowPpuState();
+                        ImGui::EndTabItem();
                     }
 
-                    if (ImGui::BeginTabBar("pattern_tables")) {
-                        if (ImGui::BeginTabItem("Pattern Table 0")) {
-                            auto left_pixels = RenderPixelsForPatternTable(
-                                pattern_table_state.left, pattern_table_state.palettes,
-                                pallette_id);
-                            glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
-                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB,
-                                         GL_UNSIGNED_BYTE,
-                                         reinterpret_cast<unsigned char*>(left_pixels.data()));
-
-                            ImGui::Image((void*)(intptr_t)pattern_table_left_texture,
-                                         ImVec2(512, 512));
-                            ImGui::EndTabItem();
-                        }
-
-                        if (ImGui::BeginTabItem("Pattern Table 1")) {
-                            auto right_pixels = RenderPixelsForPatternTable(
-                                pattern_table_state.right, pattern_table_state.palettes,
-                                pallette_id);
-                            glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
-                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB,
-                                         GL_UNSIGNED_BYTE,
-                                         reinterpret_cast<unsigned char*>(right_pixels.data()));
-                            ImGui::Image((void*)(intptr_t)pattern_table_right_texture,
-                                         ImVec2(512, 512));
-                            ImGui::EndTabItem();
-                        }
-
-                        ImGui::EndTabBar();
+                    if (ImGui::BeginTabItem("Pattern Tables")) {
+                        ShowPatternTables();
+                        ImGui::EndTabItem();
                     }
-                }
-                ImGui::End();
-            }
-        }
 
-        {
-            if (show_cpu_memory) {
-                if (ImGui::Begin("CPU Memory", &show_cpu_memory)) {
-                }
-                ImGui::End();
-            }
-        }
+                    if (ImGui::BeginTabItem("CPU Memory")) {
+                        ShowCpuMemory();
+                        ImGui::EndTabItem();
+                    }
 
-        {
-            if (show_ppu_memory) {
-                if (ImGui::Begin("PPU Memory", &show_ppu_memory)) {
-                    static std::vector<byte> ppu_memory;
-                    ppu_memory.reserve(0x4000);
-                    debugger.LoadPpuMemory(ppu_memory);
-                    static MemoryEditor ppu_mem_edit;
-                    ppu_mem_edit.ReadOnly = true;
-                    ppu_mem_edit.DrawContents(ppu_memory.data(), 0x4000);
-                }
-                ImGui::End();
-            }
-        }
+                    if (ImGui::BeginTabItem("PPU Memory")) {
+                        ShowPpuMemory();
+                        ImGui::EndTabItem();
+                    }
 
-        {
-            if (show_cart_info) {
-                if (ImGui::Begin("Cartridge Info", &show_cart_info)) {
+                    if (ImGui::BeginTabItem("Cartridge Info")) {
+                        ShowCartInfo();
+                        ImGui::EndTabItem();
+                    }
+
+                    ImGui::EndTabBar();
                 }
-                ImGui::End();
+
+                ImGui::EndChild();
+            }
+            ImGui::SameLine();
+
+            {
+                ImGui::BeginChild("right-game-pane", ImVec2(NES_WIDTH * 4, 0), true);
+
+                if (emulator_context != nullptr) {
+                } else {
+                    ImGui::Text("Load a NES ROM and click on Start to run the program");
+                }
+
+                ImGui::EndChild();
             }
         }
+        ImGui::End();
 
         ImGui::EndFrame();
 
@@ -326,8 +177,9 @@ void Ui::Run() {
         glfwSwapBuffers(window);
     }
 }
+
 void Ui::ShowMenuBar() {
-    if (ImGui::BeginMainMenuBar()) {
+    if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open", "Ctrl+O")) {
                 nfdchar_t* selected_path = NULL;
@@ -420,6 +272,172 @@ void Ui::ShowMenuBar() {
         }
         ImGui::EndMenuBar();
     }
+}
+
+void Ui::ShowCpuState() {
+    if (emulator_context != nullptr) {
+        auto cpu_state = debugger.GetCpuState();
+        if (ImGui::BeginTable("cpu_registers", 2,
+                              ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+            ImGui::TableSetupColumn("Register");
+            ImGui::TableSetupColumn("Value");
+            ImGui::TableHeadersRow();
+
+            ImGui::TableNextColumn();
+            ImGui::Text("A");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.2X", cpu_state.a);
+
+            ImGui::TableNextRow();
+
+            ImGui::TableNextColumn();
+            ImGui::Text("X");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.2X", cpu_state.x);
+
+            ImGui::TableNextRow();
+
+            ImGui::TableNextColumn();
+            ImGui::Text("Y");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.2X", cpu_state.y);
+
+            ImGui::TableNextRow();
+
+            ImGui::TableNextColumn();
+            ImGui::Text("S");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.2X", cpu_state.s);
+
+            ImGui::TableNextRow();
+
+            ImGui::TableNextColumn();
+            ImGui::Text("PC");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.4X", cpu_state.pc);
+
+            ImGui::TableNextRow();
+
+            ImGui::TableNextColumn();
+            ImGui::Text("P");
+            ImGui::TableNextColumn();
+
+            ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
+
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::Carry)) != 0) {
+                ImGui::Text("C");
+            } else {
+                ImGui::TextColored(gray, "C");
+            }
+            ImGui::SameLine();
+
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::Zero)) != 0) {
+                ImGui::Text("Z");
+            } else {
+                ImGui::TextColored(gray, "Z");
+            }
+            ImGui::SameLine();
+
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::InterruptDisable)) != 0) {
+                ImGui::Text("I");
+            } else {
+                ImGui::TextColored(gray, "I");
+            }
+            ImGui::SameLine();
+
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::Decimal)) != 0) {
+                ImGui::Text("D");
+            } else {
+                ImGui::TextColored(gray, "D");
+            }
+            ImGui::SameLine();
+
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::Overflow)) != 0) {
+                ImGui::Text("V");
+            } else {
+                ImGui::TextColored(gray, "V");
+            }
+            ImGui::SameLine();
+
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::Negative)) != 0) {
+                ImGui::Text("N");
+            } else {
+                ImGui::TextColored(gray, "N");
+            }
+
+            ImGui::EndTable();
+        }
+
+        for (auto& executed_opcode : cpu_state.executed_opcodes.values) {
+            Opcode opcode = OPCODES[executed_opcode.opcode];
+            switch (opcode.length) {
+                case 1:
+                    ImGui::Text("0x%.4X: %s", executed_opcode.pc, opcode.label);
+                    break;
+                case 2:
+                    ImGui::Text("0x%.4X: %s 0x%.2X", executed_opcode.pc, opcode.label,
+                                executed_opcode.arg1);
+                    break;
+                case 3:
+                    ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc, opcode.label,
+                                executed_opcode.arg1, executed_opcode.arg2);
+                    break;
+            }
+        }
+    } else {
+        ImGui::Text("Load a ROM to view NES CPU state");
+    }
+}
+
+void Ui::ShowPpuState() {}
+
+void Ui::ShowPpuMemory() {
+    if (emulator_context == nullptr) {
+        ImGui::Text("Load a ROM to view its memory");
+        return;
+    }
+
+    static std::vector<byte> ppu_memory;
+    ppu_memory.reserve(0x4000);
+    debugger.LoadPpuMemory(ppu_memory);
+    static MemoryEditor ppu_mem_edit;
+    ppu_mem_edit.ReadOnly = true;
+    ppu_mem_edit.DrawContents(ppu_memory.data(), 0x4000);
+}
+
+void Ui::ShowPatternTables() {
+    if (emulator_context == nullptr) {
+        ImGui::Text("Load a ROM to view its pattern tables");
+        return;
+    }
+    auto pattern_table_state = debugger.GetPatternTableState();
+    static int pallette_id = 0;
+    if (ImGui::InputInt("Palette ID", &pallette_id)) {
+        if (pallette_id < 0) {
+            pallette_id = 0;
+        }
+
+        if (pallette_id > 7) {
+            pallette_id = 7;
+        }
+    }
+
+    auto left_pixels = RenderPixelsForPatternTable(pattern_table_state.left,
+                                                   pattern_table_state.palettes, pallette_id);
+    glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                 reinterpret_cast<unsigned char*>(left_pixels.data()));
+
+    ImGui::Image((void*)(intptr_t)pattern_table_left_texture, ImVec2(385, 385));
+
+    ImGui::Separator();
+
+    auto right_pixels = RenderPixelsForPatternTable(pattern_table_state.right,
+                                                    pattern_table_state.palettes, pallette_id);
+    glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                 reinterpret_cast<unsigned char*>(right_pixels.data()));
+    ImGui::Image((void*)(intptr_t)pattern_table_right_texture, ImVec2(385, 385));
 }
 
 std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table,
