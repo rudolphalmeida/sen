@@ -227,49 +227,6 @@ void Ui::ShowMenuBar() {
             }
             ImGui::EndMenu();
         }
-
-        if (ImGui::BeginMenu("View")) {
-            if (ImGui::BeginMenu("Scale")) {
-                for (size_t i = 0; i < 5; i++) {
-                    if (ImGui::MenuItem(SCALING_FACTORS[i], nullptr, scale_factor == i + 1)) {
-                        scale_factor = static_cast<unsigned int>(i + 1);
-                        spdlog::info("Changing window scale to {}", scale_factor);
-                        glfwSetWindowSize(window, NES_WIDTH * scale_factor,
-                                          NES_HEIGHT * scale_factor);
-                    }
-                }
-
-                ImGui::EndMenu();
-            }
-            if (ImGui::MenuItem("CPU Registers", nullptr, show_cpu_registers)) {
-                show_cpu_registers = !show_cpu_registers;
-            }
-            if (ImGui::MenuItem("PPU Registers", nullptr, show_ppu_registers)) {
-                show_ppu_registers = !show_ppu_registers;
-            }
-            if (ImGui::MenuItem("Pattern Tables", nullptr, show_pattern_tables)) {
-                show_pattern_tables = !show_pattern_tables;
-            }
-            if (ImGui::MenuItem("CPU Memory Viewer", nullptr, show_cpu_memory)) {
-                show_cpu_memory = !show_cpu_memory;
-            }
-            if (ImGui::MenuItem("PPU Memory Viewer", nullptr, show_ppu_memory)) {
-                show_ppu_memory = !show_ppu_memory;
-            }
-            if (ImGui::MenuItem("Cartridge Info", nullptr, show_cart_info)) {
-                show_cart_info = !show_cart_info;
-            }
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Help")) {
-            if (ImGui::MenuItem("ImGui Demo", nullptr, show_imgui_demo)) {
-                show_imgui_demo = !show_imgui_demo;
-            }
-            if (ImGui::MenuItem("About")) {
-            }
-            ImGui::EndMenu();
-        }
         ImGui::EndMenuBar();
     }
 }
