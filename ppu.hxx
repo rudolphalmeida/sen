@@ -12,9 +12,9 @@
 
 class Ppu {
    private:
-    std::array<byte, 32> palette_table{};
     std::array<byte, 2048> vram{};
     std::array<byte, 256> oam{};
+    std::array<byte, 32> palette_table{};
 
     byte io_data_bus{};
 
@@ -48,6 +48,21 @@ class Ppu {
     } v{.value = 0x0000}, t{.value = 0x0000};  // Current, Temporary VRAM address (15 bits)
     byte fine_x{};                             // (x) Fine X (3 bits)
     bool write_toggle{false};                  // (w) 1 bit
+
+    /* These contain the pattern table data for two tiles
+     * Every 8 cycles, the data for the next tile will be loaded into the upper 8 bits of these
+     *  The pixel to render will be fetched from the lower 8 bits
+     */
+    uint16_t bg_pattern_msb_shift_reg{}, bg_pattern_lsb_shift_reg{};
+
+    // Latch for palette attribute for next tile. Updated every 8-cycles.
+    // Only 2 bits
+    uint8_t bg_attrib_latch{};
+
+    /* These contain the palette attributes for the lower 8 pixels of the 16-bit shift registers.
+     * These are fed from the latch which contains the palette attribute for the next tile
+     */
+    uint8_t bg_attrib_msb_shift_reg{}, bg_attrib_lsb_shift_reg{};
 
     uint64_t frame_count{};  // Alse used to determine if even or odd frame
 
