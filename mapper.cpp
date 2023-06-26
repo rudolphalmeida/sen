@@ -18,7 +18,7 @@ std::unique_ptr<Mapper> MapperFromInesNumber(byte mapper_number,
 }
 
 unsigned int Nrom::MapCpuAddr(word addr) {
-    if (inRange<word>(0x8000, addr, 0xFFFF)) {
+    if (InRange<word>(0x8000, addr, 0xFFFF)) {
         return addr % (16384 * prg_rom_banks);
     } else {
         spdlog::error("Unknown CPU address {:#06X} to NROM", addr);

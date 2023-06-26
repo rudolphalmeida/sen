@@ -199,7 +199,7 @@ void Ui::ShowMenuBar() {
                     free(selected_path);
                     spdlog::info("Loading file {}", loaded_rom_file_path->string());
 
-                    auto rom = read_binary_file(loaded_rom_file_path.value());
+                    auto rom = ReadBinaryFile(loaded_rom_file_path.value());
                     auto rom_args = RomArgs{rom};
                     emulator_context = std::make_shared<Sen>(rom_args);
                     debugger = Debugger(emulator_context);

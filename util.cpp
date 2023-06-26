@@ -10,7 +10,7 @@
 
 #include "util.hxx"
 
-std::vector<byte> read_binary_file(const std::filesystem::path& path) {
+std::vector<byte> ReadBinaryFile(const std::filesystem::path& path) {
     if (!std::filesystem::exists(path)) {
         spdlog::error("File with path {} does not exist", path.string());
         std::exit(-1);

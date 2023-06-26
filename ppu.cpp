@@ -7,11 +7,11 @@ void Ppu::Tick() {
     TickCounters();
 
     if (ShowBackground() || ShowSprites()) {
-        if (inRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE - 1) ||
+        if (InRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE - 1) ||
             scanline == PRE_RENDER_SCANLINE) {
             // PPU is accessing memory
 
-            if (inRange<unsigned int>(1, cycles_into_scanline, 256)) {
+            if (InRange<unsigned int>(1, cycles_into_scanline, 256)) {
                 // PPU is outputting pixels
                 switch ((cycles_into_scanline - 1) % 8) {  // 0, 1, ..., 7
                     case 1:
@@ -29,16 +29,16 @@ void Ppu::Tick() {
                 }
             }
 
-            if (inRange<unsigned int>(321, cycles_into_scanline, 336)) {
+            if (InRange<unsigned int>(321, cycles_into_scanline, 336)) {
                 // Fetch first two tiles on next scanline
             }
 
-            if (inRange<unsigned int>(337, cycles_into_scanline, 340)) {
+            if (InRange<unsigned int>(337, cycles_into_scanline, 340)) {
                 // Unused nametable fetches
             }
 
             if (scanline == PRE_RENDER_SCANLINE &&
-                inRange<unsigned int>(280, cycles_into_scanline, 304)) {
+                InRange<unsigned int>(280, cycles_into_scanline, 304)) {
                 // vert(v) == vert(t) each tick
             }
         }
@@ -166,13 +166,13 @@ void Ppu::CpuWrite(word address, byte data) {
 }
 
 byte Ppu::PpuRead(word address) {
-    if (inRange<word>(0x0000, address, 0x1FFF)) {
+    if (InRange<word>(0x0000, address, 0x1FFF)) {
         return cartridge->PpuRead(address);
-    } else if (inRange<word>(0x2000, address, 0x2FFF)) {
+    } else if (InRange<word>(0x2000, address, 0x2FFF)) {
         return vram[address - 0x2000];
-    } else if (inRange<word>(0x3000, address, 0x3EFF)) {
+    } else if (InRange<word>(0x3000, address, 0x3EFF)) {
         return vram[address - 0x3000];
-    } else if (inRange<word>(0x3F00, address, 0x3FFF)) {
+    } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
         return palette_table[address % 32];
     } else {
         return PpuRead(address & 0x3FFF);  // Addresses should be mapped to 0x0000-0x3FFF already
@@ -180,13 +180,13 @@ byte Ppu::PpuRead(word address) {
 }
 
 void Ppu::PpuWrite(word address, byte data) {
-    if (inRange<word>(0x0000, address, 0x1FFF)) {
+    if (InRange<word>(0x0000, address, 0x1FFF)) {
         cartridge->PpuWrite(address, data);
-    } else if (inRange<word>(0x2000, address, 0x2FFF)) {
+    } else if (InRange<word>(0x2000, address, 0x2FFF)) {
         vram[address - 0x2000] = data;
-    } else if (inRange<word>(0x3000, address, 0x3EFF)) {
+    } else if (InRange<word>(0x3000, address, 0x3EFF)) {
         vram[address - 0x3000] = data;
-    } else if (inRange<word>(0x3F00, address, 0x3FFF)) {
+    } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
         palette_table[address % 32] = data;
     } else {
         PpuWrite(address & 0x3FFF, data);  // Addresses should be mapped to 0x0000-0x3FFF already

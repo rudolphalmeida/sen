@@ -7,11 +7,11 @@
 #include "constants.hxx"
 
 template <typename T>
-inline bool inRange(T low, T value, T high) {
+inline bool InRange(T low, T value, T high) {
     return low <= value && value <= high;
 }
 
-std::vector<byte> read_binary_file(const std::filesystem::path& path);
+std::vector<byte> ReadBinaryFile(const std::filesystem::path& path);
 
 template <typename T>
 class FixedSizeQueue {
