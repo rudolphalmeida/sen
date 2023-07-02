@@ -33,10 +33,10 @@ target_link_libraries(sen PRIVATE
     spdlog::spdlog
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
-    imgui::imgui
+    glfw
     OpenGL::GL
     unofficial::nativefiledialog::nfd
-    glfw
+    imgui::imgui
 )
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)

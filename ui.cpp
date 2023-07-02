@@ -4,7 +4,6 @@
 #include <optional>
 #include <span>
 
-#include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
