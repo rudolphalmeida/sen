@@ -23,7 +23,7 @@ nlohmann::json LoadTestCasesJsonFile(byte opcode) {
     return nlohmann::json::parse(tests_json_file);
 }
 
-void TestOpcode(nlohmann::json tests_data) {
+void TestOpcode(const nlohmann::json& tests_data) {
     auto nmi_requested = std::make_shared<bool>(false);
 
     for (auto test_case : tests_data) {

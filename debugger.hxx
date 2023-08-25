@@ -36,7 +36,7 @@ class Debugger {
 
    public:
     Debugger() = default;
-    Debugger(std::shared_ptr<Sen> emulator_context)
+    explicit Debugger(std::shared_ptr<Sen> emulator_context)
         : emulator_context{std::move(emulator_context)} {}
 
     template <typename BusType>
@@ -52,9 +52,9 @@ class Debugger {
         };
     }
     CpuState GetCpuState() { return GetCpuState(this->emulator_context->cpu); }
-    CpuState GetCpuState() const { return GetCpuState(this->emulator_context->cpu); }
+    [[nodiscard]] CpuState GetCpuState() const { return GetCpuState(this->emulator_context->cpu); }
 
-    PatternTablesState GetPatternTableState() const {
+    [[nodiscard]] PatternTablesState GetPatternTableState() const {
         auto chr_mem = emulator_context->bus->cartridge->chr_rom;
         return {.left = std::span<byte, 4096>{&chr_mem[0x0000], 0x1000},
                 .right = std::span<byte, 4096>{&chr_mem[0x1000], 0x1000},

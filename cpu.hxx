@@ -188,7 +188,7 @@ enum class StatusFlag : byte {
 template <typename BusType>
 class Cpu {
    private:
-    byte a{0x00};           // Accumalator
+    byte a{0x00};           // Accumulator
     byte x{0x00}, y{0x00};  // General purpose registers
     word pc{0x0000};        // Program counter
     byte s{0xFD};           // Stack pointer
