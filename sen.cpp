@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <cstddef>
 #include <iostream>
 #include <memory>
 
@@ -9,7 +8,7 @@
 #include "mapper.hxx"
 #include "sen.hxx"
 
-Sen::Sen(RomArgs rom_args) {
+Sen::Sen(const RomArgs& rom_args) {
     nmi_requested = std::make_shared<bool>(false);
 
     auto cartridge = ParseRomFile(rom_args);

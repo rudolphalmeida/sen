@@ -35,5 +35,5 @@ class Nrom : public Mapper {
    public:
     Nrom(size_t prg_rom_banks, size_t chr_rom_banks) : Mapper{prg_rom_banks, chr_rom_banks} {}
 
-    unsigned int MapCpuAddr(word addr);
+    unsigned int MapCpuAddr(word addr) override;
 };

@@ -20,7 +20,7 @@ class FixedSizeQueue {
 
    public:
     std::deque<T> values{};
-    FixedSizeQueue(size_t max_size) : max_size{max_size} {}
+    explicit FixedSizeQueue(size_t max_size) : max_size{max_size} {}
 
     void PushBack(T value) {
         if (values.size() > max_size) {

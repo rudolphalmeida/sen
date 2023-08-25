@@ -180,7 +180,7 @@ enum class StatusFlag : byte {
     Zero = (1 << 1),              // Z
     InterruptDisable = (1 << 2),  // I
     Decimal = (1 << 3),           // D
-    _B = (0b11 << 4),             // No CPU effect, bits 45
+    B = (0b11 << 4),              // No CPU effect, bits 45
     Overflow = (1 << 6),          // V
     Negative = (1 << 7),          // N
 };
@@ -299,7 +299,7 @@ class Cpu {
         spdlog::debug("Initialized CPU");
     }
 
-    bool IsSet(StatusFlag flag) const { return (p & static_cast<byte>(flag)) != 0; }
+    [[nodiscard]] bool IsSet(StatusFlag flag) const { return (p & static_cast<byte>(flag)) != 0; }
 
     void UpdateStatusFlag(StatusFlag flag, bool value) {
         if (value) {
@@ -635,7 +635,7 @@ void Cpu<BusType>::CheckForInterrupts() {
 
         UpdateStatusFlag(StatusFlag::InterruptDisable, true);
         // Ensure the B flag is not set when pushing
-        UpdateStatusFlag(StatusFlag::_B, false);
+        UpdateStatusFlag(StatusFlag::B, false);
         p |= (1 << 5);  // The unused flag is set when pushing by NMI
         bus->CpuWrite(0x100 + s--, p);
 
@@ -848,7 +848,7 @@ void Cpu<BusType>::BRK(Opcode) {
     // TODO: Implement IRQ interrupt although it should not matter since both
     //       use the same vector
     auto interrupt_vector = *nmi_requested ? NMI_VECTOR : IRQ_VECTOR;
-    byte temp_p = p | static_cast<byte>(StatusFlag::_B);  // Ensure bits 45 are set before push
+    byte temp_p = p | static_cast<byte>(StatusFlag::B);  // Ensure bits 45 are set before push
     bus->CpuWrite(0x100 + s--, temp_p);
     UpdateStatusFlag(StatusFlag::InterruptDisable, true);
 
@@ -1075,7 +1075,7 @@ void Cpu<BusType>::PLA(Opcode) {
 template <typename BusType>
 void Cpu<BusType>::PHP(Opcode) {
     bus->CpuRead(pc);                                     // Fetch next opcode and discard it
-    byte temp_p = p | static_cast<byte>(StatusFlag::_B);  // Ensure bits 45 are set before push
+    byte temp_p = p | static_cast<byte>(StatusFlag::B);  // Ensure bits 45 are set before push
     bus->CpuWrite(0x100 + s--, temp_p);
 }
 

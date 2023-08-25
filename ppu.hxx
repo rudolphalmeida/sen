@@ -39,10 +39,10 @@ class Ppu {
             byte fine_y_scroll : 3;
             byte : 1;
 
-            byte coarse_y_scroll() const { return coarse_y_scroll_high << 3 | coarse_y_scroll_low; }
-            void coarse_y_scroll(byte value) {
-                coarse_y_scroll_low = value;
-                coarse_y_scroll_high = (value >> 3);
+            [[nodiscard]] byte coarse_y_scroll() const { return coarse_y_scroll_high << 3 | coarse_y_scroll_low; }
+            void coarse_y_scroll(byte data) {
+                coarse_y_scroll_low = data;
+                coarse_y_scroll_high = (data >> 3);
             }
         } as_scroll;
     } v{.value = 0x0000}, t{.value = 0x0000};  // Current, Temporary VRAM address (15 bits)
@@ -64,7 +64,7 @@ class Ppu {
      */
     uint8_t bg_attrib_msb_shift_reg{}, bg_attrib_lsb_shift_reg{};
 
-    uint64_t frame_count{};  // Alse used to determine if even or odd frame
+    uint64_t frame_count{};  // Also used to determine if even or odd frame
 
     // The first `Tick()` will put us at the start of pre-render line (261)
     unsigned int scanline{260};
@@ -74,7 +74,7 @@ class Ppu {
     std::shared_ptr<bool> nmi_requested{};
 
     // Properties for the PPU
-    word BaseNametableAddress() const {
+    [[nodiscard]] word BaseNametableAddress() const {
         switch (ppuctrl & 0b11) {
             case 0:
                 return 0x2000;
@@ -89,22 +89,22 @@ class Ppu {
         return 0x2000;  // Shouldn't be possible
     }
 
-    byte VramAddressIncrement() const { return (ppuctrl & 0x04) != 0x00 ? 32 : 1; }
-    word SpritePatternTableAddress() const { return (ppuctrl & 0x08) != 0x00 ? 0x1000 : 0x0000; }
-    word BgPatternTableAddress() const { return (ppuctrl & 0x10) != 0x00 ? 0x1000 : 0x0000; }
-    byte SpriteHeight() const { return (ppuctrl & 0x20) != 0x00 ? 16 : 8; }
-    bool NmiAtVBlank() const { return (ppuctrl & 0x80) != 0x00; }
+    [[nodiscard]] byte VramAddressIncrement() const { return (ppuctrl & 0x04) != 0x00 ? 32 : 1; }
+    [[nodiscard]] word SpritePatternTableAddress() const { return (ppuctrl & 0x08) != 0x00 ? 0x1000 : 0x0000; }
+    [[nodiscard]] word BgPatternTableAddress() const { return (ppuctrl & 0x10) != 0x00 ? 0x1000 : 0x0000; }
+    [[nodiscard]] byte SpriteHeight() const { return (ppuctrl & 0x20) != 0x00 ? 16 : 8; }
+    [[nodiscard]] bool NmiAtVBlank() const { return (ppuctrl & 0x80) != 0x00; }
 
-    bool Grayscale() const { return (ppumask & 0x01) != 0x00; }
-    bool ShowBackgroundInLeft() const { return (ppumask & 0x02) != 0x00; }
-    bool ShowSpritesInLeft() const { return (ppumask & 0x04) != 0x00; }
-    bool ShowBackground() const { return (ppumask & 0x08) != 0x00; }
-    bool ShowSprites() const { return (ppumask & 0x10) != 0x00; }
-    bool EmphasizeRed() const { return (ppumask & 0x20) != 0x00; }
-    bool EmphasizeGreen() const { return (ppumask & 0x40) != 0x00; }
-    bool EmphasizeBlue() const { return (ppumask & 0x80) != 0x00; }
+    [[nodiscard]] bool Grayscale() const { return (ppumask & 0x01) != 0x00; }
+    [[nodiscard]] bool ShowBackgroundInLeft() const { return (ppumask & 0x02) != 0x00; }
+    [[nodiscard]] bool ShowSpritesInLeft() const { return (ppumask & 0x04) != 0x00; }
+    [[nodiscard]] bool ShowBackground() const { return (ppumask & 0x08) != 0x00; }
+    [[nodiscard]] bool ShowSprites() const { return (ppumask & 0x10) != 0x00; }
+    [[nodiscard]] bool EmphasizeRed() const { return (ppumask & 0x20) != 0x00; }
+    [[nodiscard]] bool EmphasizeGreen() const { return (ppumask & 0x40) != 0x00; }
+    [[nodiscard]] bool EmphasizeBlue() const { return (ppumask & 0x80) != 0x00; }
 
-    bool InVblank() const {
+    [[nodiscard]] bool InVblank() const {
         // Bit 7 is set during VBlank
         return (ppustatus & 0x80) != 0x00;
     }

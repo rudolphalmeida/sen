@@ -1,5 +1,4 @@
 #include <spdlog/cfg/env.h>
-#include <spdlog/spdlog.h>
 
 #include "ui.hxx"
 

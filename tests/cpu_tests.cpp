@@ -1,22 +1,23 @@
 #include <array>
 #include <fstream>
 #include <memory>
-#include <stdexcept>
 
 #include <fmt/core.h>
-#include <fmt/format.h>
 #include <spdlog/cfg/env.h>
-#include <spdlog/spdlog.h>
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
+
 #include "debugger.hxx"
 
 #define CPU_TEST
 
-#include "../bus.hxx"
-#include "../constants.hxx"
-#include "../cpu.hxx"
 #include "flatbus.hxx"
+
+void LoadInstructionCycles(const nlohmann::json& cycle_data, std::vector<Cycle>& cycles) {
+    for (auto cycle : cycle_data) {
+        cycles.emplace_back(cycle[2].get<std::string>(), cycle[0], cycle[1]);
+    }
+}
 
 nlohmann::json LoadTestCasesJsonFile(byte opcode) {
     std::ifstream tests_json_file(fmt::format("./ProcessorTests/nes6502/v1/{:02x}.json", opcode));
@@ -25,9 +26,16 @@ nlohmann::json LoadTestCasesJsonFile(byte opcode) {
 
 void TestOpcode(const nlohmann::json& tests_data) {
     auto nmi_requested = std::make_shared<bool>(false);
+    std::vector<Cycle> expected_cycles{};
+    // Most opcodes require at most 7 cycles
+    expected_cycles.reserve(7);
 
     for (auto test_case : tests_data) {
-        auto bus = std::make_shared<FlatBus>();
+        // Erase the vector before loading the current test case cycles
+        expected_cycles.erase(expected_cycles.begin(), expected_cycles.end());
+        LoadInstructionCycles(test_case["cycles"], expected_cycles);
+
+        auto bus = std::make_shared<FlatBus>(expected_cycles);
         REQUIRE(bus->cycles == 0);  // Tests require cycles to start at zero
         Cpu<FlatBus> cpu{bus, nmi_requested};
         auto cpu_state = Debugger::GetCpuState(cpu);
