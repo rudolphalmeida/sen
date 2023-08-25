@@ -801,7 +801,6 @@ EffectiveAddress Cpu<BusType>::IndirectYAddressing() {
     bus->CpuRead(non_page_crossed_address);
 
     if (non_page_crossed_address != page_crossed_address) {
-        bus->CpuRead(page_crossed_address);  // Extra tick due to page crossing
         return {page_crossed_address, true};
     } else {
         return {non_page_crossed_address, false};
@@ -1010,8 +1009,8 @@ void Cpu<BusType>::BVS(Opcode) {
 
 template <typename BusType>
 void Cpu<BusType>::LDA(Opcode opcode) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
-    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
+    if (opcode.addressing_mode == AddressingMode::IndirectY && !page_crossed) {
         a = bus->UntickedCpuRead(address);
     } else {
         a = bus->CpuRead(address);
@@ -1029,11 +1028,7 @@ void Cpu<BusType>::STA(Opcode opcode) {
         bus->CpuRead(address);  // Dummy read cycle
     }
 
-    if (opcode.addressing_mode == AddressingMode::IndirectY && page_crossed) {
-        bus->UntickedCpuWrite(address, a);
-    } else {
-        bus->CpuWrite(address, a);
-    }
+    bus->CpuWrite(address, a);
 }
 
 template <typename BusType>
@@ -1074,7 +1069,7 @@ void Cpu<BusType>::PLA(Opcode) {
 
 template <typename BusType>
 void Cpu<BusType>::PHP(Opcode) {
-    bus->CpuRead(pc);                                     // Fetch next opcode and discard it
+    bus->CpuRead(pc);                                    // Fetch next opcode and discard it
     byte temp_p = p | static_cast<byte>(StatusFlag::B);  // Ensure bits 45 are set before push
     bus->CpuWrite(0x100 + s--, temp_p);
 }
@@ -1090,9 +1085,9 @@ void Cpu<BusType>::PLP(Opcode) {
 
 template <typename BusType>
 void Cpu<BusType>::AND(Opcode opcode) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     byte operand{};
-    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+    if (opcode.addressing_mode == AddressingMode::IndirectY && !page_crossed) {
         operand = bus->UntickedCpuRead(address);
     } else {
         operand = bus->CpuRead(address);
@@ -1104,9 +1099,9 @@ void Cpu<BusType>::AND(Opcode opcode) {
 
 template <typename BusType>
 void Cpu<BusType>::ORA(Opcode opcode) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     byte operand{};
-    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+    if (opcode.addressing_mode == AddressingMode::IndirectY && !page_crossed) {
         operand = bus->UntickedCpuRead(address);
     } else {
         operand = bus->CpuRead(address);
@@ -1118,9 +1113,9 @@ void Cpu<BusType>::ORA(Opcode opcode) {
 
 template <typename BusType>
 void Cpu<BusType>::EOR(Opcode opcode) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     byte operand{};
-    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+    if (opcode.addressing_mode == AddressingMode::IndirectY && !page_crossed) {
         operand = bus->UntickedCpuRead(address);
     } else {
         operand = bus->CpuRead(address);
@@ -1147,9 +1142,9 @@ void Cpu<BusType>::CPY(Opcode opcode) {
 
 template <typename BusType>
 void Cpu<BusType>::ADC(Opcode opcode) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     word operand{};
-    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+    if (opcode.addressing_mode == AddressingMode::IndirectY && !page_crossed) {
         operand = static_cast<word>(bus->UntickedCpuRead(address));
     } else {
         operand = static_cast<word>(bus->CpuRead(address));
@@ -1172,10 +1167,10 @@ void Cpu<BusType>::ADC(Opcode opcode) {
 
 template <typename BusType>
 void Cpu<BusType>::SBC(Opcode opcode) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     // Fetch operand and invert bottom 8 bits
     word operand{};
-    if (opcode.addressing_mode == AddressingMode::IndirectY) {
+    if (opcode.addressing_mode == AddressingMode::IndirectY && !page_crossed) {
         operand = static_cast<word>(bus->UntickedCpuRead(address));
     } else {
         operand = static_cast<word>(bus->CpuRead(address));
@@ -1322,7 +1317,7 @@ void Cpu<BusType>::TYA(Opcode) {
 template <typename BusType>
 void Cpu<BusType>::RTI(Opcode) {
     bus->CpuRead(pc);             // Fetch next opcode and discard it
-    bus->CpuRead(0x100 + (++s));  // Dummy read cycle
+    bus->CpuRead(0x100 + (s++));  // Dummy read cycle
     auto temp_p = bus->CpuRead(0x100 + s++);
     // Bits 54 of the popped value from the stack should be ignored
     p = (p & 0x30) | (temp_p & 0xCF);
@@ -1478,10 +1473,10 @@ void Cpu<BusType>::RelativeBranchOnCondition(bool condition) {
 
 template <typename BusType>
 void Cpu<BusType>::CompareRegisterAndMemory(Opcode opcode, byte reg) {
-    auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
+    auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     word operand{};
     if (opcode.opcode_class == OpcodeClass::CMP &&
-        opcode.addressing_mode == AddressingMode::IndirectY) {
+        opcode.addressing_mode == AddressingMode::IndirectY && !page_crossed) {
         operand = static_cast<word>(bus->UntickedCpuRead(address));
     } else {
         operand = static_cast<word>(bus->CpuRead(address));
