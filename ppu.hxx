@@ -14,6 +14,8 @@ class Ppu {
    private:
     std::array<byte, 2048> vram{};
     std::array<byte, 256> oam{};
+    // Due to mirroring of the palette indices we don't need exactly 32 bytes
+    // Still keep it at 32 for easy indexing using the address
     std::array<byte, 32> palette_table{};
 
     byte io_data_bus{};
@@ -39,7 +41,9 @@ class Ppu {
             byte fine_y_scroll : 3;
             byte : 1;
 
-            [[nodiscard]] byte coarse_y_scroll() const { return coarse_y_scroll_high << 3 | coarse_y_scroll_low; }
+            [[nodiscard]] byte coarse_y_scroll() const {
+                return coarse_y_scroll_high << 3 | coarse_y_scroll_low;
+            }
             void coarse_y_scroll(byte data) {
                 coarse_y_scroll_low = data;
                 coarse_y_scroll_high = (data >> 3);
@@ -90,8 +94,12 @@ class Ppu {
     }
 
     [[nodiscard]] byte VramAddressIncrement() const { return (ppuctrl & 0x04) != 0x00 ? 32 : 1; }
-    [[nodiscard]] word SpritePatternTableAddress() const { return (ppuctrl & 0x08) != 0x00 ? 0x1000 : 0x0000; }
-    [[nodiscard]] word BgPatternTableAddress() const { return (ppuctrl & 0x10) != 0x00 ? 0x1000 : 0x0000; }
+    [[nodiscard]] word SpritePatternTableAddress() const {
+        return (ppuctrl & 0x08) != 0x00 ? 0x1000 : 0x0000;
+    }
+    [[nodiscard]] word BgPatternTableAddress() const {
+        return (ppuctrl & 0x10) != 0x00 ? 0x1000 : 0x0000;
+    }
     [[nodiscard]] byte SpriteHeight() const { return (ppuctrl & 0x20) != 0x00 ? 16 : 8; }
     [[nodiscard]] bool NmiAtVBlank() const { return (ppuctrl & 0x80) != 0x00; }
 
@@ -110,6 +118,7 @@ class Ppu {
     }
 
     void TickCounters();
+    static size_t PaletteIndex(word address);
 
     friend class Debugger;
 

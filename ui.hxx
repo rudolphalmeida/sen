@@ -65,7 +65,6 @@ class Ui {
     void ShowCpuMemory() {}
     void ShowPpuMemory();
     void ShowCartInfo() {}
-    bool show_imgui_demo{false};
 
     void StartEmulation();
     void PauseEmulation();

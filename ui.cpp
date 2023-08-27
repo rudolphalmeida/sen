@@ -390,19 +390,19 @@ void Ui::ShowPatternTables() {
         return;
     }
     auto pattern_table_state = debugger.GetPatternTableState();
-    static int pallette_id = 0;
-    if (ImGui::InputInt("Palette ID", &pallette_id)) {
-        if (pallette_id < 0) {
-            pallette_id = 0;
+    static int palette_id = 0;
+    if (ImGui::InputInt("Palette ID", &palette_id)) {
+        if (palette_id < 0) {
+            palette_id = 0;
         }
 
-        if (pallette_id > 7) {
-            pallette_id = 7;
+        if (palette_id > 7) {
+            palette_id = 7;
         }
     }
 
     auto left_pixels = RenderPixelsForPatternTable(pattern_table_state.left,
-                                                   pattern_table_state.palettes, pallette_id);
+                                                   pattern_table_state.palettes, palette_id);
     glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
                  reinterpret_cast<unsigned char*>(left_pixels.data()));
@@ -412,7 +412,7 @@ void Ui::ShowPatternTables() {
     ImGui::Separator();
 
     auto right_pixels = RenderPixelsForPatternTable(pattern_table_state.right,
-                                                    pattern_table_state.palettes, pallette_id);
+                                                    pattern_table_state.palettes, palette_id);
     glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
                  reinterpret_cast<unsigned char*>(right_pixels.data()));
@@ -447,9 +447,9 @@ std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern
             size_t pixel_index = row + column * 128;
 
             // Skip the first byte for Universal background color
-            auto nes_palette_color_index = (palette_id * 4) + color_index;
+            auto nes_palette_color_index = ((palette_id & 0b111) << 2) | (color_index & 0b11);
 
-            pixels[pixel_index] = PALETTE_COLORS[nes_palette[nes_palette_color_index]];
+            pixels[pixel_index] = PALETTE_COLORS[nes_palette[nes_palette_color_index + 1]];
         }
     }
 

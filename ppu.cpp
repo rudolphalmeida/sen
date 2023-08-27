@@ -42,6 +42,9 @@ void Ppu::Tick() {
                 // vert(v) == vert(t) each tick
             }
         }
+    } else {
+        // TODO: Output pixels with color from 0x3F00 (universal background color)
+        spdlog::error("Unimplemented 0x3F00 pixels");
     }
 }
 
@@ -161,7 +164,8 @@ void Ppu::CpuWrite(word address, byte data) {
             v.value += VramAddressIncrement();
             break;
         default:
-            spdlog::debug("Write to not implented PPU address {:#06X} with {:#04X}", address, data);
+            spdlog::debug("Write to not implemented PPU address {:#06X} with {:#04X}", address,
+                          data);
     }
 }
 
@@ -173,7 +177,7 @@ byte Ppu::PpuRead(word address) {
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
         return vram[address - 0x3000];
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
-        return palette_table[address % 32];
+        return palette_table[Ppu::PaletteIndex(address)];
     } else {
         return PpuRead(address & 0x3FFF);  // Addresses should be mapped to 0x0000-0x3FFF already
     }
@@ -187,8 +191,19 @@ void Ppu::PpuWrite(word address, byte data) {
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
         vram[address - 0x3000] = data;
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
-        palette_table[address % 32] = data;
+        palette_table[Ppu::PaletteIndex(address)] = data;
     } else {
         PpuWrite(address & 0x3FFF, data);  // Addresses should be mapped to 0x0000-0x3FFF already
     }
+}
+
+size_t Ppu::PaletteIndex(word address) {
+    size_t index = address & 0x1F;  // Only lower 5 bits are used for palette indices
+
+    if (index & ~0b11) {  // The lower two bits are 0 (00, 04, 08, 0C, 10, 14, 18, 1C)
+        // Map these to 00, 04, 08, 0C
+        return index & 0xF;
+    }
+
+    return address % 32;
 }
