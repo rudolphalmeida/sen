@@ -26,6 +26,8 @@ void Ppu::Tick() {
                     case 7:
                         // Fetch BG msbits & Increment coarse X
                         break;
+                    default:
+                        break;
                 }
             }
 
@@ -44,7 +46,6 @@ void Ppu::Tick() {
         }
     } else {
         // TODO: Output pixels with color from 0x3F00 (universal background color)
-        spdlog::error("Unimplemented 0x3F00 pixels");
     }
 }
 
