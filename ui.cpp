@@ -254,121 +254,129 @@ void Ui::ShowMenuBar() {
 }
 
 void Ui::ShowCpuState() {
-    if (emulator_context != nullptr) {
-        auto cpu_state = debugger.GetCpuState();
-        if (ImGui::BeginTable("cpu_registers", 2,
-                              ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-            ImGui::TableSetupColumn("Register");
-            ImGui::TableSetupColumn("Value");
-            ImGui::TableHeadersRow();
-
-            ImGui::TableNextColumn();
-            ImGui::Text("A");
-            ImGui::TableNextColumn();
-            ImGui::Text("0x%.2X", cpu_state.a);
-
-            ImGui::TableNextRow();
-
-            ImGui::TableNextColumn();
-            ImGui::Text("X");
-            ImGui::TableNextColumn();
-            ImGui::Text("0x%.2X", cpu_state.x);
-
-            ImGui::TableNextRow();
-
-            ImGui::TableNextColumn();
-            ImGui::Text("Y");
-            ImGui::TableNextColumn();
-            ImGui::Text("0x%.2X", cpu_state.y);
-
-            ImGui::TableNextRow();
-
-            ImGui::TableNextColumn();
-            ImGui::Text("S");
-            ImGui::TableNextColumn();
-            ImGui::Text("0x%.2X", cpu_state.s);
-
-            ImGui::TableNextRow();
-
-            ImGui::TableNextColumn();
-            ImGui::Text("PC");
-            ImGui::TableNextColumn();
-            ImGui::Text("0x%.4X", cpu_state.pc);
-
-            ImGui::TableNextRow();
-
-            ImGui::TableNextColumn();
-            ImGui::Text("P");
-            ImGui::TableNextColumn();
-
-            ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
-
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::Carry)) != 0) {
-                ImGui::Text("C");
-            } else {
-                ImGui::TextColored(gray, "C");
-            }
-            ImGui::SameLine();
-
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::Zero)) != 0) {
-                ImGui::Text("Z");
-            } else {
-                ImGui::TextColored(gray, "Z");
-            }
-            ImGui::SameLine();
-
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::InterruptDisable)) != 0) {
-                ImGui::Text("I");
-            } else {
-                ImGui::TextColored(gray, "I");
-            }
-            ImGui::SameLine();
-
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::Decimal)) != 0) {
-                ImGui::Text("D");
-            } else {
-                ImGui::TextColored(gray, "D");
-            }
-            ImGui::SameLine();
-
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::Overflow)) != 0) {
-                ImGui::Text("V");
-            } else {
-                ImGui::TextColored(gray, "V");
-            }
-            ImGui::SameLine();
-
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::Negative)) != 0) {
-                ImGui::Text("N");
-            } else {
-                ImGui::TextColored(gray, "N");
-            }
-
-            ImGui::EndTable();
-        }
-
-        for (auto& executed_opcode : cpu_state.executed_opcodes.values) {
-            Opcode opcode = OPCODES[executed_opcode.opcode];
-            switch (opcode.length) {
-                case 1:
-                    ImGui::Text("0x%.4X: %s", executed_opcode.pc, opcode.label);
-                    break;
-                case 2:
-                    ImGui::Text("0x%.4X: %s 0x%.2X", executed_opcode.pc, opcode.label,
-                                executed_opcode.arg1);
-                    break;
-                case 3:
-                    ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc, opcode.label,
-                                executed_opcode.arg1, executed_opcode.arg2);
-                    break;
-            }
-        }
-    } else {
+    if (emulator_context == nullptr) {
         ImGui::Text("Load a ROM to view NES CPU state");
+        return;
+    }
+
+    auto cpu_state = debugger.GetCpuState();
+    if (ImGui::BeginTable("cpu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+        ImGui::TableSetupColumn("Register");
+        ImGui::TableSetupColumn("Value");
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextColumn();
+        ImGui::Text("A");
+        ImGui::TableNextColumn();
+        ImGui::Text("0x%.2X", cpu_state.a);
+
+        ImGui::TableNextRow();
+
+        ImGui::TableNextColumn();
+        ImGui::Text("X");
+        ImGui::TableNextColumn();
+        ImGui::Text("0x%.2X", cpu_state.x);
+
+        ImGui::TableNextRow();
+
+        ImGui::TableNextColumn();
+        ImGui::Text("Y");
+        ImGui::TableNextColumn();
+        ImGui::Text("0x%.2X", cpu_state.y);
+
+        ImGui::TableNextRow();
+
+        ImGui::TableNextColumn();
+        ImGui::Text("S");
+        ImGui::TableNextColumn();
+        ImGui::Text("0x%.2X", cpu_state.s);
+
+        ImGui::TableNextRow();
+
+        ImGui::TableNextColumn();
+        ImGui::Text("PC");
+        ImGui::TableNextColumn();
+        ImGui::Text("0x%.4X", cpu_state.pc);
+
+        ImGui::TableNextRow();
+
+        ImGui::TableNextColumn();
+        ImGui::Text("P");
+        ImGui::TableNextColumn();
+
+        ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
+
+        if ((cpu_state.p & static_cast<byte>(StatusFlag::Carry)) != 0) {
+            ImGui::Text("C");
+        } else {
+            ImGui::TextColored(gray, "C");
+        }
+        ImGui::SameLine();
+
+        if ((cpu_state.p & static_cast<byte>(StatusFlag::Zero)) != 0) {
+            ImGui::Text("Z");
+        } else {
+            ImGui::TextColored(gray, "Z");
+        }
+        ImGui::SameLine();
+
+        if ((cpu_state.p & static_cast<byte>(StatusFlag::InterruptDisable)) != 0) {
+            ImGui::Text("I");
+        } else {
+            ImGui::TextColored(gray, "I");
+        }
+        ImGui::SameLine();
+
+        if ((cpu_state.p & static_cast<byte>(StatusFlag::Decimal)) != 0) {
+            ImGui::Text("D");
+        } else {
+            ImGui::TextColored(gray, "D");
+        }
+        ImGui::SameLine();
+
+        if ((cpu_state.p & static_cast<byte>(StatusFlag::Overflow)) != 0) {
+            ImGui::Text("V");
+        } else {
+            ImGui::TextColored(gray, "V");
+        }
+        ImGui::SameLine();
+
+        if ((cpu_state.p & static_cast<byte>(StatusFlag::Negative)) != 0) {
+            ImGui::Text("N");
+        } else {
+            ImGui::TextColored(gray, "N");
+        }
+
+        ImGui::EndTable();
+    }
+
+    for (auto& executed_opcode : cpu_state.executed_opcodes.values) {
+        Opcode opcode = OPCODES[executed_opcode.opcode];
+        switch (opcode.length) {
+            case 1:
+                ImGui::Text("0x%.4X: %s", executed_opcode.pc, opcode.label);
+                break;
+            case 2:
+                ImGui::Text("0x%.4X: %s 0x%.2X", executed_opcode.pc, opcode.label,
+                            executed_opcode.arg1);
+                break;
+            case 3:
+                ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc, opcode.label,
+                            executed_opcode.arg1, executed_opcode.arg2);
+                break;
+        }
     }
 }
 
-void Ui::ShowPpuState() {}
+void Ui::ShowPpuState() {
+    if (emulator_context == nullptr) {
+        ImGui::Text("Load a ROM to view NES PPU state");
+        return;
+    }
+
+    auto ppu_state = debugger.GetPpuState();
+    // TODO: Render PPU state UI
+}
 
 void Ui::ShowPpuMemory() {
     if (emulator_context == nullptr) {

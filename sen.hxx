@@ -33,7 +33,7 @@ class Sen {
     static const uint64_t CYCLES_PER_FRAME{29780};
 
    public:
-    Sen(const RomArgs& rom_args);
+    explicit Sen(const RomArgs& rom_args);
 
     void RunForOneFrame();
 

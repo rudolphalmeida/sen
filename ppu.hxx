@@ -57,23 +57,23 @@ class Ppu {
     // Latch for tile ID of the next tile to be drawn. Updated every 8-cycles
     // Tiles will be fetched from this address and set tp the lower 8-bits
     // of the shift registers
-    uint8_t tile_id_latch{};
+    byte tile_id_latch{};
 
     /* These contain the pattern table data for two tiles and their corresponding latches
      * Every 8 cycles, the data for the next tile will be loaded into the upper 8 bits of these
      *  The pixel to render will be fetched from the lower 8 bits
      */
-    uint8_t bg_pattern_msb_latch{}, bg_pattern_lsb_latch{};
-    uint16_t bg_pattern_msb_shift_reg{}, bg_pattern_lsb_shift_reg{};
+    byte bg_pattern_msb_latch{}, bg_pattern_lsb_latch{};
+    word bg_pattern_msb_shift_reg{}, bg_pattern_lsb_shift_reg{};
 
     // Latch for palette attribute for next tile. Updated every 8-cycles.
     // Only 2 bits
-    uint8_t bg_attrib_latch{};
+    byte bg_attrib_latch{};
 
     /* These contain the palette attributes for the lower 8 pixels of the 16-bit shift registers.
      * These are fed from the latch which contains the palette attribute for the next tile
      */
-    uint8_t bg_attrib_msb_shift_reg{}, bg_attrib_lsb_shift_reg{};
+    byte bg_attrib_msb_shift_reg{}, bg_attrib_lsb_shift_reg{};
 
     uint64_t frame_count{};  // Also used to determine if even or odd frame
 

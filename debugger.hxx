@@ -19,6 +19,30 @@ struct CpuState {
     FixedSizeQueue<ExecutedOpcode> executed_opcodes;
 };
 
+struct PpuState {
+    std::span<byte, 256> oam;
+    byte& ppuctrl;
+    byte& ppumask;
+    byte& ppustatus;
+    byte& oamaddr;
+
+    word v;  // TODO: Extract v, t type so that they can be referenced here
+    word t;
+    byte& fine_x;
+    bool& write_toggle;
+
+    byte& tile_id_latch;
+    byte& bg_pattern_msb_latch, bg_pattern_lsb_latch;
+    word& bg_pattern_msb_shift_reg, bg_pattern_lsb_shift_reg;
+    byte& bg_attrib_latch;
+    byte& bg_attrib_msb_shift_reg, bg_attrib_lsb_shift_reg;
+    uint64_t& frame_count;
+    unsigned int& scanline;
+    unsigned int& cycles_into_scanline;
+
+    std::shared_ptr<bool> nmi_requested{};
+};
+
 struct PatternTablesState {
     std::span<byte, 4096> left;
     std::span<byte, 4096> right;
@@ -54,6 +78,34 @@ class Debugger {
     CpuState GetCpuState() { return GetCpuState(this->emulator_context->cpu); }
     [[nodiscard]] CpuState GetCpuState() const { return GetCpuState(this->emulator_context->cpu); }
 
+    static PpuState GetPpuState(const std::shared_ptr<Ppu>& ppu) {
+        return PpuState{
+            .oam = ppu->oam,
+            .ppuctrl = ppu->ppuctrl,
+            .ppumask = ppu->ppumask,
+            .ppustatus = ppu->ppustatus,
+            .oamaddr = ppu->oamaddr,
+            .v = ppu->v.value,
+            .t = ppu->t.value,
+            .fine_x = ppu->fine_x,
+            .write_toggle = ppu->write_toggle,
+            .tile_id_latch = ppu->tile_id_latch,
+            .bg_pattern_msb_latch = ppu->bg_pattern_msb_latch,
+            .bg_pattern_lsb_latch = ppu->bg_pattern_lsb_latch,
+            .bg_pattern_msb_shift_reg = ppu->bg_pattern_msb_shift_reg,
+            .bg_pattern_lsb_shift_reg = ppu->bg_pattern_lsb_shift_reg,
+            .bg_attrib_latch = ppu->bg_attrib_latch,
+            .bg_attrib_msb_shift_reg = ppu->bg_attrib_msb_shift_reg,
+            .bg_attrib_lsb_shift_reg = ppu->bg_attrib_lsb_shift_reg,
+            .frame_count = ppu->frame_count,
+            .scanline = ppu->scanline,
+            .cycles_into_scanline = ppu->cycles_into_scanline,
+            .nmi_requested = ppu->nmi_requested,
+        };
+    }
+    PpuState GetPpuState() { return GetPpuState(this->emulator_context->ppu); }
+    [[nodiscard]] PpuState GetPpuState() const { return GetPpuState(this->emulator_context->ppu); }
+
     [[nodiscard]] PatternTablesState GetPatternTableState() const {
         auto chr_mem = emulator_context->bus->cartridge->chr_rom;
         return {.left = std::span<byte, 4096>{&chr_mem[0x0000], 0x1000},
@@ -67,6 +119,5 @@ class Debugger {
         }
     }
 
-    void GetPpuState() const {}
     void GetCartridgeInfo() const {}
 };
