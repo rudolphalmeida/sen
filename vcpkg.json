@@ -1,0 +1,20 @@
+{
+  "dependencies": [
+    "fmt",
+    "glfw3",
+    "nlohmann-json",
+    "spdlog",
+    "fmt",
+    "nativefiledialog",
+    "catch2",
+    {
+      "name": "imgui",
+      "features": [
+        "opengl3-binding",
+        "glfw-binding"
+      ]
+    }
+  ],
+  "name": "sen",
+  "version": "0.1.0"
+}

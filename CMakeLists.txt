@@ -3,7 +3,7 @@ project(sen VERSION 0.1.0)
 
 set(CMAKE_CXX_STANDARD 20)
 
-# set(CMAKE_FIND_DEBUG_MODE 1)
+set(CMAKE_FIND_DEBUG_MODE 1)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
