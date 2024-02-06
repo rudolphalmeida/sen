@@ -57,7 +57,7 @@ enum class OpcodeClass {
     CLD,
     // Clear Interrupt Disable Bit
     CLI,
-    // Clear Overflow Bug
+    // Clear Overflow flag
     CLV,
     // Compare Memory with Accumulator
     CMP,

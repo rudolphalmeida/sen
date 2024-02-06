@@ -204,8 +204,8 @@ void Ui::ShowMenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open", "Ctrl+O")) {
-                nfdchar_t* selected_path = NULL;
-                nfdresult_t result = NFD_OpenDialog("nes", NULL, &selected_path);
+                nfdchar_t* selected_path = nullptr;
+                nfdresult_t result = NFD_OpenDialog("nes", nullptr, &selected_path);
 
                 if (result == NFD_OKAY) {
                     loaded_rom_file_path = std::make_optional<std::filesystem::path>(selected_path);
@@ -421,7 +421,7 @@ void Ui::ShowPatternTables() {
 
 std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table,
                                                    std::span<byte, 32> nes_palette,
-                                                   int palette_id) const {
+                                                   int palette_id) {
     std::vector<Pixel> pixels(128 * 128);
 
     for (size_t column = 0; column < 128; column++) {

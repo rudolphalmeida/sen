@@ -18,6 +18,7 @@ class Ppu {
     // Still keep it at 32 for easy indexing using the address
     std::array<byte, 32> palette_table{};
 
+    // Open bus value for the CPU <-> PPU data bus
     byte io_data_bus{};
 
     byte ppuctrl{};
@@ -53,10 +54,16 @@ class Ppu {
     byte fine_x{};                             // (x) Fine X (3 bits)
     bool write_toggle{false};                  // (w) 1 bit
 
-    /* These contain the pattern table data for two tiles
+    // Latch for tile ID of the next tile to be drawn. Updated every 8-cycles
+    // Tiles will be fetched from this address and set tp the lower 8-bits
+    // of the shift registers
+    uint8_t tile_id_latch{};
+
+    /* These contain the pattern table data for two tiles and their corresponding latches
      * Every 8 cycles, the data for the next tile will be loaded into the upper 8 bits of these
      *  The pixel to render will be fetched from the lower 8 bits
      */
+    uint8_t bg_pattern_msb_latch{}, bg_pattern_lsb_latch{};
     uint16_t bg_pattern_msb_shift_reg{}, bg_pattern_lsb_shift_reg{};
 
     // Latch for palette attribute for next tile. Updated every 8-cycles.
@@ -118,6 +125,8 @@ class Ppu {
     }
 
     void TickCounters();
+    void ReloadShiftersFromLatches();
+
     static size_t PaletteIndex(word address);
 
     friend class Debugger;

@@ -14,21 +14,57 @@ void Ppu::Tick() {
             if (InRange<unsigned int>(1, cycles_into_scanline, 256)) {
                 // PPU is outputting pixels
                 switch ((cycles_into_scanline - 1) % 8) {  // 0, 1, ..., 7
+                    case 0:
+                        // Reload shifters in the 9, 17, 25, ..., 257 cycles
+                        ReloadShiftersFromLatches();
+                        break;
                     case 1:
                         // Fetch NT byte
+                        tile_id_latch = PpuRead(0x2000 | (v.value & 0x0FFF));
                         break;
                     case 3:
                         // Fetch AT byte
+                        bg_attrib_latch = PpuRead(0x23C0 | (v.value & 0x0C00) | ((v.value >> 4) & 0x38) | ((v.value >> 2) & 0x07));
                         break;
                     case 5:
                         // Fetch BG lsbits
+                        bg_pattern_lsb_latch = PpuRead(tile_id_latch << 4);
                         break;
                     case 7:
-                        // Fetch BG msbits & Increment coarse X
-                        break;
-                    default:
+                        // Fetch BG msbits
+                        bg_pattern_msb_latch = PpuRead((tile_id_latch << 4) + 8);
+                        // Coarse X increment
+                        if ((v.value & 0x001F) == 31) {
+                            v.value &= ~0x001F;
+                            v.value ^= 0x0400;
+                        } else {
+                            v.value += 1;
+                        }
                         break;
                 }
+            }
+            if (cycles_into_scanline == 256) {
+                // Fine Y increment
+                if ((v.value & 0x7000) != 0x7000) {
+                    v.value += 0x1000;
+                }
+            } else {
+                v.value &= ~0x7000;
+                int y = (v.value & 0x03E0) >> 5;
+                if (y == 29) {
+                    y = 0;
+                    v.value ^= 0x0800;
+                } else if (y == 31) {
+                    y = 0;
+                } else {
+                    y += 1;
+                }
+                v.value = (v.value & ~0x03E0) | (y << 5);
+            }
+
+            if (cycles_into_scanline == 257) {
+                // Reload shifters for the previously fetched tile data
+                ReloadShiftersFromLatches();
             }
 
             if (InRange<unsigned int>(321, cycles_into_scanline, 336)) {
@@ -48,6 +84,8 @@ void Ppu::Tick() {
         // TODO: Output pixels with color from 0x3F00 (universal background color)
     }
 }
+
+void Ppu::ReloadShiftersFromLatches() {}
 
 void Ppu::TickCounters() {
     cycles_into_scanline++;
@@ -171,6 +209,7 @@ void Ppu::CpuWrite(word address, byte data) {
 }
 
 byte Ppu::PpuRead(word address) {
+    address &= 0x3FFF;
     if (InRange<word>(0x0000, address, 0x1FFF)) {
         return cartridge->PpuRead(address);
     } else if (InRange<word>(0x2000, address, 0x2FFF)) {
@@ -179,12 +218,11 @@ byte Ppu::PpuRead(word address) {
         return vram[address - 0x3000];
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
         return palette_table[Ppu::PaletteIndex(address)];
-    } else {
-        return PpuRead(address & 0x3FFF);  // Addresses should be mapped to 0x0000-0x3FFF already
     }
 }
 
 void Ppu::PpuWrite(word address, byte data) {
+    address &= 0x3FFF;
     if (InRange<word>(0x0000, address, 0x1FFF)) {
         cartridge->PpuWrite(address, data);
     } else if (InRange<word>(0x2000, address, 0x2FFF)) {
@@ -193,8 +231,6 @@ void Ppu::PpuWrite(word address, byte data) {
         vram[address - 0x3000] = data;
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
         palette_table[Ppu::PaletteIndex(address)] = data;
-    } else {
-        PpuWrite(address & 0x3FFF, data);  // Addresses should be mapped to 0x0000-0x3FFF already
     }
 }
 

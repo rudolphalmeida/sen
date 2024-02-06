@@ -54,9 +54,9 @@ class Ui {
     unsigned int pattern_table_left_texture{};
     unsigned int pattern_table_right_texture{};
 
-    [[nodiscard]] std::vector<Pixel> RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table,
+    [[nodiscard]] static std::vector<Pixel> RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table,
                                                    std::span<byte, 32> nes_palette,
-                                                   int palette_id) const;
+                                                   int palette_id) ;
 
     void ShowMenuBar();
     void ShowCpuState();
