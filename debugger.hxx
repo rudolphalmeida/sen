@@ -20,14 +20,13 @@ struct CpuState {
 };
 
 struct PpuState {
-    std::span<byte, 256> oam;
     byte& ppuctrl;
     byte& ppumask;
     byte& ppustatus;
     byte& oamaddr;
 
-    word v;  // TODO: Extract v, t type so that they can be referenced here
-    word t;
+    word& v;
+    word& t;
     byte& fine_x;
     bool& write_toggle;
 
@@ -80,7 +79,6 @@ class Debugger {
 
     static PpuState GetPpuState(const std::shared_ptr<Ppu>& ppu) {
         return PpuState{
-            .oam = ppu->oam,
             .ppuctrl = ppu->ppuctrl,
             .ppumask = ppu->ppumask,
             .ppustatus = ppu->ppustatus,

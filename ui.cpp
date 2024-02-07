@@ -375,7 +375,34 @@ void Ui::ShowPpuState() {
     }
 
     auto ppu_state = debugger.GetPpuState();
-    // TODO: Render PPU state UI
+    if (ImGui::BeginTable("ppu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+        ImGui::TableSetupColumn("Register");
+        ImGui::TableSetupColumn("Value");
+        ImGui::TableHeadersRow();
+
+        ImGui::TableNextColumn();
+        ImGui::Text("PPUCTRL");
+        ImGui::TableNextColumn();
+        ImGui::Text("%.8b", ppu_state.ppuctrl);
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::Text("PPUMASK");
+        ImGui::TableNextColumn();
+        ImGui::Text("%.8b", ppu_state.ppumask);
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::Text("PPUSTATUS");
+        ImGui::TableNextColumn();
+        ImGui::Text("%.8b", ppu_state.ppustatus);
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::Text("OAMADDR");
+        ImGui::TableNextColumn();
+        ImGui::Text("%.8b", ppu_state.oamaddr);
+        ImGui::TableNextRow();
+
+        ImGui::EndTable();
+    }
 }
 
 void Ui::ShowPpuMemory() {
