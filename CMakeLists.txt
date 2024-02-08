@@ -9,6 +9,7 @@ find_package(Catch2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 
@@ -24,7 +25,9 @@ add_library(libsen
 target_link_libraries(libsen PRIVATE
     spdlog::spdlog
     spdlog::spdlog_header_only
-    nlohmann_json::nlohmann_json)
+    nlohmann_json::nlohmann_json
+    fmt::fmt
+)
 target_include_directories(libsen PUBLIC .)
 
 add_executable(sen main.cpp ui.hxx ui.cpp imgui_memory_editor.h)
