@@ -169,7 +169,7 @@ void Ui::Run() {
             }
         }
         ImGui::End();
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleVar(1);
 
         ImGui::EndFrame();
 
@@ -399,6 +399,14 @@ void Ui::ShowPpuState() {
         ImGui::Text("OAMADDR");
         ImGui::TableNextColumn();
         ImGui::Text("%.8b", ppu_state.oamaddr);
+        ImGui::TableNextRow();ImGui::TableNextColumn();
+        ImGui::Text("V");
+        ImGui::TableNextColumn();
+        ImGui::Text("0x%.4X", ppu_state.v);
+        ImGui::TableNextRow();ImGui::TableNextColumn();
+        ImGui::Text("T");
+        ImGui::TableNextColumn();
+        ImGui::Text("0x%.4X", ppu_state.t);
         ImGui::TableNextRow();
 
         ImGui::EndTable();

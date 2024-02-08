@@ -27,8 +27,6 @@ struct PpuState {
 
     word& v;
     word& t;
-    byte& fine_x;
-    bool& write_toggle;
 
     byte& tile_id_latch;
     byte& bg_pattern_msb_latch, bg_pattern_lsb_latch;
@@ -85,8 +83,6 @@ class Debugger {
             .oamaddr = ppu->oamaddr,
             .v = ppu->v.value,
             .t = ppu->t.value,
-            .fine_x = ppu->fine_x,
-            .write_toggle = ppu->write_toggle,
             .tile_id_latch = ppu->tile_id_latch,
             .bg_pattern_msb_latch = ppu->bg_pattern_msb_latch,
             .bg_pattern_lsb_latch = ppu->bg_pattern_lsb_latch,

@@ -8,8 +8,10 @@ byte Bus::UntickedCpuRead(word address) {
         return internal_ram[address % 0x800];
     } else if (InRange<word>(0x2000, address, 0x3FFF)) {
         return ppu->CpuRead(address);
-    } else if (InRange<word>(0x4000, address, 0x4017)) {
+    } else if (InRange<word>(0x4000, address, 0x4015)) {
         return 0xFF;
+    } else if (InRange<word>(0x4016, address, 0x4017)) {
+        return 0x00;  // So that the Donkey Kong demo can play without controller
     } else if (InRange<word>(0x4018, address, 0x401F)) {
         return 0xFF;
     } else {
