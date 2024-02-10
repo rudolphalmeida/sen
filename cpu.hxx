@@ -634,10 +634,16 @@ void Cpu<BusType>::Execute() {
     }
     executed_opcodes.PushBack(executed_opcode);
 
-    auto arg1 = opcode.length >= 2 ? fmt::format("{:02X}", executed_opcode.arg1) : std::string("  ");
-    auto arg2 = opcode.length >= 3 ? fmt::format("{:02X}", executed_opcode.arg2) : std::string("  ");
-    // Cycles account for the 7 startup cycles
-    fmt::print("c{:<12}${:04X}: {:02X} {} {}  A:{:02X} X:{:02X} Y:{:02X} S:{:02X} P:{} \n", initial_cycles - 7, pc - 1, executed_opcode.opcode, arg1, arg2, a, x, y, s, StatusFlagRepr());
+#ifdef LOG_DEBUG
+        auto arg1 =
+            opcode.length >= 2 ? fmt::format("{:02X}", executed_opcode.arg1) : std::string("  ");
+        auto arg2 =
+            opcode.length >= 3 ? fmt::format("{:02X}", executed_opcode.arg2) : std::string("  ");
+        // Cycles account for the 7 startup cycles
+        fmt::print("c{:<12}${:04X}: {:02X} {} {}  A:{:02X} X:{:02X} Y:{:02X} S:{:02X} P:{} \n",
+                   initial_cycles - 7, pc - 1, executed_opcode.opcode, arg1, arg2, a, x, y, s,
+                   StatusFlagRepr());
+#endif
 
     ExecuteOpcode(opcode);
 };

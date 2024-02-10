@@ -29,6 +29,7 @@ target_link_libraries(libsen PRIVATE
     fmt::fmt
 )
 target_include_directories(libsen PUBLIC .)
+target_compile_definitions(libsen PUBLIC $<$<CONFIG:Debug>:LOG_DEBUG>)
 
 add_executable(sen main.cpp ui.hxx ui.cpp imgui_memory_editor.h)
 target_link_libraries(sen PRIVATE
