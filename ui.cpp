@@ -84,6 +84,13 @@ Ui::Ui() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glGenTextures(1, &display_texture);
+    glBindTexture(GL_TEXTURE_2D, display_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
 void Ui::Run() {
@@ -161,6 +168,42 @@ void Ui::Run() {
                 ImGui::BeginChild("right-game-pane", ImVec2(NES_WIDTH * 4, 0), true);
 
                 if (emulator_context != nullptr) {
+                    auto framebuffer = debugger.Framebuffer();
+                    std::vector<byte> pixels(NES_WIDTH * NES_HEIGHT * 3);
+                    for (int y = 0; y < NES_HEIGHT; y++) {
+                        for (int x = 0; x < NES_WIDTH; x++) {
+                            byte pixel = framebuffer[y * NES_WIDTH + x];
+                            int pixel_index = y * NES_WIDTH * 3 + x * 3;
+                            switch (pixel) {
+                                case 0b00:
+                                    pixels[pixel_index + 0] = 0x00;
+                                    pixels[pixel_index + 1] = 0x00;
+                                    pixels[pixel_index + 2] = 0x00;
+                                    break;
+                                case 0b01:
+                                    pixels[pixel_index + 0] = 0x55;
+                                    pixels[pixel_index + 1] = 0x55;
+                                    pixels[pixel_index + 2] = 0x55;
+                                    break;
+                                case 0b10:
+                                    pixels[pixel_index + 0] = 0xAA;
+                                    pixels[pixel_index + 1] = 0xAA;
+                                    pixels[pixel_index + 2] = 0xAA;
+                                    break;
+                                case 0b11:
+                                    pixels[pixel_index + 0] = 0xFF;
+                                    pixels[pixel_index + 1] = 0xFF;
+                                    pixels[pixel_index + 2] = 0xFF;
+                                    break;
+                            }
+                        }
+                    }
+
+                    glBindTexture(GL_TEXTURE_2D, display_texture);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                                 reinterpret_cast<unsigned char*>(pixels.data()));
+                    ImGui::Image((void*)(intptr_t)display_texture,
+                                 ImVec2(NES_WIDTH * 4, NES_HEIGHT * 4));
                 } else {
                     ImGui::Text("Load a NES ROM and click on Start to run the program");
                 }
@@ -399,11 +442,13 @@ void Ui::ShowPpuState() {
         ImGui::Text("OAMADDR");
         ImGui::TableNextColumn();
         ImGui::Text("%.8b", ppu_state.oamaddr);
-        ImGui::TableNextRow();ImGui::TableNextColumn();
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
         ImGui::Text("V");
         ImGui::TableNextColumn();
         ImGui::Text("0x%.4X", ppu_state.v);
-        ImGui::TableNextRow();ImGui::TableNextColumn();
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
         ImGui::Text("T");
         ImGui::TableNextColumn();
         ImGui::Text("0x%.4X", ppu_state.t);
@@ -475,7 +520,8 @@ std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern
             size_t tile_row = row / 8;
             size_t pixel_row_in_tile = 7 - (row % 8);
 
-            // TODO: Find out why this works correctly with pixel_{column,row}_in_tile
+            // TODO: Find out why this works correctly with
+            // pixel_{column,row}_in_tile
             size_t tile_index = tile_row + tile_column * 16;
             size_t pixel_row_bitplane_0_index = tile_index * 16 + pixel_column_in_tile;
             size_t pixel_row_bitplane_1_index = pixel_row_bitplane_0_index + 8;

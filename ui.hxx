@@ -53,6 +53,7 @@ class Ui {
 
     unsigned int pattern_table_left_texture{};
     unsigned int pattern_table_right_texture{};
+    unsigned int display_texture{};
 
     [[nodiscard]] static std::vector<Pixel> RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table,
                                                    std::span<byte, 32> nes_palette,

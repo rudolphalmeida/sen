@@ -60,6 +60,10 @@ class Debugger {
     explicit Debugger(std::shared_ptr<Sen> emulator_context)
         : emulator_context{std::move(emulator_context)} {}
 
+    [[nodiscard]] std::span<byte, NES_WIDTH * NES_HEIGHT> Framebuffer() const {
+        return std::span<byte, NES_WIDTH * NES_HEIGHT>{emulator_context->ppu->framebuffer.data(), NES_WIDTH * NES_HEIGHT};
+    }
+
     template <typename BusType>
     static CpuState GetCpuState(Cpu<BusType>& cpu) {
         return CpuState{
@@ -102,6 +106,7 @@ class Debugger {
 
     [[nodiscard]] PatternTablesState GetPatternTableState() const {
         auto chr_mem = emulator_context->bus->cartridge->chr_rom;
+        auto framebuffer = emulator_context->ppu->framebuffer;
         return {.left = std::span<byte, 4096>{&chr_mem[0x0000], 0x1000},
                 .right = std::span<byte, 4096>{&chr_mem[0x1000], 0x1000},
                 .palettes = std::span<byte, 0x20>{&emulator_context->ppu->palette_table[0], 0x20}};

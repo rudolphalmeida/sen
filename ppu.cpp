@@ -14,10 +14,6 @@ void Ppu::Tick() {
             if (InRange<unsigned int>(1, cycles_into_scanline, 256)) {
                 // PPU is outputting pixels
                 switch ((cycles_into_scanline - 1) % 8) {  // 0, 1, ..., 7
-                    case 0:
-                        // Reload shifters in the 9, 17, 25, ..., 257 cycles
-                        ReloadShiftersFromLatches();
-                        break;
                     case 1:
                         // Fetch NT byte
                         tile_id_latch = PpuRead(0x2000 | (v.value & 0x0FFF));
@@ -40,8 +36,20 @@ void Ppu::Tick() {
                         } else {
                             v.value += 1;
                         }
+
+                        ReloadShiftersFromLatches();
                         break;
                 }
+
+                // TODO: Render pixel from shift register here
+                byte pixel_msb = (bg_pattern_msb_shift_reg & (1 << fine_x)) ? 1 : 0;
+                byte pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << fine_x)) ? 1 : 0;
+                byte pixel = (pixel_msb << 1) | (pixel_lsb);
+                byte screen_y = (v.as_scroll.coarse_y_scroll() << 3) | v.as_scroll.fine_y_scroll;
+                byte screen_x = cycles_into_scanline - 1;
+                framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
+
+                fine_x = (fine_x + 1) & 0b111;  // 0-7
             }
             if (cycles_into_scanline == 256) {
                 // Fine Y increment
@@ -62,11 +70,6 @@ void Ppu::Tick() {
                 v.value = (v.value & ~0x03E0) | (y << 5);
             }
 
-            if (cycles_into_scanline == 257) {
-                // Reload shifters for the previously fetched tile data
-                ReloadShiftersFromLatches();
-            }
-
             if (InRange<unsigned int>(321, cycles_into_scanline, 336)) {
                 // Fetch first two tiles on next scanline
             }
@@ -85,7 +88,13 @@ void Ppu::Tick() {
     }
 }
 
-void Ppu::ReloadShiftersFromLatches() {}
+void Ppu::ReloadShiftersFromLatches() {
+    bg_pattern_lsb_shift_reg <<= 8;
+    bg_pattern_msb_shift_reg <<= 8;
+
+    bg_pattern_msb_shift_reg |= bg_pattern_msb_latch;
+    bg_pattern_lsb_shift_reg |= bg_pattern_lsb_latch;
+}
 
 void Ppu::TickCounters() {
     cycles_into_scanline++;
