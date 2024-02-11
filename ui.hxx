@@ -1,10 +1,12 @@
 #pragma once
 
 #include <filesystem>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <span>
 #include <vector>
+#include <cstring>
 
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -24,12 +26,24 @@ constexpr int DEFAULT_SCALE_FACTOR = 4;
 struct SenSettings {
     libconfig::Config cfg{};
 
-    [[nodiscard]] int ScaleFactor() const {
-        return cfg.getRoot()["ui"]["scale"];
+    [[nodiscard]] int ScaleFactor() const { return cfg.getRoot()["ui"]["scale"]; }
+
+    void SetScale(int scale) const { cfg.getRoot()["ui"]["scale"] = scale; }
+
+    void RecentRoms(std::vector<const char*>& paths) const {
+        const libconfig::Setting& recents = cfg.getRoot()["ui"]["recents"];
+        paths.resize(recents.getLength());
+        std::copy(recents.begin(), recents.end(), paths.begin());
     }
 
-    void SetScale(int scale) const {
-        cfg.getRoot()["ui"]["scale"] = scale;
+    void PushRecentPath(const char* path) const {
+        libconfig::Setting& recents = cfg.getRoot()["ui"]["recents"];
+        for (int i = 0; i < recents.getLength(); i++) {
+            if (strcmp(recents[i], path) == 0) {
+                return;
+            }
+        }
+        recents.add(libconfig::Setting::TypeString) = path;
     }
 };
 
@@ -71,9 +85,23 @@ class Ui {
     unsigned int pattern_table_right_texture{};
     unsigned int display_texture{};
 
-    [[nodiscard]] static std::vector<Pixel> RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table,
-                                                   std::span<byte, 32> nes_palette,
-                                                   int palette_id) ;
+    void LoadRomFile(const char * path) {
+        loaded_rom_file_path = std::make_optional<std::filesystem::path>(path);
+        spdlog::info("Loading file {}", loaded_rom_file_path->string());
+
+        auto rom = ReadBinaryFile(loaded_rom_file_path.value());
+        auto rom_args = RomArgs{rom};
+        emulator_context = std::make_shared<Sen>(rom_args);
+        debugger = Debugger(emulator_context);
+
+        auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
+        glfwSetWindowTitle(window, title.c_str());
+    }
+
+    [[nodiscard]] static std::vector<Pixel> RenderPixelsForPatternTable(
+        std::span<byte, 4096> pattern_table,
+        std::span<byte, 32> nes_palette,
+        int palette_id);
 
     void ShowMenuBar();
     void ShowCpuState();

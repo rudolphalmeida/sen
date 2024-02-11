@@ -38,9 +38,9 @@ Ui::Ui() {
     if (!ui.exists("scale")) {
         ui.add("scale", libconfig::Setting::TypeInt) = DEFAULT_SCALE_FACTOR;
     }
-//    if (!ui.exists("recents")) {
-//        ui.add("recents", libconfig::Setting::TypeArray);
-//    }
+    if (!ui.exists("recents")) {
+        ui.add("recents", libconfig::Setting::TypeArray);
+    }
 
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) {
@@ -267,24 +267,25 @@ void Ui::ShowMenuBar() {
                 nfdresult_t result = NFD_OpenDialog("nes", nullptr, &selected_path);
 
                 if (result == NFD_OKAY) {
-                    loaded_rom_file_path = std::make_optional<std::filesystem::path>(selected_path);
+                    settings.PushRecentPath(selected_path);
+                    LoadRomFile(selected_path);
                     free(selected_path);
-                    spdlog::info("Loading file {}", loaded_rom_file_path->string());
-
-                    auto rom = ReadBinaryFile(loaded_rom_file_path.value());
-                    auto rom_args = RomArgs{rom};
-                    emulator_context = std::make_shared<Sen>(rom_args);
-                    debugger = Debugger(emulator_context);
-
-                    auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
-                    glfwSetWindowTitle(window, title.c_str());
                 } else if (result == NFD_CANCEL) {
                     spdlog::debug("User pressed cancel");
                 } else {
                     spdlog::error("Error: {}\n", NFD_GetError());
                 }
             }
-            if (ImGui::MenuItem("Open Recent")) {
+            if (ImGui::BeginMenu("Open Recent")) {
+                static std::vector<const char *> recents;
+                settings.RecentRoms(recents);
+                for (const auto& recent: recents) {
+                    if (ImGui::MenuItem(recent, nullptr, false, true)) {
+                        LoadRomFile(recent);
+                    }
+                }
+
+                ImGui::EndMenu();
             }
             if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
                 glfwSetWindowShouldClose(window, true);
