@@ -12,11 +12,26 @@
 #include <imgui_impl_opengl3.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
+#include <libconfig.h++>
 
 #include "constants.hxx"
 #include "debugger.hxx"
 #include "sen.hxx"
 #include "util.hxx"
+
+constexpr int DEFAULT_SCALE_FACTOR = 4;
+
+struct SenSettings {
+    libconfig::Config cfg{};
+
+    [[nodiscard]] int ScaleFactor() const {
+        return cfg.getRoot()["ui"]["scale"];
+    }
+
+    void SetScale(int scale) const {
+        cfg.getRoot()["ui"]["scale"] = scale;
+    }
+};
 
 struct Pixel {
     byte r{};
@@ -42,8 +57,9 @@ static const Pixel PALETTE_COLORS[0x40] = {
 
 class Ui {
    private:
+    SenSettings settings{};
+
     GLFWwindow* window{};
-    unsigned int scale_factor{4};
 
     std::optional<std::filesystem::path> loaded_rom_file_path = std::nullopt;
     std::shared_ptr<Sen> emulator_context{};
@@ -78,6 +94,12 @@ class Ui {
     void Run();
 
     ~Ui() {
+        try {
+            settings.cfg.writeFile("test.cfg");
+        } catch (const libconfig::FileIOException& e) {
+            spdlog::error("Failed to save settings: {}", e.what());
+        }
+
         // Cleanup
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();

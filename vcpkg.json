@@ -6,6 +6,7 @@
     "spdlog",
     "nativefiledialog",
     "catch2",
+    "libconfig",
     {
       "name": "imgui",
       "features": [

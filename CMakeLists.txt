@@ -12,6 +12,7 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
+find_package(libconfig CONFIG REQUIRED)
 
 add_library(libsen
     constants.hxx
@@ -41,6 +42,7 @@ target_link_libraries(sen PRIVATE
     OpenGL::GL
     unofficial::nativefiledialog::nfd
     imgui::imgui
+    libconfig::config libconfig::config++
 )
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)

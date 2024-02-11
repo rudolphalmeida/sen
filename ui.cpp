@@ -1,15 +1,11 @@
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <optional>
 #include <span>
 
 #include <GLFW/glfw3.h>
 #include <fmt/core.h>
-#include <fmt/format.h>
 #include <imgui.h>
 #include <nfd.h>
 #include <spdlog/spdlog.h>
+#include <libconfig.h++>
 
 #include "imgui_memory_editor.h"
 
@@ -26,6 +22,26 @@ static void glfw_error_callback(int error, const char* description) {
 }
 
 Ui::Ui() {
+    try {
+        settings.cfg.readFile("test.cfg");
+    } catch (const libconfig::FileIOException& e) {
+        spdlog::info("Failed to find settings. Using default");
+    } catch (const libconfig::ParseException& e) {
+        spdlog::error("Failed to parse settings in file {} with {}. Using default", e.getFile(), e.getLine());
+    }
+
+    libconfig::Setting& root = settings.cfg.getRoot();
+    if (!root.exists("ui")) {
+        root.add("ui", libconfig::Setting::TypeGroup);
+    }
+    libconfig::Setting& ui = root["ui"];
+    if (!ui.exists("scale")) {
+        ui.add("scale", libconfig::Setting::TypeInt) = DEFAULT_SCALE_FACTOR;
+    }
+//    if (!ui.exists("recents")) {
+//        ui.add("recents", libconfig::Setting::TypeArray);
+//    }
+
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) {
         std::exit(-1);
@@ -43,7 +59,7 @@ Ui::Ui() {
 
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    window = glfwCreateWindow(NES_WIDTH * scale_factor + 405, NES_HEIGHT * scale_factor,
+    window = glfwCreateWindow(NES_WIDTH * DEFAULT_SCALE_FACTOR + 405, NES_HEIGHT * DEFAULT_SCALE_FACTOR + 50,
                               "sen - NES Emulator", nullptr, nullptr);
     if (window == nullptr) {
         spdlog::error("Failed to create GLFW3 window");
@@ -203,7 +219,7 @@ void Ui::Run() {
                     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
                                  reinterpret_cast<unsigned char*>(pixels.data()));
                     ImGui::Image((void*)(intptr_t)display_texture,
-                                 ImVec2(NES_WIDTH * 4, NES_HEIGHT * 4));
+                                 ImVec2(NES_WIDTH * settings.ScaleFactor(), NES_HEIGHT * settings.ScaleFactor()));
                 } else {
                     ImGui::Text("Load a NES ROM and click on Start to run the program");
                 }
@@ -292,6 +308,19 @@ void Ui::ShowMenuBar() {
             }
             ImGui::EndMenu();
         }
+
+        if (ImGui::BeginMenu("View")) {
+            if (ImGui::BeginMenu("Scale")) {
+                for (int i = 1; i < 5; i++) {
+                    if (ImGui::MenuItem(fmt::format("{}", i).c_str(), nullptr, false, emulation_running)) {
+                        settings.SetScale(i);
+                    }
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenu();
+        }
+
         ImGui::EndMenuBar();
     }
 }
