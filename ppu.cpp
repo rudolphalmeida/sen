@@ -12,13 +12,15 @@ void Ppu::Tick() {
             // PPU is accessing memory
             if (InRange<unsigned int>(1, cycles_into_scanline, 256)) {
                 ReadPixelData((cycles_into_scanline - 1) % 8);
-                // TODO: Render pixel from shift register here
-                byte pixel_msb = (bg_pattern_msb_shift_reg & (1 << fine_x)) ? 1 : 0;
-                byte pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << fine_x)) ? 1 : 0;
-                byte pixel = (pixel_msb << 1) | (pixel_lsb);
-                byte screen_y = (v.as_scroll.coarse_y_scroll() << 3) | v.as_scroll.fine_y_scroll;
-                byte screen_x = cycles_into_scanline - 1;
-                framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
+                if (scanline != PRE_RENDER_SCANLINE) {
+                    // Output pixels
+                    byte pixel_msb = (bg_pattern_msb_shift_reg & (1 << fine_x)) ? 1 : 0;
+                    byte pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << fine_x)) ? 1 : 0;
+                    byte pixel = (pixel_msb << 1) | (pixel_lsb);
+                    byte screen_y = scanline;
+                    byte screen_x = cycles_into_scanline - 1;
+                    framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
+                }
 
                 fine_x = (fine_x + 1) & 0b111;  // 0-7
             }
@@ -102,11 +104,11 @@ void Ppu::ReadPixelData(unsigned int cycle) {
 }
 
 void Ppu::ReloadShiftersFromLatches() {
-    bg_pattern_lsb_shift_reg <<= 8;
-    bg_pattern_msb_shift_reg <<= 8;
+    bg_pattern_lsb_shift_reg >>= 8;
+    bg_pattern_msb_shift_reg >>= 8;
 
-    bg_pattern_msb_shift_reg |= bg_pattern_msb_latch;
-    bg_pattern_lsb_shift_reg |= bg_pattern_lsb_latch;
+    bg_pattern_msb_shift_reg |= (static_cast<word>(bg_pattern_msb_latch) << 8);
+    bg_pattern_lsb_shift_reg |= (static_cast<word>(bg_pattern_lsb_latch) << 8);
 
     // TODO: Load attribute shifters
 }
