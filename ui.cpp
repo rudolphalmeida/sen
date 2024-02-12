@@ -23,6 +23,7 @@ static void glfw_error_callback(int error, const char* description) {
 
 Ui::Ui() {
     try {
+        // TODO: Change this path to be the standard config directory for each OS
         settings.cfg.readFile("test.cfg");
     } catch (const libconfig::FileIOException& e) {
         spdlog::info("Failed to find settings. Using default");
@@ -192,19 +193,19 @@ void Ui::Run() {
                             int pixel_index = y * NES_WIDTH * 3 + x * 3;
                             switch (pixel) {
                                 case 0b00:
-                                    pixels[pixel_index + 0] = 0x00;
-                                    pixels[pixel_index + 1] = 0x00;
-                                    pixels[pixel_index + 2] = 0x00;
+                                    pixels[pixel_index + 0] = 0x44;
+                                    pixels[pixel_index + 1] = 0x44;
+                                    pixels[pixel_index + 2] = 0x44;
                                     break;
                                 case 0b01:
-                                    pixels[pixel_index + 0] = 0x55;
-                                    pixels[pixel_index + 1] = 0x55;
-                                    pixels[pixel_index + 2] = 0x55;
+                                    pixels[pixel_index + 0] = 0x88;
+                                    pixels[pixel_index + 1] = 0x88;
+                                    pixels[pixel_index + 2] = 0x88;
                                     break;
                                 case 0b10:
-                                    pixels[pixel_index + 0] = 0xAA;
-                                    pixels[pixel_index + 1] = 0xAA;
-                                    pixels[pixel_index + 2] = 0xAA;
+                                    pixels[pixel_index + 0] = 0xBB;
+                                    pixels[pixel_index + 1] = 0xBB;
+                                    pixels[pixel_index + 2] = 0xBB;
                                     break;
                                 case 0b11:
                                     pixels[pixel_index + 0] = 0xFF;

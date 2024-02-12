@@ -128,6 +128,7 @@ class Ppu {
 
     void TickCounters();
     void ReloadShiftersFromLatches();
+    void ReadPixelData(unsigned int cycle);
 
     static size_t PaletteIndex(word address);
 

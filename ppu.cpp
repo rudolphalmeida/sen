@@ -10,37 +10,8 @@ void Ppu::Tick() {
         if (InRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE - 1) ||
             scanline == PRE_RENDER_SCANLINE) {
             // PPU is accessing memory
-
             if (InRange<unsigned int>(1, cycles_into_scanline, 256)) {
-                // PPU is outputting pixels
-                switch ((cycles_into_scanline - 1) % 8) {  // 0, 1, ..., 7
-                    case 1:
-                        // Fetch NT byte
-                        tile_id_latch = PpuRead(0x2000 | (v.value & 0x0FFF));
-                        break;
-                    case 3:
-                        // Fetch AT byte
-                        bg_attrib_latch = PpuRead(0x23C0 | (v.value & 0x0C00) | ((v.value >> 4) & 0x38) | ((v.value >> 2) & 0x07));
-                        break;
-                    case 5:
-                        // Fetch BG lsbits
-                        bg_pattern_lsb_latch = PpuRead(tile_id_latch << 4);
-                        break;
-                    case 7:
-                        // Fetch BG msbits
-                        bg_pattern_msb_latch = PpuRead((tile_id_latch << 4) + 8);
-                        // Coarse X increment
-                        if ((v.value & 0x001F) == 31) {
-                            v.value &= ~0x001F;
-                            v.value ^= 0x0400;
-                        } else {
-                            v.value += 1;
-                        }
-
-                        ReloadShiftersFromLatches();
-                        break;
-                }
-
+                ReadPixelData((cycles_into_scanline - 1) % 8);
                 // TODO: Render pixel from shift register here
                 byte pixel_msb = (bg_pattern_msb_shift_reg & (1 << fine_x)) ? 1 : 0;
                 byte pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << fine_x)) ? 1 : 0;
@@ -55,36 +26,78 @@ void Ppu::Tick() {
                 // Fine Y increment
                 if ((v.value & 0x7000) != 0x7000) {
                     v.value += 0x1000;
-                }
-            } else {
-                v.value &= ~0x7000;
-                int y = (v.value & 0x03E0) >> 5;
-                if (y == 29) {
-                    y = 0;
-                    v.value ^= 0x0800;
-                } else if (y == 31) {
-                    y = 0;
                 } else {
-                    y += 1;
+                    v.value &= ~0x7000;
+                    int y = (v.value & 0x03E0) >> 5;
+                    if (y == 29) {
+                        y = 0;
+                        v.value ^= 0x0800;
+                    } else if (y == 31) {
+                        y = 0;
+                    } else {
+                        y += 1;
+                    }
+                    v.value = (v.value & ~0x03E0) | (y << 5);
                 }
-                v.value = (v.value & ~0x03E0) | (y << 5);
+            }
+
+            if (cycles_into_scanline == 257) {
+                // hori(v) = hori(t)
+                v.as_scroll.coarse_x_scroll = t.as_scroll.coarse_x_scroll;
             }
 
             if (InRange<unsigned int>(321, cycles_into_scanline, 336)) {
                 // Fetch first two tiles on next scanline
+                ReadPixelData((cycles_into_scanline - 321) % 8);
             }
 
-            if (InRange<unsigned int>(337, cycles_into_scanline, 340)) {
+            if (cycles_into_scanline == 338 || cycles_into_scanline == 340) {
                 // Unused nametable fetches
+                PpuRead(0x2000 | (v.value & 0x0FFF));
             }
 
             if (scanline == PRE_RENDER_SCANLINE &&
                 InRange<unsigned int>(280, cycles_into_scanline, 304)) {
                 // vert(v) == vert(t) each tick
+                v.as_scroll.coarse_y_scroll(t.as_scroll.coarse_y_scroll());
             }
         }
     } else {
         // TODO: Output pixels with color from 0x3F00 (universal background color)
+    }
+}
+
+void Ppu::ReadPixelData(unsigned int cycle) {
+    switch (cycle) {  // 0, 1, ..., 7
+        case 1:
+            // Fetch NT byte
+            tile_id_latch = PpuRead(0x2000 | (v.value & 0x0FFF));
+            break;
+        case 3:
+            // Fetch AT byte
+            bg_attrib_latch = PpuRead(0x23C0 | (v.value & 0x0C00) | ((v.value >> 4) & 0x38) |
+                                      ((v.value >> 2) & 0x07));
+            break;
+        case 5:
+            // Fetch BG lsbits
+            bg_pattern_lsb_latch = PpuRead(tile_id_latch << 4);
+            break;
+        case 7:
+            // Fetch BG msbits
+            bg_pattern_msb_latch = PpuRead((tile_id_latch << 4) + 8);
+            // Coarse X increment
+            if ((v.value & 0x001F) == 31) {
+                v.value &= ~0x001F;
+                v.value ^= 0x0400;
+            } else {
+                v.value += 1;
+            }
+
+            ReloadShiftersFromLatches();
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -94,6 +107,8 @@ void Ppu::ReloadShiftersFromLatches() {
 
     bg_pattern_msb_shift_reg |= bg_pattern_msb_latch;
     bg_pattern_lsb_shift_reg |= bg_pattern_lsb_latch;
+
+    // TODO: Load attribute shifters
 }
 
 void Ppu::TickCounters() {
@@ -199,6 +214,7 @@ void Ppu::CpuWrite(word address, byte data) {
             write_toggle = !write_toggle;
             break;
         case 0x2006:
+            // Might need to be delayed by 3 cycles
             if (write_toggle) {  // Second Write
                 t.as_bytes.low = data;
                 v.value = t.value;
