@@ -82,11 +82,11 @@ void Ppu::ReadPixelData(unsigned int cycle) {
             break;
         case 5:
             // Fetch BG lsbits
-            bg_pattern_lsb_latch = PpuRead(tile_id_latch << 4);
+            bg_pattern_lsb_latch = PpuRead(BgPatternTableAddress() + (tile_id_latch << 4) + v.as_scroll.fine_y_scroll);
             break;
         case 7:
             // Fetch BG msbits
-            bg_pattern_msb_latch = PpuRead((tile_id_latch << 4) + 8);
+            bg_pattern_msb_latch = PpuRead(BgPatternTableAddress() + (tile_id_latch << 4) + v.as_scroll.fine_y_scroll + 8);
             // Coarse X increment
             if ((v.value & 0x001F) == 31) {
                 v.value &= ~0x001F;
