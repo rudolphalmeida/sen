@@ -11,15 +11,9 @@ void Ppu::Tick() {
             scanline == PRE_RENDER_SCANLINE) {
             // PPU is accessing memory
             if (InRange<unsigned int>(1, cycles_into_scanline, 256)) {
-                ReadPixelData((cycles_into_scanline - 1) % 8);
+                ReadNextTileData((cycles_into_scanline - 1) % 8);
                 if (scanline != PRE_RENDER_SCANLINE) {
-                    // Output pixels
-                    byte pixel_msb = (bg_pattern_msb_shift_reg & (1 << fine_x)) ? 1 : 0;
-                    byte pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << fine_x)) ? 1 : 0;
-                    byte pixel = (pixel_msb << 1) | (pixel_lsb);
-                    byte screen_y = scanline;
-                    byte screen_x = cycles_into_scanline - 1;
-                    framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
+                    RenderPixel();
                 }
 
                 fine_x = (fine_x + 1) & 0b111;  // 0-7
@@ -50,7 +44,7 @@ void Ppu::Tick() {
 
             if (InRange<unsigned int>(321, cycles_into_scanline, 336)) {
                 // Fetch first two tiles on next scanline
-                ReadPixelData((cycles_into_scanline - 321) % 8);
+                ReadNextTileData((cycles_into_scanline - 321) % 8);
             }
 
             if (cycles_into_scanline == 338 || cycles_into_scanline == 340) {
@@ -68,9 +62,26 @@ void Ppu::Tick() {
         // TODO: Output pixels with color from 0x3F00 (universal background color)
     }
 }
+void Ppu::RenderPixel() {  // Output pixels
+    byte pixel_msb = (bg_pattern_msb_shift_reg & (1 << fine_x)) ? 1 : 0;
+    byte pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << fine_x)) ? 1 : 0;
+    byte pixel = (pixel_msb << 1) | (pixel_lsb);
+    byte screen_y = scanline;
+    byte screen_x = cycles_into_scanline - 1;
+    framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
+}
 
-void Ppu::ReadPixelData(unsigned int cycle) {
+void Ppu::ReadNextTileData(unsigned int cycle) {
     switch (cycle) {  // 0, 1, ..., 7
+        case 0:
+            // Coarse X increment
+            if ((v.value & 0x001F) == 31) {
+                v.value &= ~0x001F;
+                v.value ^= 0x0400;
+            } else {
+                v.value += 1;
+            }
+            break;
         case 1:
             // Fetch NT byte
             tile_id_latch = PpuRead(0x2000 | (v.value & 0x0FFF));
@@ -87,13 +98,6 @@ void Ppu::ReadPixelData(unsigned int cycle) {
         case 7:
             // Fetch BG msbits
             bg_pattern_msb_latch = PpuRead(BgPatternTableAddress() + (tile_id_latch << 4) + v.as_scroll.fine_y_scroll + 8);
-            // Coarse X increment
-            if ((v.value & 0x001F) == 31) {
-                v.value &= ~0x001F;
-                v.value ^= 0x0400;
-            } else {
-                v.value += 1;
-            }
 
             ReloadShiftersFromLatches();
             break;
