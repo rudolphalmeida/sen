@@ -66,13 +66,25 @@ void Ppu::ShiftShifters() {
     bg_pattern_msb_shift_reg <<= 1;
     bg_pattern_lsb_shift_reg <<= 1;
 
-    // TODO: Also shift the palette attributes
+    bg_attrib_lsb_shift_reg <<= 1;
+    bg_attrib_lsb_shift_reg |= (((bg_attrib_lsb_shift_reg & 1) << 0) != 0);
+
+    bg_attrib_msb_shift_reg <<= 1;
+    bg_attrib_msb_shift_reg |= (((bg_attrib_msb_shift_reg & 1) << 0) != 0);
 }
 
 void Ppu::RenderPixel() {  // Output pixels
     byte pixel_msb = (bg_pattern_msb_shift_reg & (1 << (15 - fine_x))) ? 1 : 0;
     byte pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << (15 - fine_x))) ? 1 : 0;
-    byte pixel = (pixel_msb << 1) | (pixel_lsb);
+    byte background_pixel = (pixel_msb << 1) | (pixel_lsb);
+
+    byte attrib_msb = (bg_attrib_msb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
+    byte attrib_lsb = (bg_attrib_lsb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
+    byte palette_offset = (attrib_msb << 1) | attrib_lsb;
+
+    byte palette_address = (palette_offset << 2) + background_pixel;
+    byte pixel = PpuRead(0x3F00 + palette_address);
+
     byte screen_y = scanline;
     byte screen_x = cycles_into_scanline - 1;
     framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;

@@ -189,30 +189,13 @@ void Ui::Run() {
                     std::vector<byte> pixels(NES_WIDTH * NES_HEIGHT * 3);
                     for (int y = 0; y < NES_HEIGHT; y++) {
                         for (int x = 0; x < NES_WIDTH; x++) {
-                            byte pixel = framebuffer[y * NES_WIDTH + x];
-                            int pixel_index = y * NES_WIDTH * 3 + x * 3;
-                            switch (pixel) {
-                                case 0b00:
-                                    pixels[pixel_index + 0] = 0x44;
-                                    pixels[pixel_index + 1] = 0x44;
-                                    pixels[pixel_index + 2] = 0x44;
-                                    break;
-                                case 0b01:
-                                    pixels[pixel_index + 0] = 0x88;
-                                    pixels[pixel_index + 1] = 0x88;
-                                    pixels[pixel_index + 2] = 0x88;
-                                    break;
-                                case 0b10:
-                                    pixels[pixel_index + 0] = 0xBB;
-                                    pixels[pixel_index + 1] = 0xBB;
-                                    pixels[pixel_index + 2] = 0xBB;
-                                    break;
-                                case 0b11:
-                                    pixels[pixel_index + 0] = 0xFF;
-                                    pixels[pixel_index + 1] = 0xFF;
-                                    pixels[pixel_index + 2] = 0xFF;
-                                    break;
-                            }
+                            byte color_index = framebuffer[y * NES_WIDTH + x];
+                            auto color = PALETTE_COLORS[color_index];
+
+                            int pixel_index = (y * NES_WIDTH + x) * 3;
+                            pixels[pixel_index + 0] = color.r;
+                            pixels[pixel_index + 1] = color.b;
+                            pixels[pixel_index + 2] = color.g;
                         }
                     }
 
