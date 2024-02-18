@@ -11,12 +11,11 @@ void Ppu::Tick() {
             scanline == PRE_RENDER_SCANLINE) {
             // PPU is accessing memory
             if (InRange<unsigned int>(1, cycles_into_scanline, 256)) {
+                ShiftShifters();
                 ReadNextTileData((cycles_into_scanline - 1) % 8);
                 if (scanline != PRE_RENDER_SCANLINE) {
                     RenderPixel();
                 }
-
-                fine_x = (fine_x + 1) & 0b111;  // 0-7
             }
             if (cycles_into_scanline == 256) {
                 // Fine Y increment
@@ -62,9 +61,17 @@ void Ppu::Tick() {
         // TODO: Output pixels with color from 0x3F00 (universal background color)
     }
 }
+
+void Ppu::ShiftShifters() {
+    bg_pattern_msb_shift_reg <<= 1;
+    bg_pattern_lsb_shift_reg <<= 1;
+
+    // TODO: Also shift the palette attributes
+}
+
 void Ppu::RenderPixel() {  // Output pixels
-    byte pixel_msb = (bg_pattern_msb_shift_reg & (1 << fine_x)) ? 1 : 0;
-    byte pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << fine_x)) ? 1 : 0;
+    byte pixel_msb = (bg_pattern_msb_shift_reg & (1 << (15 - fine_x))) ? 1 : 0;
+    byte pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << (15 - fine_x))) ? 1 : 0;
     byte pixel = (pixel_msb << 1) | (pixel_lsb);
     byte screen_y = scanline;
     byte screen_x = cycles_into_scanline - 1;
@@ -86,18 +93,25 @@ void Ppu::ReadNextTileData(unsigned int cycle) {
             // Fetch NT byte
             tile_id_latch = PpuRead(0x2000 | (v.value & 0x0FFF));
             break;
-        case 3:
+        case 3: {
             // Fetch AT byte
-            bg_attrib_latch = PpuRead(0x23C0 | (v.value & 0x0C00) | ((v.value >> 4) & 0x38) |
-                                      ((v.value >> 2) & 0x07));
+            bg_attrib_data = PpuRead(0x23C0 | (v.value & 0x0C00) | ((v.value >> 4) & 0x38) |
+                                ((v.value >> 2) & 0x07));
+            byte coarse_x = v.as_scroll.coarse_x_scroll;
+            byte coarse_y = v.as_scroll.coarse_y_scroll();
+            byte left_or_right = (coarse_x / 2) % 2;
+            byte top_or_bottom = (coarse_y / 2) % 2;
+            byte offset = ((top_or_bottom << 1) | left_or_right) * 2;
+            bg_attrib_data = ((bg_attrib_data & (0b11 << offset)) >> offset) & 0b11;
             break;
+        }
         case 5:
             // Fetch BG lsbits
-            bg_pattern_lsb_latch = PpuRead(BgPatternTableAddress() + (tile_id_latch << 4) + v.as_scroll.fine_y_scroll);
+            bg_pattern_lsb_latch = PpuRead(BgPatternTableAddress() + (static_cast<word>(tile_id_latch) << 4) + v.as_scroll.fine_y_scroll);
             break;
         case 7:
             // Fetch BG msbits
-            bg_pattern_msb_latch = PpuRead(BgPatternTableAddress() + (tile_id_latch << 4) + v.as_scroll.fine_y_scroll + 8);
+            bg_pattern_msb_latch = PpuRead(BgPatternTableAddress() + (static_cast<word>(tile_id_latch) << 4) + v.as_scroll.fine_y_scroll + 8);
 
             ReloadShiftersFromLatches();
             break;
@@ -108,13 +122,10 @@ void Ppu::ReadNextTileData(unsigned int cycle) {
 }
 
 void Ppu::ReloadShiftersFromLatches() {
-    bg_pattern_lsb_shift_reg >>= 8;
-    bg_pattern_msb_shift_reg >>= 8;
+    bg_pattern_msb_shift_reg |= bg_pattern_msb_latch;
+    bg_pattern_lsb_shift_reg |= bg_pattern_lsb_latch;
 
-    bg_pattern_msb_shift_reg |= (static_cast<word>(bg_pattern_msb_latch) << 8);
-    bg_pattern_lsb_shift_reg |= (static_cast<word>(bg_pattern_lsb_latch) << 8);
-
-    // TODO: Load attribute shifters
+    bg_attrib_latch = bg_attrib_data;
 }
 
 void Ppu::TickCounters() {

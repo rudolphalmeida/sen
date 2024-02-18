@@ -69,6 +69,8 @@ class Ppu {
     // Latch for palette attribute for next tile. Updated every 8-cycles.
     // Only 2 bits
     byte bg_attrib_latch{};
+    // Temp to hold palette attribute data until reloading
+    byte bg_attrib_data{};
 
     /* These contain the palette attributes for the lower 8 pixels of the 16-bit shift registers.
      * These are fed from the latch which contains the palette attribute for the next tile
@@ -127,6 +129,7 @@ class Ppu {
     }
 
     void TickCounters();
+    void ShiftShifters();
     void ReloadShiftersFromLatches();
     void ReadNextTileData(unsigned int cycle);
     void RenderPixel();
