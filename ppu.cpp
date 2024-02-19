@@ -67,10 +67,10 @@ void Ppu::ShiftShifters() {
     bg_pattern_lsb_shift_reg <<= 1;
 
     bg_attrib_lsb_shift_reg <<= 1;
-    bg_attrib_lsb_shift_reg |= (((bg_attrib_lsb_shift_reg & 1) << 0) != 0);
+    bg_attrib_lsb_shift_reg |= (((bg_attrib_latch & 1) << 0) != 0);
 
     bg_attrib_msb_shift_reg <<= 1;
-    bg_attrib_msb_shift_reg |= (((bg_attrib_msb_shift_reg & 1) << 0) != 0);
+    bg_attrib_msb_shift_reg |= (((bg_attrib_latch & 1) << 1) != 0);
 }
 
 void Ppu::RenderPixel() {  // Output pixels
