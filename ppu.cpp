@@ -12,7 +12,7 @@ void Ppu::Tick() {
             // PPU is accessing memory
             if (InRange<unsigned int>(1, cycles_into_scanline, 256)) {
                 ShiftShifters();
-                ReadNextTileData((cycles_into_scanline - 1) % 8);
+                ReadNextTileData(cycles_into_scanline % 8);
                 if (scanline != PRE_RENDER_SCANLINE) {
                     RenderPixel();
                 }
