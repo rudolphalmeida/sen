@@ -204,6 +204,7 @@ void Ui::Run() {
                                  reinterpret_cast<unsigned char*>(pixels.data()));
                     ImGui::Image((void*)(intptr_t)display_texture,
                                  ImVec2(NES_WIDTH * settings.ScaleFactor(), NES_HEIGHT * settings.ScaleFactor()));
+                    glBindTexture(GL_TEXTURE_2D, 0);
                 } else {
                     ImGui::Text("Load a NES ROM and click on Start to run the program");
                 }
@@ -510,6 +511,7 @@ void Ui::ShowPatternTables() {
                  reinterpret_cast<unsigned char*>(left_pixels.data()));
 
     ImGui::Image((void*)(intptr_t)pattern_table_left_texture, ImVec2(385, 385));
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     ImGui::Separator();
 
@@ -519,6 +521,7 @@ void Ui::ShowPatternTables() {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
                  reinterpret_cast<unsigned char*>(right_pixels.data()));
     ImGui::Image((void*)(intptr_t)pattern_table_right_texture, ImVec2(385, 385));
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table,

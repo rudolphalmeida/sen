@@ -18,22 +18,7 @@ void Ppu::Tick() {
                 }
             }
             if (cycles_into_scanline == 256) {
-                // Fine Y increment
-                if ((v.value & 0x7000) != 0x7000) {
-                    v.value += 0x1000;
-                } else {
-                    v.value &= ~0x7000;
-                    int y = (v.value & 0x03E0) >> 5;
-                    if (y == 29) {
-                        y = 0;
-                        v.value ^= 0x0800;
-                    } else if (y == 31) {
-                        y = 0;
-                    } else {
-                        y += 1;
-                    }
-                    v.value = (v.value & ~0x03E0) | (y << 5);
-                }
+                FineYIncrement();
             }
 
             if (cycles_into_scanline == 257) {
@@ -61,16 +46,33 @@ void Ppu::Tick() {
         // TODO: Output pixels with color from 0x3F00 (universal background color)
     }
 }
+void Ppu::FineYIncrement() {  // Fine Y increment
+    if ((v.value & 0x7000) != 0x7000) {
+        v.value += 0x1000;
+    } else {
+        v.value &= ~0x7000;
+        byte y = v.as_scroll.coarse_y_scroll();
+        if (y == 29) {
+            y = 0;
+            v.value ^= 0x0800;
+        } else if (y == 31) {
+            y = 0;
+        } else {
+            y += 1;
+        }
+        v.as_scroll.coarse_y_scroll(y);
+    }
+}
 
 void Ppu::ShiftShifters() {
     bg_pattern_msb_shift_reg <<= 1;
     bg_pattern_lsb_shift_reg <<= 1;
 
     bg_attrib_lsb_shift_reg <<= 1;
-    bg_attrib_lsb_shift_reg |= (((bg_attrib_latch & 1) << 0) != 0);
+    bg_attrib_lsb_shift_reg |= ((bg_attrib_latch & (1 << 0)) != 0);
 
     bg_attrib_msb_shift_reg <<= 1;
-    bg_attrib_msb_shift_reg |= (((bg_attrib_latch & 1) << 1) != 0);
+    bg_attrib_msb_shift_reg |= ((bg_attrib_latch & (1 << 1)) != 0);
 }
 
 void Ppu::RenderPixel() {  // Output pixels
@@ -94,12 +96,7 @@ void Ppu::ReadNextTileData(unsigned int cycle) {
     switch (cycle) {  // 0, 1, ..., 7
         case 0:
             // Coarse X increment
-            if ((v.value & 0x001F) == 31) {
-                v.value &= ~0x001F;
-                v.value ^= 0x0400;
-            } else {
-                v.value += 1;
-            }
+            CoarseXIncrement();
             break;
         case 1:
             // Fetch NT byte
@@ -130,6 +127,14 @@ void Ppu::ReadNextTileData(unsigned int cycle) {
 
         default:
             break;
+    }
+}
+void Ppu::CoarseXIncrement() {
+    if ((v.value & 0x001F) == 31) {
+        v.value &= ~0x001F;
+        v.value ^= 0x0400;
+    } else {
+        v.value += 1;
     }
 }
 
@@ -267,7 +272,7 @@ byte Ppu::PpuRead(word address) {
     if (InRange<word>(0x0000, address, 0x1FFF)) {
         return cartridge->PpuRead(address);
     } else if (InRange<word>(0x2000, address, 0x2FFF)) {
-        return vram[address - 0x2000];
+        return vram[VramIndex(address)];
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
         return vram[address - 0x3000];
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
@@ -280,12 +285,25 @@ void Ppu::PpuWrite(word address, byte data) {
     if (InRange<word>(0x0000, address, 0x1FFF)) {
         cartridge->PpuWrite(address, data);
     } else if (InRange<word>(0x2000, address, 0x2FFF)) {
-        vram[address - 0x2000] = data;
+        vram[VramIndex(address)] = data;
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
         vram[address - 0x3000] = data;
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
         palette_table[Ppu::PaletteIndex(address)] = data;
     }
+}
+
+size_t Ppu::VramIndex(word address) {
+    switch (cartridge->NametableMirroring()) {
+        case Horizontal:
+            return (address & ~0x400) - 0x2000;
+        case Vertical:
+            return (address & ~0x800) - 0x2000;
+        case FourScreenVram:
+            break;
+    }
+    spdlog::error("Unknown mirroring option");
+    return address - 0x2000;
 }
 
 size_t Ppu::PaletteIndex(word address) {
