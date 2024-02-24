@@ -8,6 +8,7 @@
 #include <libconfig.h++>
 
 #include "imgui_memory_editor.h"
+#include "stb_image_write.h"
 
 #include "constants.hxx"
 #include "cpu.hxx"
@@ -199,8 +200,12 @@ void Ui::Run() {
                         }
                     }
 
+                    if (ImGui::Button("Take screenshot")) {
+                        stbi_write_png("./debug.png", NES_WIDTH, NES_HEIGHT, 3, static_cast<void *>(pixels.data()), 0);
+                    }
+
                     glBindTexture(GL_TEXTURE_2D, display_texture);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NES_WIDTH, NES_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE,
                                  reinterpret_cast<unsigned char*>(pixels.data()));
                     ImGui::Image((void*)(intptr_t)display_texture,
                                  ImVec2(NES_WIDTH * settings.ScaleFactor(), NES_HEIGHT * settings.ScaleFactor()));
