@@ -55,5 +55,9 @@ struct Cartridge {
     byte PpuRead(word addr) { return chr_rom[addr]; }
     void PpuWrite(word addr, byte data) {}
 
+    [[nodiscard]] Mirroring NametableMirroring() const {
+        return header.mirroring;
+    }
+
     friend class Debugger;
 };
