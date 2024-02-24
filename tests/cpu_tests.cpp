@@ -1,4 +1,3 @@
-#include <array>
 #include <fstream>
 #include <memory>
 
@@ -10,7 +9,7 @@
 #include "debugger.hxx"
 
 #define CPU_TEST
-
+ 
 #include "flatbus.hxx"
 
 void LoadInstructionCycles(const nlohmann::json& cycle_data, std::vector<Cycle>& cycles) {

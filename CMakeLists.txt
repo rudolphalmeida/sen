@@ -47,3 +47,7 @@ target_link_libraries(sen PRIVATE
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)
 target_link_libraries(cpu_tests PRIVATE libsen Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
+
+include(CTest)
+include(Catch)
+catch_discover_tests(cpu_tests)
