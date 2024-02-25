@@ -508,7 +508,7 @@ void Ui::ShowPpuMemory() {
     }
 
     static std::vector<byte> ppu_memory;
-    ppu_memory.reserve(0x4000);
+    ppu_memory.resize(0x4000);
     debugger.LoadPpuMemory(ppu_memory);
     static MemoryEditor ppu_mem_edit;
     ppu_mem_edit.ReadOnly = true;

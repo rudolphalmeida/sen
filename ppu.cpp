@@ -283,8 +283,9 @@ byte Ppu::PpuRead(word address) {
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
         return vram[address - 0x3000];
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
-        return palette_table[address - 0x3F00];
+        return palette_table[(address - 0x3F00) % 0x40];
     }
+    return 0;
 }
 
 void Ppu::PpuWrite(word address, byte data) {
@@ -296,9 +297,9 @@ void Ppu::PpuWrite(word address, byte data) {
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
         vram[address - 0x3000] = data;
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
-        palette_table[address - 0x3F00] = data;
+        palette_table[(address - 0x3F00) % 0x40] = data;
         if ((address & 0b11) == 0) {
-            palette_table[address ^ 0x10] = data;
+            palette_table[((address - 0x3F00) % 0x40) ^ 0x10] = data;
         }
     }
 }
