@@ -23,12 +23,20 @@
 
 constexpr int DEFAULT_SCALE_FACTOR = 4;
 
+enum class UiStyle {
+    Classic = 0,
+    Light = 1,
+    Dark = 2,
+};
+
 struct SenSettings {
     libconfig::Config cfg{};
 
     [[nodiscard]] int ScaleFactor() const { return cfg.getRoot()["ui"]["scale"]; }
-
     void SetScale(int scale) const { cfg.getRoot()["ui"]["scale"] = scale; }
+
+    [[nodiscard]] UiStyle GetUiStyle() const { return static_cast<enum UiStyle>((int) cfg.getRoot()["ui"]["style"]); }
+    void SetUiStyle(enum UiStyle style) const { cfg.getRoot()["ui"]["style"] = static_cast<int>(style); }
 
     void RecentRoms(std::vector<const char*>& paths) const {
         const libconfig::Setting& recents = cfg.getRoot()["ui"]["recents"];

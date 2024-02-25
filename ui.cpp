@@ -43,6 +43,9 @@ Ui::Ui() {
     if (!ui.exists("recents")) {
         ui.add("recents", libconfig::Setting::TypeArray);
     }
+    if (!ui.exists("style")) {
+        ui.add("style", libconfig::Setting::TypeInt) = static_cast<int>(UiStyle::Dark);
+    }
 
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) {
@@ -81,8 +84,17 @@ Ui::Ui() {
     spdlog::info("Initialized ImGui context");
 
     // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-    spdlog::info("Using ImGui dark style");
+    switch (settings.GetUiStyle()) {
+        case UiStyle::Classic:
+            ImGui::StyleColorsClassic();
+            break;
+        case UiStyle::Light:
+            ImGui::StyleColorsLight();
+            break;
+        case UiStyle::Dark:
+            ImGui::StyleColorsDark();
+            break;
+    }
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -298,9 +310,25 @@ void Ui::ShowMenuBar() {
         if (ImGui::BeginMenu("View")) {
             if (ImGui::BeginMenu("Scale")) {
                 for (int i = 1; i < 5; i++) {
-                    if (ImGui::MenuItem(fmt::format("{}", i).c_str(), nullptr, false, emulation_running)) {
+                    if (ImGui::MenuItem(fmt::format("{}", i).c_str(), nullptr, settings.ScaleFactor() == i, emulation_running)) {
                         settings.SetScale(i);
                     }
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Style")) {
+                if (ImGui::MenuItem("Classic", nullptr,
+                                    settings.GetUiStyle() == UiStyle::Classic)) {
+                    ImGui::StyleColorsClassic();
+                    settings.SetUiStyle(UiStyle::Classic);
+                }
+                if (ImGui::MenuItem("Light", nullptr, settings.GetUiStyle() == UiStyle::Light)) {
+                    ImGui::StyleColorsLight();
+                    settings.SetUiStyle(UiStyle::Light);
+                }
+                if (ImGui::MenuItem("Dark", nullptr, settings.GetUiStyle() == UiStyle::Dark)) {
+                    ImGui::StyleColorsDark();
+                    settings.SetUiStyle(UiStyle::Dark);
                 }
                 ImGui::EndMenu();
             }
