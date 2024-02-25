@@ -44,6 +44,13 @@ void Ppu::Tick() {
         }
     } else {
         // TODO: Output pixels with color from 0x3F00 (universal background color)
+        if (InRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE-1) && InRange<unsigned int>(1, cycles_into_scanline, 256)) {
+            byte pixel = PpuRead(0x3F00);
+
+            byte screen_y = scanline;
+            byte screen_x = cycles_into_scanline - 1;
+            framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
+        }
     }
 }
 void Ppu::FineYIncrement() {  // Fine Y increment

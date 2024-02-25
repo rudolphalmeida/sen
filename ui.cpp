@@ -187,16 +187,11 @@ void Ui::Run() {
 
                 if (emulator_context != nullptr) {
                     auto framebuffer = debugger.Framebuffer();
-                    std::vector<byte> pixels(NES_WIDTH * NES_HEIGHT * 3);
+                    std::vector<Pixel> pixels(NES_WIDTH * NES_HEIGHT);
                     for (int y = 0; y < NES_HEIGHT; y++) {
                         for (int x = 0; x < NES_WIDTH; x++) {
                             byte color_index = framebuffer[y * NES_WIDTH + x];
-                            auto color = PALETTE_COLORS[color_index];
-
-                            int pixel_index = (y * NES_WIDTH + x) * 3;
-                            pixels[pixel_index + 0] = color.r;
-                            pixels[pixel_index + 1] = color.b;
-                            pixels[pixel_index + 2] = color.g;
+                            pixels[y * NES_WIDTH + x] = PALETTE_COLORS[color_index];
                         }
                     }
 
