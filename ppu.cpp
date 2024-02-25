@@ -92,7 +92,7 @@ void Ppu::RenderPixel() {  // Output pixels
     byte palette_offset = (attrib_msb << 1) | attrib_lsb;
 
     byte palette_address = (palette_offset << 2) + background_pixel;
-    byte pixel = PpuRead(0x3F00 + palette_address);
+    byte pixel = palette_table[palette_address];
 
     byte screen_y = scanline;
     byte screen_x = cycles_into_scanline - 1;
@@ -283,7 +283,7 @@ byte Ppu::PpuRead(word address) {
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
         return vram[address - 0x3000];
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
-        return palette_table[Ppu::PaletteIndex(address)];
+        return palette_table[address - 0x3F00];
     }
 }
 
@@ -296,7 +296,10 @@ void Ppu::PpuWrite(word address, byte data) {
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
         vram[address - 0x3000] = data;
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
-        palette_table[Ppu::PaletteIndex(address)] = data;
+        palette_table[address - 0x3F00] = data;
+        if ((address & 0b11) == 0) {
+            palette_table[address ^ 0x10] = data;
+        }
     }
 }
 
@@ -311,15 +314,4 @@ size_t Ppu::VramIndex(word address) {
     }
     spdlog::error("Unknown mirroring option");
     return address - 0x2000;
-}
-
-size_t Ppu::PaletteIndex(word address) {
-    size_t index = address & 0x1F;  // Only lower 5 bits are used for palette indices
-
-    if (index & ~0b11) {  // The lower two bits are 0 (00, 04, 08, 0C, 10, 14, 18, 1C)
-        // Map these to 00, 04, 08, 0C
-        return index & 0xF;
-    }
-
-    return address % 32;
 }

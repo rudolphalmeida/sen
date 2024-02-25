@@ -195,7 +195,7 @@ void Ui::Run() {
             ImGui::SameLine();
 
             {
-                ImGui::BeginChild("right-game-pane", ImVec2(NES_WIDTH * 4, 0), true);
+                ImGui::BeginChild("right-game-pane", ImVec2(NES_WIDTH * DEFAULT_SCALE_FACTOR, 0), true);
 
                 if (emulator_context != nullptr) {
                     auto framebuffer = debugger.Framebuffer();

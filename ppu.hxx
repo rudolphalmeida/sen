@@ -134,7 +134,6 @@ class Ppu {
     void ReadNextTileData(unsigned int cycle);
     void RenderPixel();
 
-    static size_t PaletteIndex(word address);
     size_t VramIndex(word address);
 
     friend class Debugger;
