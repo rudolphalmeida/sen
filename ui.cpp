@@ -583,7 +583,7 @@ std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern
             // Skip the first byte for Universal background color
             auto nes_palette_color_index = ((palette_id & 0b111) << 2) | (color_index & 0b11);
 
-            pixels[pixel_index] = PALETTE_COLORS[nes_palette[nes_palette_color_index + 1]];
+            pixels[pixel_index] = PALETTE_COLORS[nes_palette[nes_palette_color_index]];
         }
     }
 

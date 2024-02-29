@@ -91,7 +91,7 @@ void Ppu::RenderPixel() {  // Output pixels
     byte attrib_lsb = (bg_attrib_lsb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
     byte palette_offset = (attrib_msb << 1) | attrib_lsb;
 
-    byte palette_address = (palette_offset << 2) + background_pixel;
+    byte palette_address = (palette_offset << 2) | background_pixel;
     byte pixel = palette_table[palette_address];
 
     byte screen_y = scanline;
