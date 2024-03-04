@@ -9,6 +9,7 @@
 #include "bus.hxx"
 #include "cartridge.hxx"
 #include "constants.hxx"
+#include "controller.hxx"
 #include "cpu.hxx"
 #include "ppu.hxx"
 
@@ -26,6 +27,7 @@ class Sen {
 
     std::shared_ptr<Bus> bus;
     std::shared_ptr<Ppu> ppu;
+    std::shared_ptr<Controller> controller;
     Cpu<Bus> cpu;
 
     std::shared_ptr<bool> nmi_requested{};
@@ -36,6 +38,9 @@ class Sen {
     explicit Sen(const RomArgs& rom_args);
 
     void RunForOneFrame();
+
+    void ControllerPress(ControllerPort port, ControllerKey key);
+    void ControllerRelease(ControllerPort port, ControllerKey key);
 
     friend class Debugger;
 };

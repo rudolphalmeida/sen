@@ -133,6 +133,8 @@ class Ppu {
     void ReloadShiftersFromLatches();
     void ReadNextTileData(unsigned int cycle);
     void RenderPixel();
+    void FineYIncrement();
+    void CoarseXIncrement();
 
     size_t VramIndex(word address);
 
@@ -158,6 +160,4 @@ class Ppu {
 
     byte PpuRead(word address);
     void PpuWrite(word address, byte data);
-    void FineYIncrement();
-    void CoarseXIncrement();
 };

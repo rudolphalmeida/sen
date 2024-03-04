@@ -29,7 +29,8 @@ Ui::Ui() {
     } catch (const libconfig::FileIOException& e) {
         spdlog::info("Failed to find settings. Using default");
     } catch (const libconfig::ParseException& e) {
-        spdlog::error("Failed to parse settings in file {} with {}. Using default", e.getFile(), e.getLine());
+        spdlog::error("Failed to parse settings in file {} with {}. Using default", e.getFile(),
+                      e.getLine());
     }
 
     libconfig::Setting& root = settings.cfg.getRoot();
@@ -64,8 +65,9 @@ Ui::Ui() {
 
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    window = glfwCreateWindow(NES_WIDTH * DEFAULT_SCALE_FACTOR + 405, NES_HEIGHT * DEFAULT_SCALE_FACTOR + 50,
-                              "sen - NES Emulator", nullptr, nullptr);
+    window = glfwCreateWindow(NES_WIDTH * DEFAULT_SCALE_FACTOR + 405,
+                              NES_HEIGHT * DEFAULT_SCALE_FACTOR + 50, "sen - NES Emulator", nullptr,
+                              nullptr);
     if (window == nullptr) {
         spdlog::error("Failed to create GLFW3 window");
         std::exit(-1);
@@ -123,137 +125,156 @@ Ui::Ui() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
+void Ui::HandleInput() {
+    if (!emulator_context || !emulation_running) {
+        return;
+    }
+
+    for (auto [key, controller_key]: KEYMAP) {
+        if (glfwGetKey(window, key) == GLFW_PRESS) {
+            emulator_context->ControllerPress(ControllerPort::Port1, controller_key);
+        }
+    }
+}
+
 void Ui::Run() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+        HandleInput();
 
         if (emulation_running) {
             emulator_context->RunForOneFrame();
         }
 
-        // Start the Dear ImGui frame
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-#ifdef IMGUI_HAS_VIEWPORT
-        ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(viewport->WorkPos);
-        ImGui::SetNextWindowSize(viewport->WorkSize);
-        ImGui::SetNextWindowViewport(viewport->ID);
-#else
-        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
-        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
-#endif
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-
-        if (ImGui::Begin("sen", nullptr,
-                         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |
-                             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove |
-                             ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
-            ShowMenuBar();
-
-            {
-                ImGui::BeginChild("left-debug-pane", ImVec2(400, 0), true);
-
-                if (ImGui::BeginTabBar("debug_tabs", ImGuiTabBarFlags_None)) {
-                    if (ImGui::BeginTabItem("CPU")) {
-                        ShowCpuState();
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("PPU")) {
-                        ShowPpuState();
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("Pattern Tables")) {
-                        ShowPatternTables();
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("CPU Memory")) {
-                        ShowCpuMemory();
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("PPU Memory")) {
-                        ShowPpuMemory();
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("Cartridge Info")) {
-                        ShowCartInfo();
-                        ImGui::EndTabItem();
-                    }
-
-                    ImGui::EndTabBar();
-                }
-
-                ImGui::EndChild();
-            }
-            ImGui::SameLine();
-
-            {
-                ImGui::BeginChild("right-game-pane", ImVec2(NES_WIDTH * DEFAULT_SCALE_FACTOR, 0), true);
-
-                if (emulator_context != nullptr) {
-                    auto framebuffer = debugger.Framebuffer();
-                    std::vector<Pixel> pixels(NES_WIDTH * NES_HEIGHT);
-                    for (int y = 0; y < NES_HEIGHT; y++) {
-                        for (int x = 0; x < NES_WIDTH; x++) {
-                            byte color_index = framebuffer[y * NES_WIDTH + x];
-                            pixels[y * NES_WIDTH + x] = PALETTE_COLORS[color_index];
-                        }
-                    }
-
-                    if (ImGui::Button("Take screenshot")) {
-                        stbi_write_png("./debug.png", NES_WIDTH, NES_HEIGHT, 3, static_cast<void *>(pixels.data()), 0);
-                    }
-
-                    glBindTexture(GL_TEXTURE_2D, display_texture);
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NES_WIDTH, NES_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                                 reinterpret_cast<unsigned char*>(pixels.data()));
-                    ImGui::Image((void*)(intptr_t)display_texture,
-                                 ImVec2(NES_WIDTH * settings.ScaleFactor(), NES_HEIGHT * settings.ScaleFactor()));
-                    glBindTexture(GL_TEXTURE_2D, 0);
-                } else {
-                    ImGui::Text("Load a NES ROM and click on Start to run the program");
-                }
-
-                ImGui::EndChild();
-            }
-        }
-        ImGui::End();
-        ImGui::PopStyleVar(1);
-
-        ImGui::EndFrame();
-
-        // Rendering
-        ImGui::Render();
-        int display_w, display_h;
-        glfwGetFramebufferSize(window, &display_w, &display_h);
-        glViewport(0, 0, display_w, display_h);
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        // TODO: Enable this when I figure out how to get multi viewports to work
-        //        auto& io = ImGui::GetIO();
-        //        // Update and Render additional Platform Windows
-        //        // (Platform functions may change the current OpenGL context, so we save/restore
-        //        it to make
-        //        // it easier to paste this code elsewhere.
-        //        //  For this specific demo app we could also call glfwMakeContextCurrent(window)
-        //        directly) if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-        //            GLFWwindow* backup_current_context = glfwGetCurrentContext();
-        //            ImGui::UpdatePlatformWindows();
-        //            ImGui::RenderPlatformWindowsDefault();
-        //            glfwMakeContextCurrent(backup_current_context);
-        //        }
+        RenderUi();
 
         glfwSwapBuffers(window);
     }
+}
+
+void Ui::RenderUi() {
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+#ifdef IMGUI_HAS_VIEWPORT
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::SetNextWindowViewport(viewport->ID);
+#else
+    ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+    ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+#endif
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+
+    if (ImGui::Begin("sen", nullptr,
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |
+                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove |
+                         ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
+        ShowMenuBar();
+
+        {
+            ImGui::BeginChild("left-debug-pane", ImVec2(400, 0), true);
+
+            if (ImGui::BeginTabBar("debug_tabs", ImGuiTabBarFlags_None)) {
+                if (ImGui::BeginTabItem("CPU")) {
+                    ShowCpuState();
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("PPU")) {
+                    ShowPpuState();
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("Pattern Tables")) {
+                    ShowPatternTables();
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("CPU Memory")) {
+                    ShowCpuMemory();
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("PPU Memory")) {
+                    ShowPpuMemory();
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("Cartridge Info")) {
+                    ShowCartInfo();
+                    ImGui::EndTabItem();
+                }
+
+                ImGui::EndTabBar();
+            }
+
+            ImGui::EndChild();
+        }
+        ImGui::SameLine();
+
+        {
+            ImGui::BeginChild("right-game-pane", ImVec2(NES_WIDTH * DEFAULT_SCALE_FACTOR, 0), true);
+
+            if (emulator_context != nullptr) {
+                auto framebuffer = debugger.Framebuffer();
+                std::vector<Pixel> pixels(NES_WIDTH * NES_HEIGHT);
+                for (int y = 0; y < NES_HEIGHT; y++) {
+                    for (int x = 0; x < NES_WIDTH; x++) {
+                        byte color_index = framebuffer[y * NES_WIDTH + x];
+                        pixels[y * NES_WIDTH + x] = PALETTE_COLORS[color_index];
+                    }
+                }
+
+                if (ImGui::Button("Take screenshot")) {
+                    stbi_write_png("./debug.png", NES_WIDTH, NES_HEIGHT, 3,
+                                   static_cast<void*>(pixels.data()), 0);
+                }
+
+                glBindTexture(GL_TEXTURE_2D, display_texture);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NES_WIDTH, NES_HEIGHT, 0, GL_RGB,
+                             GL_UNSIGNED_BYTE, reinterpret_cast<unsigned char*>(pixels.data()));
+                ImGui::Image((void*)(intptr_t)display_texture,
+                             ImVec2(NES_WIDTH * settings.ScaleFactor(),
+                                    NES_HEIGHT * settings.ScaleFactor()));
+                glBindTexture(GL_TEXTURE_2D, 0);
+            } else {
+                ImGui::Text("Load a NES ROM and click on Start to run the program");
+            }
+
+            ImGui::EndChild();
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleVar(1);
+
+    ImGui::EndFrame();
+
+    // Rendering
+    ImGui::Render();
+    int display_w, display_h;
+    glfwGetFramebufferSize(window, &display_w, &display_h);
+    glViewport(0, 0, display_w, display_h);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    // TODO: Enable this when I figure out how to get multi viewports to work
+    //        auto& io = ImGui::GetIO();
+    //        // Update and Render additional Platform Windows
+    //        // (Platform functions may change the current OpenGL context, so we save/restore
+    //        it to make
+    //        // it easier to paste this code elsewhere.
+    //        //  For this specific demo app we could also call glfwMakeContextCurrent(window)
+    //        directly) if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+    //            GLFWwindow* backup_current_context = glfwGetCurrentContext();
+    //            ImGui::UpdatePlatformWindows();
+    //            ImGui::RenderPlatformWindowsDefault();
+    //            glfwMakeContextCurrent(backup_current_context);
+    //        }
 }
 
 void Ui::ShowMenuBar() {
@@ -274,9 +295,9 @@ void Ui::ShowMenuBar() {
                 }
             }
             if (ImGui::BeginMenu("Open Recent")) {
-                static std::vector<const char *> recents;
+                static std::vector<const char*> recents;
                 settings.RecentRoms(recents);
-                for (const auto& recent: recents) {
+                for (const auto& recent : recents) {
                     if (ImGui::MenuItem(recent, nullptr, false, true)) {
                         LoadRomFile(recent);
                     }
@@ -310,7 +331,8 @@ void Ui::ShowMenuBar() {
         if (ImGui::BeginMenu("View")) {
             if (ImGui::BeginMenu("Scale")) {
                 for (int i = 1; i < 5; i++) {
-                    if (ImGui::MenuItem(fmt::format("{}", i).c_str(), nullptr, settings.ScaleFactor() == i, emulation_running)) {
+                    if (ImGui::MenuItem(fmt::format("{}", i).c_str(), nullptr,
+                                        settings.ScaleFactor() == i, emulation_running)) {
                         settings.SetScale(i);
                     }
                 }

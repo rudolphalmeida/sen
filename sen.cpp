@@ -13,7 +13,9 @@ Sen::Sen(const RomArgs& rom_args) {
 
     auto cartridge = ParseRomFile(rom_args);
     ppu = std::make_shared<Ppu>(cartridge, nmi_requested);
-    bus = std::make_shared<Bus>(std::move(cartridge), ppu);
+    controller = std::make_shared<Controller>();
+
+    bus = std::make_shared<Bus>(std::move(cartridge), ppu, controller);
     cpu = Cpu<Bus>(bus, nmi_requested);
 }
 
@@ -31,6 +33,14 @@ void Sen::RunForOneFrame() {
     }
 
     carry_over_cycles = bus->cycles - target_cycles;
+}
+
+void Sen::ControllerPress(ControllerPort port, ControllerKey key) {
+    controller->ControllerPress(port, key);
+}
+
+void Sen::ControllerRelease(ControllerPort port, ControllerKey key) {
+    controller-> ControllerRelease(port, key);
 }
 
 std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {

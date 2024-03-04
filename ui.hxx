@@ -84,6 +84,17 @@ static const Pixel PALETTE_COLORS[0x40] = {
     Pixel{160, 214, 228}, Pixel{160, 162, 160}, Pixel{0, 0, 0},       Pixel{0, 0, 0},
 };
 
+static const std::tuple<int, ControllerKey> KEYMAP[0x8] = {
+    {GLFW_KEY_M, ControllerKey::A},
+    {GLFW_KEY_N, ControllerKey::B},
+    {GLFW_KEY_SPACE, ControllerKey::Select},
+    {GLFW_KEY_ENTER, ControllerKey::Start},
+    {GLFW_KEY_W, ControllerKey::Up},
+    {GLFW_KEY_S, ControllerKey::Down},
+    {GLFW_KEY_A, ControllerKey::Left},
+    {GLFW_KEY_D, ControllerKey::Right},
+};
+
 class Ui {
    private:
     SenSettings settings{};
@@ -131,6 +142,8 @@ class Ui {
     void ResetEmulation();
     void StopEmulation();
 
+    void HandleInput();
+
    public:
     Ui();
 
@@ -151,4 +164,5 @@ class Ui {
         glfwDestroyWindow(window);
         glfwTerminate();
     }
+    void RenderUi();
 };

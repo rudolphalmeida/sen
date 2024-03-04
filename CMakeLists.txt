@@ -22,7 +22,8 @@ add_library(libsen
     mapper.hxx mapper.cpp
     cpu.hxx debugger.hxx
     bus.hxx bus.cpp
-    ppu.hxx ppu.cpp)
+    ppu.hxx ppu.cpp
+    controller.hxx)
 target_link_libraries(libsen PRIVATE
     spdlog::spdlog
     spdlog::spdlog_header_only
