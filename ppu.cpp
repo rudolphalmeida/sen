@@ -9,6 +9,20 @@ void Ppu::Tick() {
     if (ShowBackground() || ShowSprites()) {
         if (InRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE - 1) ||
             scanline == PRE_RENDER_SCANLINE) {
+            /*
+             * v at (0, 1). Should be 0x0002
+             * 0x0002 = 0000 0000 0000 0010
+             * 0x0802 = 0000 1000 0000 0010
+             * 0x1402 = 0001 0100 0000 0010
+             * 0x2802 = 0010 1000 0000 0010
+             * 0x3402 = 0011 0100 0000 0010
+             * 0x4802 = 0100 1000 0000 0010
+             * 0x5402 = 0101 0100 0000 0010
+             * 0x6802 = 0110 1000 0000 0010
+             * 0x7402 = 0111 0100 0000 0010
+             * 0x0802 = 0000 1000 0000 0010
+             * */
+
             // PPU is accessing memory
             if (InRange<unsigned int>(1, cycles_into_scanline, 256)) {
                 ShiftShifters();
@@ -28,7 +42,7 @@ void Ppu::Tick() {
 
             if (InRange<unsigned int>(321, cycles_into_scanline, 336)) {
                 // Fetch first two tiles on next scanline
-                ReadNextTileData((cycles_into_scanline - 321) % 8);
+                ReadNextTileData(cycles_into_scanline % 8);
             }
 
             if (cycles_into_scanline == 338 || cycles_into_scanline == 340) {
@@ -40,11 +54,13 @@ void Ppu::Tick() {
                 InRange<unsigned int>(280, cycles_into_scanline, 304)) {
                 // vert(v) == vert(t) each tick
                 v.as_scroll.coarse_y_scroll(t.as_scroll.coarse_y_scroll());
+                v.as_scroll.fine_y_scroll = t.as_scroll.fine_y_scroll;
+                v.as_scroll.nametable_select = t.as_scroll.nametable_select;
             }
         }
     } else {
-        // TODO: Output pixels with color from 0x3F00 (universal background color)
-        if (InRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE-1) && InRange<unsigned int>(1, cycles_into_scanline, 256)) {
+        if (InRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE - 1) &&
+            InRange<unsigned int>(1, cycles_into_scanline, 256)) {
             byte pixel = PpuRead(0x3F00);
 
             byte screen_y = scanline;
@@ -112,7 +128,7 @@ void Ppu::ReadNextTileData(unsigned int cycle) {
         case 3: {
             // Fetch AT byte
             bg_attrib_data = PpuRead(0x23C0 | (v.value & 0x0C00) | ((v.value >> 4) & 0x38) |
-                                ((v.value >> 2) & 0x07));
+                                     ((v.value >> 2) & 0x07));
             byte coarse_x = v.as_scroll.coarse_x_scroll;
             byte coarse_y = v.as_scroll.coarse_y_scroll();
             byte left_or_right = (coarse_x / 2) % 2;
@@ -123,11 +139,15 @@ void Ppu::ReadNextTileData(unsigned int cycle) {
         }
         case 5:
             // Fetch BG lsbits
-            bg_pattern_lsb_latch = PpuRead(BgPatternTableAddress() + (static_cast<word>(tile_id_latch) << 4) + v.as_scroll.fine_y_scroll);
+            bg_pattern_lsb_latch =
+                PpuRead(BgPatternTableAddress() + (static_cast<word>(tile_id_latch) << 4) +
+                        v.as_scroll.fine_y_scroll);
             break;
         case 7:
             // Fetch BG msbits
-            bg_pattern_msb_latch = PpuRead(BgPatternTableAddress() + (static_cast<word>(tile_id_latch) << 4) + v.as_scroll.fine_y_scroll + 8);
+            bg_pattern_msb_latch =
+                PpuRead(BgPatternTableAddress() + (static_cast<word>(tile_id_latch) << 4) +
+                        v.as_scroll.fine_y_scroll + 8);
 
             ReloadShiftersFromLatches();
             break;

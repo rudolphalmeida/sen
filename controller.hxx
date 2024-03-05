@@ -55,7 +55,6 @@ class Controller {
                 key_state_1 = key_state_2 = 0x00;
             }
         } else if (address == 0x4017) {
-            spdlog::debug("Write to controller address 0x4017 with {:08b}", data);
         } else {
             spdlog::error("Write to invalid controller address 0x{:#04X} with {:08b}", address, data);
         }

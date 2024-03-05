@@ -40,7 +40,7 @@ void Sen::ControllerPress(ControllerPort port, ControllerKey key) {
 }
 
 void Sen::ControllerRelease(ControllerPort port, ControllerKey key) {
-    controller-> ControllerRelease(port, key);
+    controller->ControllerRelease(port, key);
 }
 
 std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
