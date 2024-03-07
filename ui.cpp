@@ -329,6 +329,7 @@ void Ui::ShowMenuBar() {
         }
 
         if (ImGui::BeginMenu("View")) {
+            ImGui::Text("Framerate: %.2f", ImGui::GetIO().Framerate);
             if (ImGui::BeginMenu("Scale")) {
                 for (int i = 1; i < 5; i++) {
                     if (ImGui::MenuItem(fmt::format("{}", i).c_str(), nullptr,
