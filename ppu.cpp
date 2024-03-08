@@ -9,20 +9,6 @@ void Ppu::Tick() {
     if (ShowBackground() || ShowSprites()) {
         if (InRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE - 1) ||
             scanline == PRE_RENDER_SCANLINE) {
-            /*
-             * v at (0, 1). Should be 0x0002
-             * 0x0002 = 0000 0000 0000 0010
-             * 0x0802 = 0000 1000 0000 0010
-             * 0x1402 = 0001 0100 0000 0010
-             * 0x2802 = 0010 1000 0000 0010
-             * 0x3402 = 0011 0100 0000 0010
-             * 0x4802 = 0100 1000 0000 0010
-             * 0x5402 = 0101 0100 0000 0010
-             * 0x6802 = 0110 1000 0000 0010
-             * 0x7402 = 0111 0100 0000 0010
-             * 0x0802 = 0000 1000 0000 0010
-             * */
-
             // PPU is accessing memory
             if (InRange<unsigned int>(1, cycles_into_scanline, 256)) {
                 ShiftShifters();
