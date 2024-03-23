@@ -81,7 +81,7 @@ class Ppu {
 
     // The first `Tick()` will put us at the start of pre-render line (261)
     unsigned int scanline{260};
-    unsigned int cycles_into_scanline{340};
+    unsigned int line_cycles{340};
 
     std::shared_ptr<Cartridge> cartridge{};
     std::shared_ptr<bool> nmi_requested{};
@@ -99,9 +99,10 @@ class Ppu {
                 return 0x2800;
             case 3:
                 return 0x2C00;
+            default:
+                spdlog::error("Unreachable case");
+                return 0x2000;
         }
-
-        return 0x2000;  // Shouldn't be possible
     }
 
     [[nodiscard]] byte VramAddressIncrement() const { return (ppuctrl & 0x04) != 0x00 ? 32 : 1; }
@@ -136,7 +137,7 @@ class Ppu {
     void FineYIncrement();
     void CoarseXIncrement();
 
-    size_t VramIndex(word address);
+    size_t VramIndex(word address) const;
 
     friend class Debugger;
 
@@ -158,6 +159,6 @@ class Ppu {
     byte CpuRead(word address);
     void CpuWrite(word address, byte data);
 
-    byte PpuRead(word address);
+    byte PpuRead(word address) const;
     void PpuWrite(word address, byte data);
 };

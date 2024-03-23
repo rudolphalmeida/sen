@@ -97,7 +97,7 @@ class Debugger {
             .bg_attrib_lsb_shift_reg = ppu->bg_attrib_lsb_shift_reg,
             .frame_count = ppu->frame_count,
             .scanline = ppu->scanline,
-            .cycles_into_scanline = ppu->cycles_into_scanline,
+            .cycles_into_scanline = ppu->line_cycles,
             .nmi_requested = ppu->nmi_requested,
         };
     }

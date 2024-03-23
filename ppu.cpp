@@ -10,34 +10,34 @@ void Ppu::Tick() {
         if (InRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE - 1) ||
             scanline == PRE_RENDER_SCANLINE) {
             // PPU is accessing memory
-            if (InRange<unsigned int>(1, cycles_into_scanline, 256)) {
+            if (InRange<unsigned int>(1, line_cycles, 256)) {
                 ShiftShifters();
-                ReadNextTileData(cycles_into_scanline % 8);
+                ReadNextTileData(line_cycles % 8);
                 if (scanline != PRE_RENDER_SCANLINE) {
                     RenderPixel();
                 }
             }
-            if (cycles_into_scanline == 256) {
+            if (line_cycles == 256) {
                 FineYIncrement();
             }
 
-            if (cycles_into_scanline == 257) {
+            if (line_cycles == 257) {
                 // hori(v) = hori(t)
                 v.as_scroll.coarse_x_scroll = t.as_scroll.coarse_x_scroll;
             }
 
-            if (InRange<unsigned int>(321, cycles_into_scanline, 336)) {
+            if (InRange<unsigned int>(321, line_cycles, 336)) {
                 // Fetch first two tiles on next scanline
-                ReadNextTileData(cycles_into_scanline % 8);
+                ReadNextTileData(line_cycles % 8);
             }
 
-            if (cycles_into_scanline == 338 || cycles_into_scanline == 340) {
+            if (line_cycles == 338 || line_cycles == 340) {
                 // Unused nametable fetches
                 PpuRead(0x2000 | (v.value & 0x0FFF));
             }
 
             if (scanline == PRE_RENDER_SCANLINE &&
-                InRange<unsigned int>(280, cycles_into_scanline, 304)) {
+                InRange<unsigned int>(280, line_cycles, 304)) {
                 // vert(v) == vert(t) each tick
                 v.as_scroll.coarse_y_scroll(t.as_scroll.coarse_y_scroll());
                 v.as_scroll.fine_y_scroll = t.as_scroll.fine_y_scroll;
@@ -46,11 +46,11 @@ void Ppu::Tick() {
         }
     } else {
         if (InRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE - 1) &&
-            InRange<unsigned int>(1, cycles_into_scanline, 256)) {
+            InRange<unsigned int>(1, line_cycles, 256)) {
             byte pixel = PpuRead(0x3F00);
 
             byte screen_y = scanline;
-            byte screen_x = cycles_into_scanline - 1;
+            byte screen_x = line_cycles - 1;
             framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
         }
     }
@@ -97,7 +97,7 @@ void Ppu::RenderPixel() {  // Output pixels
     byte pixel = palette_table[palette_address];
 
     byte screen_y = scanline;
-    byte screen_x = cycles_into_scanline - 1;
+    byte screen_x = line_cycles - 1;
     framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
 }
 
@@ -159,18 +159,18 @@ void Ppu::ReloadShiftersFromLatches() {
 }
 
 void Ppu::TickCounters() {
-    cycles_into_scanline++;
+    line_cycles++;
 
     if (scanline == PRE_RENDER_SCANLINE                                 // The pre-render scanlines
-        && cycles_into_scanline == (PPU_CLOCK_CYCLES_PER_SCANLINE - 1)  // cycle at the end
+        && line_cycles == (PPU_CLOCK_CYCLES_PER_SCANLINE - 1)  // cycle at the end
         && (frame_count % 2) != 0)                                      // is skipped on odd frames
     {
-        cycles_into_scanline++;
+        line_cycles++;
     }
 
-    if (cycles_into_scanline == PPU_CLOCK_CYCLES_PER_SCANLINE) {
+    if (line_cycles == PPU_CLOCK_CYCLES_PER_SCANLINE) {
         scanline++;
-        cycles_into_scanline = 0;
+        line_cycles = 0;
 
         if (scanline == SCANLINES_PER_FRAME) {
             frame_count++;
@@ -182,7 +182,7 @@ void Ppu::TickCounters() {
         return;
     }
 
-    if (scanline == VBLANK_START_SCANLINE && cycles_into_scanline == VBLANK_SET_RESET_CYCLE) {
+    if (scanline == VBLANK_START_SCANLINE && line_cycles == VBLANK_SET_RESET_CYCLE) {
         ppustatus |= 0x80;
         // Trigger NMI if enabled
         if (NmiAtVBlank()) {
@@ -191,7 +191,7 @@ void Ppu::TickCounters() {
     }
 
     // Reset Vblank flag before rendering starts for the next frame
-    if (scanline == PRE_RENDER_SCANLINE && cycles_into_scanline == VBLANK_SET_RESET_CYCLE) {
+    if (scanline == PRE_RENDER_SCANLINE && line_cycles == VBLANK_SET_RESET_CYCLE) {
         ppustatus &= 0x7F;
     }
 }
@@ -219,6 +219,8 @@ byte Ppu::CpuRead(word address) {
                 ppudata_buf.emplace(PpuRead(ppu_address));
             }
             v.value += VramAddressIncrement();
+            break;
+        default:
             break;
     }
 
@@ -280,7 +282,7 @@ void Ppu::CpuWrite(word address, byte data) {
     }
 }
 
-byte Ppu::PpuRead(word address) {
+byte Ppu::PpuRead(word address) const {
     address &= 0x3FFF;
     if (InRange<word>(0x0000, address, 0x1FFF)) {
         return cartridge->PpuRead(address);
@@ -310,7 +312,7 @@ void Ppu::PpuWrite(word address, byte data) {
     }
 }
 
-size_t Ppu::VramIndex(word address) {
+size_t Ppu::VramIndex(word address) const {
     switch (cartridge->NametableMirroring()) {
         case Horizontal:
             return (address & ~0x400) - 0x2000;
