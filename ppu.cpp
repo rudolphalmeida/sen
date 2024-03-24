@@ -17,8 +17,16 @@ void Ppu::Tick() {
                     RenderPixel();
                 }
             }
+
+            if (line_cycles == 1 && scanline != PRE_RENDER_SCANLINE) {
+                SecondaryOamClear();
+            }
+
             if (line_cycles == 256) {
                 FineYIncrement();
+                if (scanline != PRE_RENDER_SCANLINE) {
+                    LoadNextScanlineSprites();
+                }
             }
 
             if (line_cycles == 257) {
@@ -33,11 +41,10 @@ void Ppu::Tick() {
 
             if (line_cycles == 338 || line_cycles == 340) {
                 // Unused nametable fetches
-                PpuRead(0x2000 | (v.value & 0x0FFF));
+                // PpuRead(0x2000 | (v.value & 0x0FFF));
             }
 
-            if (scanline == PRE_RENDER_SCANLINE &&
-                InRange<unsigned int>(280, line_cycles, 304)) {
+            if (scanline == PRE_RENDER_SCANLINE && InRange<unsigned int>(280, line_cycles, 304)) {
                 // vert(v) == vert(t) each tick
                 v.as_scroll.coarse_y_scroll(t.as_scroll.coarse_y_scroll());
                 v.as_scroll.fine_y_scroll = t.as_scroll.fine_y_scroll;
@@ -151,6 +158,30 @@ void Ppu::CoarseXIncrement() {
     }
 }
 
+void Ppu::SecondaryOamClear() {
+    // Do not care about timing for this
+    const auto secondary_oam_ptr = reinterpret_cast<byte *>(secondary_oam.data());
+    for (int i = 0; i < sizeof(Sprite) * 4; i++) {
+        secondary_oam_ptr[i] = 0xFF;
+    }
+}
+
+void Ppu::LoadNextScanlineSprites() {
+    // Do not care about timing for this
+    int sprites_on_line = 0;
+    const byte y = scanline + 1;
+    for (const auto& sprite: oam) {
+        if (sprite.y <= y && y < (sprite.y + 8)) {
+            if (sprites_on_line == 8) {
+                spdlog::info("More than 8 sprites on line");
+                // TODO: Implement sprite overflow
+                continue;
+            }
+            secondary_oam[sprites_on_line++] = sprite;
+        }
+    }
+}
+
 void Ppu::ReloadShiftersFromLatches() {
     bg_pattern_msb_shift_reg |= bg_pattern_msb_latch;
     bg_pattern_lsb_shift_reg |= bg_pattern_lsb_latch;
@@ -161,9 +192,9 @@ void Ppu::ReloadShiftersFromLatches() {
 void Ppu::TickCounters() {
     line_cycles++;
 
-    if (scanline == PRE_RENDER_SCANLINE                                 // The pre-render scanlines
+    if (scanline == PRE_RENDER_SCANLINE                        // The pre-render scanlines
         && line_cycles == (PPU_CLOCK_CYCLES_PER_SCANLINE - 1)  // cycle at the end
-        && (frame_count % 2) != 0)                                      // is skipped on odd frames
+        && (frame_count % 2) != 0)                             // is skipped on odd frames
     {
         line_cycles++;
     }
@@ -204,11 +235,11 @@ byte Ppu::CpuRead(word address) {
             write_toggle = false;
             break;
         case 0x2004:
-            io_data_bus = oam[oamaddr];
+            // TODO: Should return 0xFF if secondary OAM is being cleared
+            io_data_bus = reinterpret_cast<byte *>(oam.data())[oamaddr];
             break;
         case 0x2007:
-            auto ppu_address = v.value;
-            if (ppu_address > 0x3EFF) {  // Reading palettes
+            if (const auto ppu_address = v.value; ppu_address > 0x3EFF) {  // Reading palettes
                 io_data_bus = PpuRead(ppu_address);
             } else if (ppudata_buf) {
                 // Use previously read value from buffer and reset buffer
@@ -248,8 +279,7 @@ void Ppu::CpuWrite(word address, byte data) {
             oamaddr = data;
             break;
         case 0x2004:
-            // TODO: Ignore these writes if during rendering
-            oam[oamaddr++] = data;
+            reinterpret_cast<byte *>(oam.data())[oamaddr++] = data;
             break;
         case 0x2005:
             if (write_toggle) {  // Second Write

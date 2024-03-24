@@ -12,8 +12,33 @@
 
 class Ppu {
    private:
+    struct Sprite {
+        byte y;
+        byte tile_index;
+        byte attribs;
+        byte x;
+
+        byte PaletteIndex() const {
+            return attribs & 0b11;
+        }
+
+        byte Priority() const {
+            return (attribs & 0x20) >> 5;
+        }
+
+        bool FlipHorizontal() const {
+            return (attribs & 0x40) >> 6;
+        }
+
+        bool FlipVertical() const {
+            return (attribs & 0x80) >> 7;
+        }
+    };
+
     std::array<byte, 2048> vram{};
-    std::array<byte, 256> oam{};
+    std::array<Sprite, 64> oam{};
+    std::array<Sprite, 8> secondary_oam{};
+
     // Due to mirroring of the palette indices we don't need exactly 32 bytes
     // Still keep it at 32 for easy indexing using the address
     std::array<byte, 32> palette_table{};
@@ -136,6 +161,8 @@ class Ppu {
     void RenderPixel();
     void FineYIncrement();
     void CoarseXIncrement();
+    void SecondaryOamClear();
+    void LoadNextScanlineSprites();
 
     size_t VramIndex(word address) const;
 
