@@ -5,7 +5,6 @@
 #include <memory>
 
 #include "constants.hxx"
-#include "util.hxx"
 
 class Mapper {
    public:

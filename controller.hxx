@@ -1,5 +1,9 @@
 #pragma once
 
+#include "constants.hxx"
+
+#include <spdlog/spdlog.h>
+
 enum class ControllerKey : byte {
     A = 0x01,
     B = 0x02,
@@ -56,7 +60,8 @@ class Controller {
             }
         } else if (address == 0x4017) {
         } else {
-            spdlog::error("Write to invalid controller address 0x{:#04X} with {:08b}", address, data);
+            spdlog::error("Write to invalid controller address 0x{:#04X} with {:08b}", address,
+                          data);
         }
     }
 

@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "util.hxx"
 #include "mapper.hxx"
 
 std::unique_ptr<Mapper> MapperFromInesNumber(byte mapper_number,

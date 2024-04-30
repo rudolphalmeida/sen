@@ -5,14 +5,12 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
-#include <queue>
 #include <tuple>
 
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 
-#include "bus.hxx"
 #include "constants.hxx"
 #include "util.hxx"
 
@@ -295,8 +293,7 @@ class Cpu {
     Cpu() = default;
 
     Cpu(std::shared_ptr<BusType> bus, std::shared_ptr<bool> nmi_requested)
-        : bus{std::move(bus)}, nmi_requested{std::move(nmi_requested)} {
-    }
+        : bus{std::move(bus)}, nmi_requested{std::move(nmi_requested)} {}
 
     [[nodiscard]] bool IsSet(StatusFlag flag) const { return (p & static_cast<byte>(flag)) != 0; }
 
@@ -634,14 +631,14 @@ void Cpu<BusType>::Execute() {
     executed_opcodes.PushBack(executed_opcode);
 
 #ifdef LOG_DEBUG
-        auto arg1 =
-            opcode.length >= 2 ? fmt::format("{:02X}", executed_opcode.arg1) : std::string("  ");
-        auto arg2 =
-            opcode.length >= 3 ? fmt::format("{:02X}", executed_opcode.arg2) : std::string("  ");
-        // Cycles account for the 7 startup cycles
-        fmt::print("c{:<12}${:04X}: {:02X} {} {}  A:{:02X} X:{:02X} Y:{:02X} S:{:02X} P:{} \n",
-                   initial_cycles - 7, pc - 1, executed_opcode.opcode, arg1, arg2, a, x, y, s,
-                   StatusFlagRepr());
+    auto arg1 =
+        opcode.length >= 2 ? fmt::format("{:02X}", executed_opcode.arg1) : std::string("  ");
+    auto arg2 =
+        opcode.length >= 3 ? fmt::format("{:02X}", executed_opcode.arg2) : std::string("  ");
+    // Cycles account for the 7 startup cycles
+    fmt::print("c{:<12}${:04X}: {:02X} {} {}  A:{:02X} X:{:02X} Y:{:02X} S:{:02X} P:{} \n",
+               initial_cycles - 7, pc - 1, executed_opcode.opcode, arg1, arg2, a, x, y, s,
+               StatusFlagRepr());
 #endif
 
     ExecuteOpcode(opcode);

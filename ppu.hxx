@@ -18,19 +18,19 @@ class Ppu {
         byte attribs;
         byte x;
 
-        byte PaletteIndex() const {
+        [[nodiscard]] byte PaletteIndex() const {
             return attribs & 0b11;
         }
 
-        byte Priority() const {
+        [[nodiscard]] byte Priority() const {
             return (attribs & 0x20) >> 5;
         }
 
-        bool FlipHorizontal() const {
+        [[nodiscard]] bool FlipHorizontal() const {
             return (attribs & 0x40) >> 6;
         }
 
-        bool FlipVertical() const {
+        [[nodiscard]] bool FlipVertical() const {
             return (attribs & 0x80) >> 7;
         }
     };
