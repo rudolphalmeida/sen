@@ -19,25 +19,21 @@ struct CpuState {
     FixedSizeQueue<ExecutedOpcode> executed_opcodes;
 };
 
+struct SpriteData {
+    Sprite oam_entry;
+    std::array<byte, 16> tile_data;
+};
+
 struct PpuState {
-    byte& ppuctrl;
-    byte& ppumask;
-    byte& ppustatus;
-    byte& oamaddr;
-
-    word& v;
-    word& t;
-
-    byte& tile_id_latch;
-    byte& bg_pattern_msb_latch, bg_pattern_lsb_latch;
-    word& bg_pattern_msb_shift_reg, bg_pattern_lsb_shift_reg;
-    byte& bg_attrib_latch;
-    byte& bg_attrib_msb_shift_reg, bg_attrib_lsb_shift_reg;
-    uint64_t& frame_count;
-    unsigned int& scanline;
-    unsigned int& cycles_into_scanline;
-
-    std::shared_ptr<bool> nmi_requested{};
+    std::array<SpriteData, 64> sprite_data;
+    std::span<byte, 0x20> palettes;
+    uint64_t frame_count;
+    word v;
+    word t;
+    byte ppuctrl;
+    byte ppumask;
+    byte ppustatus;
+    byte oamaddr;
 };
 
 struct PatternTablesState {
@@ -61,7 +57,8 @@ class Debugger {
         : emulator_context{std::move(emulator_context)} {}
 
     [[nodiscard]] std::span<byte, NES_WIDTH * NES_HEIGHT> Framebuffer() const {
-        return std::span<byte, NES_WIDTH * NES_HEIGHT>{emulator_context->ppu->framebuffer.data(), NES_WIDTH * NES_HEIGHT};
+        return std::span<byte, NES_WIDTH * NES_HEIGHT>{emulator_context->ppu->framebuffer.data(),
+                                                       NES_WIDTH * NES_HEIGHT};
     }
 
     template <typename BusType>
@@ -80,25 +77,30 @@ class Debugger {
     [[nodiscard]] CpuState GetCpuState() const { return GetCpuState(this->emulator_context->cpu); }
 
     static PpuState GetPpuState(const std::shared_ptr<Ppu>& ppu) {
+        std::array<SpriteData, 64> sprite_data{};
+
+        word sprite_pattern_table_address = ppu->SpritePatternTableAddress();
+        auto chr_mem = ppu->cartridge->chr_rom;
+
+        std::ranges::transform(ppu->oam, sprite_data.begin(), [&](Sprite sprite) -> SpriteData {
+            std::array<byte, 16> tile_data{};
+            std::ranges::copy(
+                &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4)],
+                &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4) + 16],
+                tile_data.begin());
+            return {.oam_entry = sprite, .tile_data=tile_data};
+        });
+
         return PpuState{
+            .sprite_data = sprite_data,
+            .palettes = std::span<byte, 0x20>{&ppu->palette_table[0], 0x20},
+            .frame_count = ppu->frame_count,
+            .v = ppu->v.value,
+            .t = ppu->t.value,
             .ppuctrl = ppu->ppuctrl,
             .ppumask = ppu->ppumask,
             .ppustatus = ppu->ppustatus,
             .oamaddr = ppu->oamaddr,
-            .v = ppu->v.value,
-            .t = ppu->t.value,
-            .tile_id_latch = ppu->tile_id_latch,
-            .bg_pattern_msb_latch = ppu->bg_pattern_msb_latch,
-            .bg_pattern_lsb_latch = ppu->bg_pattern_lsb_latch,
-            .bg_pattern_msb_shift_reg = ppu->bg_pattern_msb_shift_reg,
-            .bg_pattern_lsb_shift_reg = ppu->bg_pattern_lsb_shift_reg,
-            .bg_attrib_latch = ppu->bg_attrib_latch,
-            .bg_attrib_msb_shift_reg = ppu->bg_attrib_msb_shift_reg,
-            .bg_attrib_lsb_shift_reg = ppu->bg_attrib_lsb_shift_reg,
-            .frame_count = ppu->frame_count,
-            .scanline = ppu->scanline,
-            .cycles_into_scanline = ppu->line_cycles,
-            .nmi_requested = ppu->nmi_requested,
         };
     }
     PpuState GetPpuState() { return GetPpuState(this->emulator_context->ppu); }

@@ -10,34 +10,42 @@
 #include "cartridge.hxx"
 #include "constants.hxx"
 
+struct Sprite {
+    byte y;
+    byte tile_index;
+    byte attribs;
+    byte x;
+
+    [[nodiscard]] byte PaletteIndex() const {
+        return attribs & 0b11;
+    }
+
+    [[nodiscard]] byte Priority() const {
+        return (attribs & 0x20) >> 5;
+    }
+
+    [[nodiscard]] bool FlipHorizontal() const {
+        return (attribs & 0x40) >> 6;
+    }
+
+    [[nodiscard]] bool FlipVertical() const {
+        return (attribs & 0x80) >> 7;
+    }
+};
+
 class Ppu {
    private:
-    struct Sprite {
-        byte y;
-        byte tile_index;
-        byte attribs;
-        byte x;
-
-        [[nodiscard]] byte PaletteIndex() const {
-            return attribs & 0b11;
-        }
-
-        [[nodiscard]] byte Priority() const {
-            return (attribs & 0x20) >> 5;
-        }
-
-        [[nodiscard]] bool FlipHorizontal() const {
-            return (attribs & 0x40) >> 6;
-        }
-
-        [[nodiscard]] bool FlipVertical() const {
-            return (attribs & 0x80) >> 7;
-        }
+    struct ActiveSprite {
+        byte palette_index;
+        size_t order;
+        byte tile_lsb;
+        byte tile_msb;
+        size_t offset_into_tile;
     };
 
     std::array<byte, 2048> vram{};
     std::array<Sprite, 64> oam{};
-    std::array<Sprite, 8> secondary_oam{};
+    std::vector<Sprite> secondary_oam{};
 
     // Due to mirroring of the palette indices we don't need exactly 32 bytes
     // Still keep it at 32 for easy indexing using the address
@@ -164,7 +172,7 @@ class Ppu {
     void SecondaryOamClear();
     void LoadNextScanlineSprites();
 
-    size_t VramIndex(word address) const;
+    [[nodiscard]] size_t VramIndex(word address) const;
 
     friend class Debugger;
 
@@ -186,6 +194,6 @@ class Ppu {
     byte CpuRead(word address);
     void CpuWrite(word address, byte data);
 
-    byte PpuRead(word address) const;
+    [[nodiscard]] byte PpuRead(word address) const;
     void PpuWrite(word address, byte data);
 };

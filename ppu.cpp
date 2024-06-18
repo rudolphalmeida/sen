@@ -62,6 +62,7 @@ void Ppu::Tick() {
         }
     }
 }
+
 void Ppu::FineYIncrement() {  // Fine Y increment
     if ((v.value & 0x7000) != 0x7000) {
         v.value += 0x1000;
@@ -236,7 +237,7 @@ byte Ppu::CpuRead(word address) {
             break;
         case 0x2004:
             // TODO: Should return 0xFF if secondary OAM is being cleared
-            io_data_bus = reinterpret_cast<byte *>(oam.data())[oamaddr];
+            io_data_bus = reinterpret_cast<byte*>(oam.data())[oamaddr];
             break;
         case 0x2007:
             if (const auto ppu_address = v.value; ppu_address > 0x3EFF) {  // Reading palettes
@@ -279,7 +280,7 @@ void Ppu::CpuWrite(word address, byte data) {
             oamaddr = data;
             break;
         case 0x2004:
-            reinterpret_cast<byte *>(oam.data())[oamaddr++] = data;
+            reinterpret_cast<byte*>(oam.data())[oamaddr++] = data;
             break;
         case 0x2005:
             if (write_toggle) {  // Second Write

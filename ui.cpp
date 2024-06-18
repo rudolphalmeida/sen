@@ -490,6 +490,11 @@ void Ui::ShowPpuState() {
         ImGui::TableHeadersRow();
 
         ImGui::TableNextColumn();
+        ImGui::Text("Frame Count");
+        ImGui::TableNextColumn();
+        ImGui::Text("%lu", ppu_state.frame_count);
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
         ImGui::Text("PPUCTRL");
         ImGui::TableNextColumn();
         ImGui::Text("%.8b", ppu_state.ppuctrl);
@@ -518,8 +523,32 @@ void Ui::ShowPpuState() {
         ImGui::Text("T");
         ImGui::TableNextColumn();
         ImGui::Text("0x%.4X", ppu_state.t);
-        ImGui::TableNextRow();
 
+        ImGui::EndTable();
+    }
+
+    if (ImGui::BeginTable("ppu_sprites", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+        for (size_t i = 0; i < ppu_state.sprite_data.size(); i += 2) {
+            auto sprite_data = ppu_state.sprite_data[i];
+            ImGui::TableNextColumn();
+            ImGui::Text("%.8b", sprite_data.tile_data[0]);
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.4X", sprite_data.oam_entry.y);
+            ImGui::Text("0x%.4X", sprite_data.oam_entry.tile_index);
+            ImGui::Text("0x%.4X", sprite_data.oam_entry.attribs);
+            ImGui::Text("0x%.4X", sprite_data.oam_entry.x);
+
+            sprite_data = ppu_state.sprite_data[i + 1];
+            ImGui::TableNextColumn();
+            ImGui::Text("%.8b", sprite_data.tile_data[0]);
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.4X", sprite_data.oam_entry.y);
+            ImGui::Text("0x%.4X", sprite_data.oam_entry.tile_index);
+            ImGui::Text("0x%.4X", sprite_data.oam_entry.attribs);
+            ImGui::Text("0x%.4X", sprite_data.oam_entry.x);
+
+            ImGui::TableNextRow();
+        }
         ImGui::EndTable();
     }
 }

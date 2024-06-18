@@ -46,5 +46,7 @@ class Bus {
 #endif
     }
 
+    void PerformOamDma(byte high);
+
     friend class Debugger;
 };

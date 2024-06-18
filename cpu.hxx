@@ -852,7 +852,7 @@ EffectiveAddress Cpu<BusType>::FetchEffectiveAddress(AddressingMode mode) {
         case AddressingMode::IndirectY:
             return IndirectYAddressing();
         default:
-            spdlog::error("Invalid addressing mode for effective addresss");
+            spdlog::error("Invalid addressing mode for effective address");
             std::exit(-1);
     }
 }
