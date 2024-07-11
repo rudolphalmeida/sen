@@ -85,14 +85,10 @@ static const Pixel PALETTE_COLORS[0x40] = {
 };
 
 static const std::tuple<int, ControllerKey> KEYMAP[0x8] = {
-    {GLFW_KEY_M, ControllerKey::A},
-    {GLFW_KEY_N, ControllerKey::B},
-    {GLFW_KEY_SPACE, ControllerKey::Select},
-    {GLFW_KEY_ENTER, ControllerKey::Start},
-    {GLFW_KEY_W, ControllerKey::Up},
-    {GLFW_KEY_S, ControllerKey::Down},
-    {GLFW_KEY_A, ControllerKey::Left},
-    {GLFW_KEY_D, ControllerKey::Right},
+    {GLFW_KEY_M, ControllerKey::A},          {GLFW_KEY_N, ControllerKey::B},
+    {GLFW_KEY_SPACE, ControllerKey::Select}, {GLFW_KEY_ENTER, ControllerKey::Start},
+    {GLFW_KEY_W, ControllerKey::Up},         {GLFW_KEY_S, ControllerKey::Down},
+    {GLFW_KEY_A, ControllerKey::Left},       {GLFW_KEY_D, ControllerKey::Right},
 };
 
 class Ui {
@@ -130,8 +126,7 @@ class Ui {
         int palette_id);
 
     void ShowMenuBar();
-    void ShowCpuState();
-    void ShowPpuState();
+    void ShowRegisters();
     void ShowPatternTables();
     void ShowCpuMemory() {}
     void ShowPpuMemory();
