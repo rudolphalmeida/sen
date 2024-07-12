@@ -12,7 +12,6 @@
 
 #include "constants.hxx"
 #include "cpu.hxx"
-#include "sen.hxx"
 #include "ui.hxx"
 #include "util.hxx"
 
@@ -130,7 +129,7 @@ void Ui::HandleInput() {
         return;
     }
 
-    for (auto [key, controller_key]: KEYMAP) {
+    for (auto [key, controller_key] : KEYMAP) {
         if (glfwGetKey(window, key) == GLFW_PRESS) {
             emulator_context->ControllerPress(ControllerPort::Port1, controller_key);
         }
@@ -179,13 +178,8 @@ void Ui::RenderUi() {
             ImGui::BeginChild("left-debug-pane", ImVec2(400, 0), true);
 
             if (ImGui::BeginTabBar("debug_tabs", ImGuiTabBarFlags_None)) {
-                if (ImGui::BeginTabItem("CPU")) {
-                    ShowCpuState();
-                    ImGui::EndTabItem();
-                }
-
-                if (ImGui::BeginTabItem("PPU")) {
-                    ShowPpuState();
+                if (ImGui::BeginTabItem("Registers")) {
+                    ShowRegisters();
                     ImGui::EndTabItem();
                 }
 
@@ -229,10 +223,10 @@ void Ui::RenderUi() {
                     }
                 }
 
-                if (ImGui::Button("Take screenshot")) {
-                    stbi_write_png("./debug.png", NES_WIDTH, NES_HEIGHT, 3,
-                                   static_cast<void*>(pixels.data()), 0);
-                }
+                // if (ImGui::Button("Take screenshot")) {
+                //     stbi_write_png("./debug.png", NES_WIDTH, NES_HEIGHT, 3,
+                //                    static_cast<void*>(pixels.data()), 0);
+                // }
 
                 glBindTexture(GL_TEXTURE_2D, display_texture);
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NES_WIDTH, NES_HEIGHT, 0, GL_RGB,
@@ -362,12 +356,13 @@ void Ui::ShowMenuBar() {
     }
 }
 
-void Ui::ShowCpuState() {
+void Ui::ShowRegisters() {
     if (emulator_context == nullptr) {
-        ImGui::Text("Load a ROM to view NES CPU state");
+        ImGui::Text("Load a ROM to view NES Register state");
         return;
     }
 
+    ImGui::SeparatorText("CPU Registers");
     auto cpu_state = debugger.GetCpuState();
     if (ImGui::BeginTable("cpu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
         ImGui::TableSetupColumn("Register");
@@ -459,6 +454,7 @@ void Ui::ShowCpuState() {
         ImGui::EndTable();
     }
 
+    ImGui::SeparatorText("Opcodes");
     for (auto& executed_opcode : cpu_state.executed_opcodes.values) {
         Opcode opcode = OPCODES[executed_opcode.opcode];
         switch (opcode.length) {
@@ -475,14 +471,8 @@ void Ui::ShowCpuState() {
                 break;
         }
     }
-}
 
-void Ui::ShowPpuState() {
-    if (emulator_context == nullptr) {
-        ImGui::Text("Load a ROM to view NES PPU state");
-        return;
-    }
-
+    ImGui::SeparatorText("PPU Registers");
     auto ppu_state = debugger.GetPpuState();
     if (ImGui::BeginTable("ppu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
         ImGui::TableSetupColumn("Register");
