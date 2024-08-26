@@ -31,7 +31,7 @@ class Sen {
 
     std::shared_ptr<bool> nmi_requested{};
 
-    static const uint64_t CYCLES_PER_FRAME{29780};
+    static constexpr uint64_t CYCLES_PER_FRAME{29780};
 
    public:
     explicit Sen(const RomArgs& rom_args);

@@ -170,7 +170,6 @@ class Ppu {
     void FineYIncrement();
     void CoarseXIncrement();
     void SecondaryOamClear();
-    void LoadNextScanlineSprites();
 
     [[nodiscard]] size_t VramIndex(word address) const;
 

@@ -24,9 +24,6 @@ void Ppu::Tick() {
 
             if (line_cycles == 256) {
                 FineYIncrement();
-                if (scanline != PRE_RENDER_SCANLINE) {
-                    LoadNextScanlineSprites();
-                }
             }
 
             if (line_cycles == 257) {
@@ -160,27 +157,6 @@ void Ppu::CoarseXIncrement() {
 }
 
 void Ppu::SecondaryOamClear() {
-    // Do not care about timing for this
-    const auto secondary_oam_ptr = reinterpret_cast<byte *>(secondary_oam.data());
-    for (int i = 0; i < sizeof(Sprite) * 4; i++) {
-        secondary_oam_ptr[i] = 0xFF;
-    }
-}
-
-void Ppu::LoadNextScanlineSprites() {
-    // Do not care about timing for this
-    int sprites_on_line = 0;
-    const byte y = scanline + 1;
-    for (const auto& sprite: oam) {
-        if (sprite.y <= y && y < (sprite.y + 8)) {
-            if (sprites_on_line == 8) {
-                spdlog::info("More than 8 sprites on line");
-                // TODO: Implement sprite overflow
-                continue;
-            }
-            secondary_oam[sprites_on_line++] = sprite;
-        }
-    }
 }
 
 void Ppu::ReloadShiftersFromLatches() {
