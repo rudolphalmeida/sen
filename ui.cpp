@@ -8,7 +8,6 @@
 #include <libconfig.h++>
 
 #include "imgui_memory_editor.h"
-#include "stb_image_write.h"
 
 #include "constants.hxx"
 #include "cpu.hxx"
@@ -25,7 +24,7 @@ Ui::Ui() {
     try {
         // TODO: Change this path to be the standard config directory for each OS
         settings.cfg.readFile("test.cfg");
-    } catch (const libconfig::FileIOException& e) {
+    } catch (const libconfig::FileIOException&) {
         spdlog::info("Failed to find settings. Using default");
     } catch (const libconfig::ParseException& e) {
         spdlog::error("Failed to parse settings in file {} with {}. Using default", e.getFile(),
@@ -54,7 +53,7 @@ Ui::Ui() {
     spdlog::info("Initialized GLFW");
 
     // GL 3.2 + GLSL 150
-    const char* glsl_version = "#version 150";
+    const auto glsl_version = "#version 150";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
@@ -124,7 +123,7 @@ Ui::Ui() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 }
 
-void Ui::HandleInput() {
+void Ui::HandleInput() const {
     if (!emulator_context || !emulation_running) {
         return;
     }
@@ -214,11 +213,11 @@ void Ui::RenderUi() {
             ImGui::BeginChild("right-game-pane", ImVec2(NES_WIDTH * DEFAULT_SCALE_FACTOR, 0), true);
 
             if (emulator_context != nullptr) {
-                auto framebuffer = debugger.Framebuffer();
+                const auto framebuffer = debugger.Framebuffer();
                 std::vector<Pixel> pixels(NES_WIDTH * NES_HEIGHT);
                 for (int y = 0; y < NES_HEIGHT; y++) {
                     for (int x = 0; x < NES_WIDTH; x++) {
-                        byte color_index = framebuffer[y * NES_WIDTH + x];
+                        const byte color_index = framebuffer[y * NES_WIDTH + x];
                         pixels[y * NES_WIDTH + x] = PALETTE_COLORS[color_index];
                     }
                 }
@@ -231,7 +230,7 @@ void Ui::RenderUi() {
                 glBindTexture(GL_TEXTURE_2D, display_texture);
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NES_WIDTH, NES_HEIGHT, 0, GL_RGB,
                              GL_UNSIGNED_BYTE, reinterpret_cast<unsigned char*>(pixels.data()));
-                ImGui::Image((void*)(intptr_t)display_texture,
+                ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(display_texture)),
                              ImVec2(NES_WIDTH * settings.ScaleFactor(),
                                     NES_HEIGHT * settings.ScaleFactor()));
                 glBindTexture(GL_TEXTURE_2D, 0);
@@ -275,13 +274,17 @@ void Ui::ShowMenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open", "Ctrl+O")) {
-                nfdchar_t* selected_path = nullptr;
-                nfdresult_t result = NFD_OpenDialog("nes", nullptr, &selected_path);
+                nfdu8char_t* outPath;
+                constexpr nfdu8filteritem_t filters[1] = { { "NES ROM", "nes" }};
+                nfdopendialogu8args_t args = {nullptr};
+                args.filterList = filters;
+                args.filterCount = 1;
 
-                if (result == NFD_OKAY) {
-                    settings.PushRecentPath(selected_path);
-                    LoadRomFile(selected_path);
-                    free(selected_path);
+                if (const nfdresult_t result = NFD_OpenDialogU8_With(&outPath, &args);
+                    result == NFD_OKAY) {
+                    settings.PushRecentPath(outPath);
+                    LoadRomFile(outPath);
+                    NFD_FreePathU8(outPath);
                 } else if (result == NFD_CANCEL) {
                     spdlog::debug("User pressed cancel");
                 } else {
@@ -408,7 +411,7 @@ void Ui::ShowRegisters() {
         ImGui::Text("P");
         ImGui::TableNextColumn();
 
-        ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
+        constexpr ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
 
         if ((cpu_state.p & static_cast<byte>(StatusFlag::Carry)) != 0) {
             ImGui::Text("C");
@@ -469,11 +472,14 @@ void Ui::ShowRegisters() {
                 ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc, opcode.label,
                             executed_opcode.arg1, executed_opcode.arg2);
                 break;
+            default:
+                spdlog::error("Unknown opcode size {}", opcode.length);
+                break;
         }
     }
 
     ImGui::SeparatorText("PPU Registers");
-    auto ppu_state = debugger.GetPpuState();
+    const auto ppu_state = debugger.GetPpuState();
     if (ImGui::BeginTable("ppu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
         ImGui::TableSetupColumn("Register");
         ImGui::TableSetupColumn("Value");
@@ -543,7 +549,7 @@ void Ui::ShowRegisters() {
     }
 }
 
-void Ui::ShowPpuMemory() {
+void Ui::ShowPpuMemory() const {
     if (emulator_context == nullptr) {
         ImGui::Text("Load a ROM to view its memory");
         return;
@@ -557,12 +563,12 @@ void Ui::ShowPpuMemory() {
     ppu_mem_edit.DrawContents(ppu_memory.data(), 0x4000);
 }
 
-void Ui::ShowPatternTables() {
+void Ui::ShowPatternTables() const {
     if (emulator_context == nullptr) {
         ImGui::Text("Load a ROM to view its pattern tables");
         return;
     }
-    auto pattern_table_state = debugger.GetPatternTableState();
+    auto [left, right, palettes] = debugger.GetPatternTableState();
     static int palette_id = 0;
     if (ImGui::InputInt("Palette ID", &palette_id)) {
         if (palette_id < 0) {
@@ -574,56 +580,56 @@ void Ui::ShowPatternTables() {
         }
     }
 
-    auto left_pixels = RenderPixelsForPatternTable(pattern_table_state.left,
-                                                   pattern_table_state.palettes, palette_id);
+    auto left_pixels = RenderPixelsForPatternTable(left,
+                                                   palettes, palette_id);
     glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
                  reinterpret_cast<unsigned char*>(left_pixels.data()));
 
-    ImGui::Image((void*)(intptr_t)pattern_table_left_texture, ImVec2(385, 385));
+    ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_left_texture)), ImVec2(385, 385));
     glBindTexture(GL_TEXTURE_2D, 0);
 
     ImGui::Separator();
 
-    auto right_pixels = RenderPixelsForPatternTable(pattern_table_state.right,
-                                                    pattern_table_state.palettes, palette_id);
+    auto right_pixels = RenderPixelsForPatternTable(right,
+                                                    palettes, palette_id);
     glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
                  reinterpret_cast<unsigned char*>(right_pixels.data()));
-    ImGui::Image((void*)(intptr_t)pattern_table_right_texture, ImVec2(385, 385));
+    ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_right_texture)), ImVec2(385, 385));
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-std::vector<Pixel> Ui::RenderPixelsForPatternTable(std::span<byte, 4096> pattern_table,
-                                                   std::span<byte, 32> nes_palette,
-                                                   int palette_id) {
+std::vector<Pixel> Ui::RenderPixelsForPatternTable(const std::span<byte, 4096> pattern_table,
+                                                   const std::span<byte, 32> nes_palette,
+                                                   const int palette_id) {
     std::vector<Pixel> pixels(128 * 128);
 
     for (size_t column = 0; column < 128; column++) {
-        size_t tile_column = column / 8;
-        size_t pixel_column_in_tile = column % 8;
+        const size_t tile_column = column / 8;
+        const size_t pixel_column_in_tile = column % 8;
 
         for (size_t row = 0; row < 128; row++) {
-            size_t tile_row = row / 8;
-            size_t pixel_row_in_tile = 7 - (row % 8);
+            const size_t tile_row = row / 8;
+            const size_t pixel_row_in_tile = 7 - (row % 8);
 
             // TODO: Find out why this works correctly with
             // pixel_{column,row}_in_tile
-            size_t tile_index = tile_row + tile_column * 16;
-            size_t pixel_row_bitplane_0_index = tile_index * 16 + pixel_column_in_tile;
-            size_t pixel_row_bitplane_1_index = pixel_row_bitplane_0_index + 8;
+            const size_t tile_index = tile_row + tile_column * 16;
+            const size_t pixel_row_bitplane_0_index = tile_index * 16 + pixel_column_in_tile;
+            const size_t pixel_row_bitplane_1_index = pixel_row_bitplane_0_index + 8;
 
-            byte pixel_row_bitplane_0 = pattern_table[pixel_row_bitplane_0_index];
-            byte pixel_row_bitplane_1 = pattern_table[pixel_row_bitplane_1_index];
+            const byte pixel_row_bitplane_0 = pattern_table[pixel_row_bitplane_0_index];
+            const byte pixel_row_bitplane_1 = pattern_table[pixel_row_bitplane_1_index];
 
-            byte pixel_msb = (pixel_row_bitplane_1 & (1 << pixel_row_in_tile)) != 0 ? 0b10 : 0b00;
-            byte pixel_lsb = (pixel_row_bitplane_0 & (1 << pixel_row_in_tile)) != 0 ? 0b01 : 0b00;
+            const byte pixel_msb = (pixel_row_bitplane_1 & (1 << pixel_row_in_tile)) != 0 ? 0b10 : 0b00;
+            const byte pixel_lsb = (pixel_row_bitplane_0 & (1 << pixel_row_in_tile)) != 0 ? 0b01 : 0b00;
 
-            byte color_index = pixel_msb | pixel_lsb;
-            size_t pixel_index = row + column * 128;
+            const byte color_index = pixel_msb | pixel_lsb;
+            const size_t pixel_index = row + column * 128;
 
             // Skip the first byte for Universal background color
-            auto nes_palette_color_index = ((palette_id & 0b111) << 2) | (color_index & 0b11);
+            const auto nes_palette_color_index = ((palette_id & 0b111) << 2) | (color_index & 0b11);
 
             pixels[pixel_index] = PALETTE_COLORS[nes_palette[nes_palette_color_index]];
         }

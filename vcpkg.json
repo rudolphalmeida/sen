@@ -4,9 +4,9 @@
     "glfw3",
     "nlohmann-json",
     "spdlog",
-    "nativefiledialog",
     "catch2",
     "libconfig",
+    "nativefiledialog-extended",
     {
       "name": "imgui",
       "features": [

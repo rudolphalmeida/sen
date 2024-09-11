@@ -127,9 +127,9 @@ class Ui {
 
     void ShowMenuBar();
     void ShowRegisters();
-    void ShowPatternTables();
+    void ShowPatternTables() const;
     void ShowCpuMemory() {}
-    void ShowPpuMemory();
+    void ShowPpuMemory() const;
     void ShowCartInfo() {}
 
     void StartEmulation();
@@ -137,7 +137,7 @@ class Ui {
     void ResetEmulation();
     void StopEmulation();
 
-    void HandleInput();
+    void HandleInput() const;
 
    public:
     Ui();

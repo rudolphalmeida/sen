@@ -11,7 +11,7 @@ find_package(imgui CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(unofficial-nativefiledialog CONFIG REQUIRED)
+find_package(nfd CONFIG REQUIRED)
 find_package(libconfig CONFIG REQUIRED)
 
 add_library(libsen
@@ -41,7 +41,7 @@ target_link_libraries(sen PRIVATE
     nlohmann_json::nlohmann_json
     glfw
     OpenGL::GL
-    unofficial::nativefiledialog::nfd
+    nfd::nfd
     imgui::imgui
     libconfig::config libconfig::config++
 )
