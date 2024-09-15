@@ -195,7 +195,7 @@ class Cpu {
     std::shared_ptr<BusType> bus{};
     std::shared_ptr<bool> nmi_requested{};
 
-    FixedSizeQueue<ExecutedOpcode> executed_opcodes{30};
+    FixedSizeQueue<ExecutedOpcode> executed_opcodes{50};
 
     // Addressing Modes
 

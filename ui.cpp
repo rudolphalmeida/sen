@@ -63,8 +63,8 @@ Ui::Ui() {
 
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    window = glfwCreateWindow(NES_WIDTH * DEFAULT_SCALE_FACTOR + 405,
-                              NES_HEIGHT * DEFAULT_SCALE_FACTOR + 50, "sen - NES Emulator", nullptr,
+    window = glfwCreateWindow(NES_WIDTH * DEFAULT_SCALE_FACTOR + 640,
+                              NES_HEIGHT * DEFAULT_SCALE_FACTOR + 52, "sen - NES Emulator", nullptr,
                               nullptr);
     if (window == nullptr) {
         spdlog::error("Failed to create GLFW3 window");
@@ -210,7 +210,7 @@ void Ui::RenderUi() {
         ImGui::SameLine();
 
         {
-            ImGui::BeginChild("right-game-pane", ImVec2(NES_WIDTH * DEFAULT_SCALE_FACTOR, 0), true);
+            ImGui::BeginChild("middle-game-pane", ImVec2(NES_WIDTH * DEFAULT_SCALE_FACTOR + 10, 0), true);
 
             if (emulator_context != nullptr) {
                 const auto framebuffer = debugger.Framebuffer();
@@ -236,6 +236,38 @@ void Ui::RenderUi() {
                 glBindTexture(GL_TEXTURE_2D, 0);
             } else {
                 ImGui::Text("Load a NES ROM and click on Start to run the program");
+            }
+
+            ImGui::EndChild();
+        }
+
+        ImGui::SameLine();
+        {
+            ImGui::BeginChild("right-debug-pane", ImVec2(200, 0), true);
+
+            if (emulator_context != nullptr) {
+                const auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
+
+                ImGui::SeparatorText("Opcodes");
+                for (auto& executed_opcode : executed_opcodes.values) {
+                    auto [opcode_class, opcode, addressing_mode, length, cycles, label] = OPCODES[executed_opcode.opcode];
+                    switch (length) {
+                        case 1:
+                            ImGui::Text("0x%.4X: %s", executed_opcode.pc, label);
+                        break;
+                        case 2:
+                            ImGui::Text("0x%.4X: %s 0x%.2X", executed_opcode.pc, label,
+                                        executed_opcode.arg1);
+                        break;
+                        case 3:
+                            ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc, label,
+                                        executed_opcode.arg1, executed_opcode.arg2);
+                        break;
+                        default:
+                            spdlog::error("Unknown opcode size {}", length);
+                        break;
+                    }
+                }
             }
 
             ImGui::EndChild();
@@ -457,27 +489,6 @@ void Ui::ShowRegisters() {
         ImGui::EndTable();
     }
 
-    ImGui::SeparatorText("Opcodes");
-    for (auto& executed_opcode : cpu_state.executed_opcodes.values) {
-        Opcode opcode = OPCODES[executed_opcode.opcode];
-        switch (opcode.length) {
-            case 1:
-                ImGui::Text("0x%.4X: %s", executed_opcode.pc, opcode.label);
-                break;
-            case 2:
-                ImGui::Text("0x%.4X: %s 0x%.2X", executed_opcode.pc, opcode.label,
-                            executed_opcode.arg1);
-                break;
-            case 3:
-                ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc, opcode.label,
-                            executed_opcode.arg1, executed_opcode.arg2);
-                break;
-            default:
-                spdlog::error("Unknown opcode size {}", opcode.length);
-                break;
-        }
-    }
-
     ImGui::SeparatorText("PPU Registers");
     const auto ppu_state = debugger.GetPpuState();
     if (ImGui::BeginTable("ppu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
@@ -523,30 +534,30 @@ void Ui::ShowRegisters() {
         ImGui::EndTable();
     }
 
-    if (ImGui::BeginTable("ppu_sprites", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-        for (size_t i = 0; i < ppu_state.sprite_data.size(); i += 2) {
-            auto sprite_data = ppu_state.sprite_data[i];
-            ImGui::TableNextColumn();
-            ImGui::Text("%.8b", sprite_data.tile_data[0]);
-            ImGui::TableNextColumn();
-            ImGui::Text("0x%.4X", sprite_data.oam_entry.y);
-            ImGui::Text("0x%.4X", sprite_data.oam_entry.tile_index);
-            ImGui::Text("0x%.4X", sprite_data.oam_entry.attribs);
-            ImGui::Text("0x%.4X", sprite_data.oam_entry.x);
-
-            sprite_data = ppu_state.sprite_data[i + 1];
-            ImGui::TableNextColumn();
-            ImGui::Text("%.8b", sprite_data.tile_data[0]);
-            ImGui::TableNextColumn();
-            ImGui::Text("0x%.4X", sprite_data.oam_entry.y);
-            ImGui::Text("0x%.4X", sprite_data.oam_entry.tile_index);
-            ImGui::Text("0x%.4X", sprite_data.oam_entry.attribs);
-            ImGui::Text("0x%.4X", sprite_data.oam_entry.x);
-
-            ImGui::TableNextRow();
-        }
-        ImGui::EndTable();
-    }
+    // if (ImGui::BeginTable("ppu_sprites", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+    //     for (size_t i = 0; i < ppu_state.sprite_data.size(); i += 2) {
+    //         auto sprite_data = ppu_state.sprite_data[i];
+    //         ImGui::TableNextColumn();
+    //         ImGui::Text("%.8b", sprite_data.tile_data[0]);
+    //         ImGui::TableNextColumn();
+    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.y);
+    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.tile_index);
+    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.attribs);
+    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.x);
+    //
+    //         sprite_data = ppu_state.sprite_data[i + 1];
+    //         ImGui::TableNextColumn();
+    //         ImGui::Text("%.8b", sprite_data.tile_data[0]);
+    //         ImGui::TableNextColumn();
+    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.y);
+    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.tile_index);
+    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.attribs);
+    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.x);
+    //
+    //         ImGui::TableNextRow();
+    //     }
+    //     ImGui::EndTable();
+    // }
 }
 
 void Ui::ShowPpuMemory() const {

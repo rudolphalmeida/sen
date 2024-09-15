@@ -16,7 +16,6 @@ struct CpuState {
     byte& s;
     word& pc;
     byte& p;
-    FixedSizeQueue<ExecutedOpcode> executed_opcodes;
 };
 
 struct SpriteData {
@@ -25,7 +24,7 @@ struct SpriteData {
 };
 
 struct PpuState {
-    std::array<SpriteData, 64> sprite_data;
+    // std::array<SpriteData, 64> sprite_data;
     std::span<byte, 0x20> palettes;
     uint64_t frame_count;
     word v;
@@ -70,29 +69,38 @@ class Debugger {
             .s = cpu.s,
             .pc = cpu.pc,
             .p = cpu.p,
-            .executed_opcodes = cpu.executed_opcodes,
         };
     }
     CpuState GetCpuState() { return GetCpuState(this->emulator_context->cpu); }
     [[nodiscard]] CpuState GetCpuState() const { return GetCpuState(this->emulator_context->cpu); }
 
-    static PpuState GetPpuState(const std::shared_ptr<Ppu>& ppu) {
-        std::array<SpriteData, 64> sprite_data{};
+    template <typename BusType>
+    static const FixedSizeQueue<ExecutedOpcode>& GetCpuExecutedOpcodes(const Cpu<BusType>& cpu) {
+        return cpu.executed_opcodes;
+    }
 
-        word sprite_pattern_table_address = ppu->SpritePatternTableAddress();
+    [[nodiscard]] const FixedSizeQueue<ExecutedOpcode>& GetCpuExecutedOpcodes() const {
+        return GetCpuExecutedOpcodes(this->emulator_context->cpu);
+    }
+
+
+    static PpuState GetPpuState(const std::shared_ptr<Ppu>& ppu) {
+        // std::array<SpriteData, 64> sprite_data{};
+
+        // word sprite_pattern_table_address = ppu->SpritePatternTableAddress();
         auto chr_mem = ppu->cartridge->chr_rom;
 
-        std::ranges::transform(ppu->oam, sprite_data.begin(), [&](Sprite sprite) -> SpriteData {
-            std::array<byte, 16> tile_data{};
-            std::ranges::copy(
-                &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4)],
-                &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4) + 16],
-                tile_data.begin());
-            return {.oam_entry = sprite, .tile_data=tile_data};
-        });
+        // std::ranges::transform(ppu->oam, sprite_data.begin(), [&](Sprite sprite) -> SpriteData {
+        //     std::array<byte, 16> tile_data{};
+        //     std::ranges::copy(
+        //         &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4)],
+        //         &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4) + 16],
+        //         tile_data.begin());
+        //     return {.oam_entry = sprite, .tile_data=tile_data};
+        // });
 
         return PpuState{
-            .sprite_data = sprite_data,
+            // .sprite_data = sprite_data,
             .palettes = std::span<byte, 0x20>{&ppu->palette_table[0], 0x20},
             .frame_count = ppu->frame_count,
             .v = ppu->v.value,
@@ -108,7 +116,6 @@ class Debugger {
 
     [[nodiscard]] PatternTablesState GetPatternTableState() const {
         auto chr_mem = emulator_context->bus->cartridge->chr_rom;
-        auto framebuffer = emulator_context->ppu->framebuffer;
         return {.left = std::span<byte, 4096>{&chr_mem[0x0000], 0x1000},
                 .right = std::span<byte, 4096>{&chr_mem[0x1000], 0x1000},
                 .palettes = std::span<byte, 0x20>{&emulator_context->ppu->palette_table[0], 0x20}};
