@@ -125,12 +125,16 @@ class Ui {
         std::span<byte, 32> nes_palette,
         int palette_id);
 
+    bool showRegisters{false};
+    bool showPatternTables{false};
+    bool showPpuMemory{false};
+    bool showOam{false};
+
     void ShowMenuBar();
     void ShowRegisters();
-    void ShowPatternTables() const;
-    void ShowCpuMemory() {}
-    void ShowPpuMemory() const;
-    void ShowCartInfo() {}
+    void ShowPatternTables();
+    void ShowPpuMemory();
+    void ShowOam();
 
     void StartEmulation();
     void PauseEmulation();

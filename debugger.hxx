@@ -24,7 +24,6 @@ struct SpriteData {
 };
 
 struct PpuState {
-    // std::array<SpriteData, 64> sprite_data;
     std::span<byte, 0x20> palettes;
     uint64_t frame_count;
     word v;
@@ -83,24 +82,28 @@ class Debugger {
         return GetCpuExecutedOpcodes(this->emulator_context->cpu);
     }
 
+    static std::array<SpriteData, 64> GetSprites(const std::shared_ptr<Ppu>& ppu) {
+        std::array<SpriteData, 64> sprite_data{};
+        auto chr_mem = ppu->cartridge->chr_rom;
+        word sprite_pattern_table_address = ppu->SpritePatternTableAddress();
+        std::ranges::transform(ppu->oam, sprite_data.begin(), [&](Sprite sprite) -> SpriteData {
+            std::array<byte, 16> tile_data{};
+            std::ranges::copy(
+                &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4)],
+                &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4) + 16],
+                tile_data.begin());
+            return {.oam_entry = sprite, .tile_data=tile_data};
+        });
+
+        return sprite_data;
+    }
+    std::array<SpriteData, 64> GetSprites() { return GetSprites(this->emulator_context->ppu); }
+    [[nodiscard]] std::array<SpriteData, 64> GetSprites() const { return GetSprites(this->emulator_context->ppu); }
+
 
     static PpuState GetPpuState(const std::shared_ptr<Ppu>& ppu) {
-        // std::array<SpriteData, 64> sprite_data{};
-
-        // word sprite_pattern_table_address = ppu->SpritePatternTableAddress();
         auto chr_mem = ppu->cartridge->chr_rom;
-
-        // std::ranges::transform(ppu->oam, sprite_data.begin(), [&](Sprite sprite) -> SpriteData {
-        //     std::array<byte, 16> tile_data{};
-        //     std::ranges::copy(
-        //         &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4)],
-        //         &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4) + 16],
-        //         tile_data.begin());
-        //     return {.oam_entry = sprite, .tile_data=tile_data};
-        // });
-
         return PpuState{
-            // .sprite_data = sprite_data,
             .palettes = std::span<byte, 0x20>{&ppu->palette_table[0], 0x20},
             .frame_count = ppu->frame_count,
             .v = ppu->v.value,

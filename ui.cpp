@@ -61,10 +61,10 @@ Ui::Ui() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // Required on Mac
 #endif
 
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-    window = glfwCreateWindow(NES_WIDTH * DEFAULT_SCALE_FACTOR + 640,
-                              NES_HEIGHT * DEFAULT_SCALE_FACTOR + 52, "sen - NES Emulator", nullptr,
+    window = glfwCreateWindow(NES_WIDTH * DEFAULT_SCALE_FACTOR,
+                              NES_HEIGHT * DEFAULT_SCALE_FACTOR,
+                              "sen - NES Emulator",
+                              nullptr,
                               nullptr);
     if (window == nullptr) {
         spdlog::error("Failed to create GLFW3 window");
@@ -81,6 +81,7 @@ Ui::Ui() {
     (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
     spdlog::info("Initialized ImGui context");
 
     // Setup Dear ImGui style
@@ -167,113 +168,66 @@ void Ui::RenderUi() {
 #endif
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 
-    if (ImGui::Begin("sen", nullptr,
-                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |
-                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove |
-                         ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDecoration)) {
-        ShowMenuBar();
+    ShowMenuBar();
 
-        {
-            ImGui::BeginChild("left-debug-pane", ImVec2(400, 0), true);
+    ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 
-            if (ImGui::BeginTabBar("debug_tabs", ImGuiTabBarFlags_None)) {
-                if (ImGui::BeginTabItem("Registers")) {
-                    ShowRegisters();
-                    ImGui::EndTabItem();
-                }
+    if (emulator_context == nullptr) {
+        ImGui::Begin("Load ROM", nullptr, ImGuiWindowFlags_NoTitleBar);
+        ImGui::Text("Load a NES ROM and click on Start to run the program");
+        ImGui::End();
+    } else {
+        ImGui::SetNextWindowSize(ImVec2(NES_WIDTH * DEFAULT_SCALE_FACTOR, 0));
+        ImGui::Begin(
+            "Game", nullptr,
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
 
-                if (ImGui::BeginTabItem("Pattern Tables")) {
-                    ShowPatternTables();
-                    ImGui::EndTabItem();
-                }
-
-                if (ImGui::BeginTabItem("CPU Memory")) {
-                    ShowCpuMemory();
-                    ImGui::EndTabItem();
-                }
-
-                if (ImGui::BeginTabItem("PPU Memory")) {
-                    ShowPpuMemory();
-                    ImGui::EndTabItem();
-                }
-
-                if (ImGui::BeginTabItem("Cartridge Info")) {
-                    ShowCartInfo();
-                    ImGui::EndTabItem();
-                }
-
-                ImGui::EndTabBar();
+        const auto framebuffer = debugger.Framebuffer();
+        std::vector<Pixel> pixels(NES_WIDTH * NES_HEIGHT);
+        for (int y = 0; y < NES_HEIGHT; y++) {
+            for (int x = 0; x < NES_WIDTH; x++) {
+                const byte color_index = framebuffer[y * NES_WIDTH + x];
+                pixels[y * NES_WIDTH + x] = PALETTE_COLORS[color_index];
             }
-
-            ImGui::EndChild();
-        }
-        ImGui::SameLine();
-
-        {
-            ImGui::BeginChild("middle-game-pane", ImVec2(NES_WIDTH * DEFAULT_SCALE_FACTOR + 10, 0), true);
-
-            if (emulator_context != nullptr) {
-                const auto framebuffer = debugger.Framebuffer();
-                std::vector<Pixel> pixels(NES_WIDTH * NES_HEIGHT);
-                for (int y = 0; y < NES_HEIGHT; y++) {
-                    for (int x = 0; x < NES_WIDTH; x++) {
-                        const byte color_index = framebuffer[y * NES_WIDTH + x];
-                        pixels[y * NES_WIDTH + x] = PALETTE_COLORS[color_index];
-                    }
-                }
-
-                // if (ImGui::Button("Take screenshot")) {
-                //     stbi_write_png("./debug.png", NES_WIDTH, NES_HEIGHT, 3,
-                //                    static_cast<void*>(pixels.data()), 0);
-                // }
-
-                glBindTexture(GL_TEXTURE_2D, display_texture);
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NES_WIDTH, NES_HEIGHT, 0, GL_RGB,
-                             GL_UNSIGNED_BYTE, reinterpret_cast<unsigned char*>(pixels.data()));
-                ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(display_texture)),
-                             ImVec2(NES_WIDTH * settings.ScaleFactor(),
-                                    NES_HEIGHT * settings.ScaleFactor()));
-                glBindTexture(GL_TEXTURE_2D, 0);
-            } else {
-                ImGui::Text("Load a NES ROM and click on Start to run the program");
-            }
-
-            ImGui::EndChild();
         }
 
-        ImGui::SameLine();
-        {
-            ImGui::BeginChild("right-debug-pane", ImVec2(200, 0), true);
+        glBindTexture(GL_TEXTURE_2D, display_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NES_WIDTH, NES_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                     reinterpret_cast<unsigned char*>(pixels.data()));
+        ImGui::Image(
+            reinterpret_cast<void*>(static_cast<intptr_t>(display_texture)),
+            ImVec2(NES_WIDTH * settings.ScaleFactor(), NES_HEIGHT * settings.ScaleFactor()));
+        glBindTexture(GL_TEXTURE_2D, 0);
 
-            if (emulator_context != nullptr) {
-                const auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
+        ImGui::End();
 
-                ImGui::SeparatorText("Opcodes");
-                for (auto& executed_opcode : executed_opcodes.values) {
-                    auto [opcode_class, opcode, addressing_mode, length, cycles, label] = OPCODES[executed_opcode.opcode];
-                    switch (length) {
-                        case 1:
-                            ImGui::Text("0x%.4X: %s", executed_opcode.pc, label);
-                        break;
-                        case 2:
-                            ImGui::Text("0x%.4X: %s 0x%.2X", executed_opcode.pc, label,
-                                        executed_opcode.arg1);
-                        break;
-                        case 3:
-                            ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc, label,
-                                        executed_opcode.arg1, executed_opcode.arg2);
-                        break;
-                        default:
-                            spdlog::error("Unknown opcode size {}", length);
-                        break;
-                    }
-                }
-            }
-
-            ImGui::EndChild();
-        }
+        ShowRegisters();
+        ShowPatternTables();
+        ShowPpuMemory();
+        ShowOam();
     }
-    ImGui::End();
+
+    //             ImGui::SeparatorText("Opcodes");
+    //             for (auto& executed_opcode : executed_opcodes.values) {
+    //                 auto [opcode_class, opcode, addressing_mode, length, cycles, label] =
+    //                 OPCODES[executed_opcode.opcode]; switch (length) {
+    //                     case 1:
+    //                         ImGui::Text("0x%.4X: %s", executed_opcode.pc, label);
+    //                     break;
+    //                     case 2:
+    //                         ImGui::Text("0x%.4X: %s 0x%.2X", executed_opcode.pc, label,
+    //                                     executed_opcode.arg1);
+    //                     break;
+    //                     case 3:
+    //                         ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc, label,
+    //                                     executed_opcode.arg1, executed_opcode.arg2);
+    //                     break;
+    //                     default:
+    //                         spdlog::error("Unknown opcode size {}", length);
+    //                     break;
+    //                 }
+    //             }
+
     ImGui::PopStyleVar(1);
 
     ImGui::EndFrame();
@@ -303,11 +257,11 @@ void Ui::RenderUi() {
 }
 
 void Ui::ShowMenuBar() {
-    if (ImGui::BeginMenuBar()) {
+    if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open", "Ctrl+O")) {
                 nfdu8char_t* outPath;
-                constexpr nfdu8filteritem_t filters[1] = { { "NES ROM", "nes" }};
+                constexpr nfdu8filteritem_t filters[1] = {{"NES ROM", "nes"}};
                 nfdopendialogu8args_t args = {nullptr};
                 args.filterList = filters;
                 args.filterCount = 1;
@@ -384,19 +338,31 @@ void Ui::ShowMenuBar() {
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::MenuItem("Registers", nullptr, showRegisters, emulation_running)) {
+                showRegisters = !showRegisters;
+            }
+            if (ImGui::MenuItem("Pattern Tables", nullptr, showPatternTables, emulation_running)) {
+                showPatternTables = !showPatternTables;
+            }
+            if (ImGui::MenuItem("PPU Memory", nullptr, showPpuMemory, emulation_running)) {
+                showPpuMemory = !showPpuMemory;
+            }
+            if (ImGui::MenuItem("Sprites", nullptr, showOam, emulation_running)) {
+                showOam = !showOam;
+            }
             ImGui::EndMenu();
         }
 
-        ImGui::EndMenuBar();
+        ImGui::EndMainMenuBar();
     }
 }
 
 void Ui::ShowRegisters() {
-    if (emulator_context == nullptr) {
-        ImGui::Text("Load a ROM to view NES Register state");
+    if (!showRegisters) {
         return;
     }
 
+    ImGui::Begin("Registers", &showRegisters);
     ImGui::SeparatorText("CPU Registers");
     auto cpu_state = debugger.GetCpuState();
     if (ImGui::BeginTable("cpu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
@@ -534,37 +500,53 @@ void Ui::ShowRegisters() {
         ImGui::EndTable();
     }
 
-    // if (ImGui::BeginTable("ppu_sprites", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-    //     for (size_t i = 0; i < ppu_state.sprite_data.size(); i += 2) {
-    //         auto sprite_data = ppu_state.sprite_data[i];
-    //         ImGui::TableNextColumn();
-    //         ImGui::Text("%.8b", sprite_data.tile_data[0]);
-    //         ImGui::TableNextColumn();
-    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.y);
-    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.tile_index);
-    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.attribs);
-    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.x);
-    //
-    //         sprite_data = ppu_state.sprite_data[i + 1];
-    //         ImGui::TableNextColumn();
-    //         ImGui::Text("%.8b", sprite_data.tile_data[0]);
-    //         ImGui::TableNextColumn();
-    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.y);
-    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.tile_index);
-    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.attribs);
-    //         ImGui::Text("0x%.4X", sprite_data.oam_entry.x);
-    //
-    //         ImGui::TableNextRow();
-    //     }
-    //     ImGui::EndTable();
-    // }
+    ImGui::End();
 }
 
-void Ui::ShowPpuMemory() const {
-    if (emulator_context == nullptr) {
-        ImGui::Text("Load a ROM to view its memory");
+void Ui::ShowOam() {
+    if (!showOam) {
         return;
     }
+
+    ImGui::Begin("Sprites", &showOam);
+
+    const auto sprite_data = debugger.GetSprites();
+
+    if (ImGui::BeginTable("ppu_sprites", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+        for (size_t i = 0; i < sprite_data.size(); i += 2) {
+            auto sprite = sprite_data[i];
+            ImGui::TableNextColumn();
+            ImGui::Text("%.8b", sprite.tile_data[0]);
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.4X", sprite.oam_entry.y);
+            ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);
+            ImGui::Text("0x%.4X", sprite.oam_entry.attribs);
+            ImGui::Text("0x%.4X", sprite.oam_entry.x);
+
+            sprite = sprite_data[i + 1];
+            ImGui::TableNextColumn();
+            ImGui::Text("%.8b", sprite.tile_data[0]);
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.4X", sprite.oam_entry.y);
+            ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);
+            ImGui::Text("0x%.4X", sprite.oam_entry.attribs);
+            ImGui::Text("0x%.4X", sprite.oam_entry.x);
+
+            ImGui::TableNextRow();
+        }
+        ImGui::EndTable();
+    }
+
+    ImGui::End();
+}
+
+
+void Ui::ShowPpuMemory() {
+    if (!showPpuMemory) {
+        return;
+    }
+
+    ImGui::Begin("PPU Memory", &showPpuMemory);
 
     static std::vector<byte> ppu_memory;
     ppu_memory.resize(0x4000);
@@ -572,13 +554,16 @@ void Ui::ShowPpuMemory() const {
     static MemoryEditor ppu_mem_edit;
     ppu_mem_edit.ReadOnly = true;
     ppu_mem_edit.DrawContents(ppu_memory.data(), 0x4000);
+
+    ImGui::End();
 }
 
-void Ui::ShowPatternTables() const {
-    if (emulator_context == nullptr) {
-        ImGui::Text("Load a ROM to view its pattern tables");
+void Ui::ShowPatternTables() {
+    if (!showPatternTables) {
         return;
     }
+
+    ImGui::Begin("Pattern Tables", &showPatternTables);
     auto [left, right, palettes] = debugger.GetPatternTableState();
     static int palette_id = 0;
     if (ImGui::InputInt("Palette ID", &palette_id)) {
@@ -591,24 +576,26 @@ void Ui::ShowPatternTables() const {
         }
     }
 
-    auto left_pixels = RenderPixelsForPatternTable(left,
-                                                   palettes, palette_id);
+    auto left_pixels = RenderPixelsForPatternTable(left, palettes, palette_id);
     glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
                  reinterpret_cast<unsigned char*>(left_pixels.data()));
 
-    ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_left_texture)), ImVec2(385, 385));
+    ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_left_texture)),
+                 ImVec2(385, 385));
     glBindTexture(GL_TEXTURE_2D, 0);
 
     ImGui::Separator();
 
-    auto right_pixels = RenderPixelsForPatternTable(right,
-                                                    palettes, palette_id);
+    auto right_pixels = RenderPixelsForPatternTable(right, palettes, palette_id);
     glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
                  reinterpret_cast<unsigned char*>(right_pixels.data()));
-    ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_right_texture)), ImVec2(385, 385));
+    ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_right_texture)),
+                 ImVec2(385, 385));
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    ImGui::End();
 }
 
 std::vector<Pixel> Ui::RenderPixelsForPatternTable(const std::span<byte, 4096> pattern_table,
@@ -633,8 +620,10 @@ std::vector<Pixel> Ui::RenderPixelsForPatternTable(const std::span<byte, 4096> p
             const byte pixel_row_bitplane_0 = pattern_table[pixel_row_bitplane_0_index];
             const byte pixel_row_bitplane_1 = pattern_table[pixel_row_bitplane_1_index];
 
-            const byte pixel_msb = (pixel_row_bitplane_1 & (1 << pixel_row_in_tile)) != 0 ? 0b10 : 0b00;
-            const byte pixel_lsb = (pixel_row_bitplane_0 & (1 << pixel_row_in_tile)) != 0 ? 0b01 : 0b00;
+            const byte pixel_msb =
+                (pixel_row_bitplane_1 & (1 << pixel_row_in_tile)) != 0 ? 0b10 : 0b00;
+            const byte pixel_lsb =
+                (pixel_row_bitplane_0 & (1 << pixel_row_in_tile)) != 0 ? 0b01 : 0b00;
 
             const byte color_index = pixel_msb | pixel_lsb;
             const size_t pixel_index = row + column * 128;
