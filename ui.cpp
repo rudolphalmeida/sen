@@ -514,7 +514,7 @@ void Ui::ShowRegisters() {
 
 void Ui::DrawSprite(const size_t index, const SpriteData& sprite, const std::span<byte, 0x20>& palettes) const {
     std::vector<Pixel> pixels(8 * 8);
-    const auto palette_id = sprite.oam_entry.PaletteIndex();
+    const auto palette_id = sprite.oam_entry.PaletteIndex() + 4;
 
     for (int column = 0; column < 8; column++) {
         for (int row = 0; row < 8; row++) {

@@ -65,7 +65,7 @@ struct Pixel {
     byte b{};
 };
 
-static const Pixel PALETTE_COLORS[0x40] = {
+static constexpr Pixel PALETTE_COLORS[0x40] = {
     Pixel{84, 84, 84},    Pixel{0, 30, 116},    Pixel{8, 16, 144},    Pixel{48, 0, 136},
     Pixel{68, 0, 100},    Pixel{92, 0, 48},     Pixel{84, 4, 0},      Pixel{60, 24, 0},
     Pixel{32, 42, 0},     Pixel{8, 58, 0},      Pixel{0, 64, 0},      Pixel{0, 60, 0},
