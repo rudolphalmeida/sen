@@ -524,7 +524,7 @@ void Ui::DrawSprite(const size_t index, const SpriteData& sprite, const std::spa
             const byte pixel_lsb = ((low & (1 << column)) != 0) ? 0b01 : 0b00;
             const byte color_index = pixel_msb | pixel_lsb;
 
-            const size_t pixel_index = row + column * 8;
+            const size_t pixel_index = column + row * 8;
             const auto nes_palette_color_index = ((palette_id & 0b111) << 2) | (color_index & 0b11);
             pixels[pixel_index] = PALETTE_COLORS[palettes[nes_palette_color_index]];
         }
