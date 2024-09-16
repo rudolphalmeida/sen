@@ -106,6 +106,7 @@ class Ui {
     unsigned int pattern_table_left_texture{};
     unsigned int pattern_table_right_texture{};
     unsigned int display_texture{};
+    std::array<unsigned int, 64> sprite_textures{};
 
     void LoadRomFile(const char* path) {
         loaded_rom_file_path = std::make_optional<std::filesystem::path>(path);
@@ -134,6 +135,8 @@ class Ui {
     void ShowRegisters();
     void ShowPatternTables();
     void ShowPpuMemory();
+
+    void DrawSprite(size_t index, const SpriteData& sprite, const std::span<byte, 0x20>& palettes) const;
     void ShowOam();
 
     void StartEmulation();

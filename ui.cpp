@@ -12,7 +12,6 @@
 #include "constants.hxx"
 #include "cpu.hxx"
 #include "ui.hxx"
-#include "util.hxx"
 
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 
@@ -61,8 +60,8 @@ Ui::Ui() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // Required on Mac
 #endif
 
-    window = glfwCreateWindow(NES_WIDTH * DEFAULT_SCALE_FACTOR,
-                              NES_HEIGHT * DEFAULT_SCALE_FACTOR,
+    window = glfwCreateWindow(NES_WIDTH * DEFAULT_SCALE_FACTOR + 15,
+                              NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55,
                               "sen - NES Emulator",
                               nullptr,
                               nullptr);
@@ -122,6 +121,16 @@ Ui::Ui() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glGenTextures(64, sprite_textures.data());
+    for (int i = 0; i < 64; i++) {
+        glBindTexture(GL_TEXTURE_2D, sprite_textures[i]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    }
 }
 
 void Ui::HandleInput() const {
@@ -503,6 +512,32 @@ void Ui::ShowRegisters() {
     ImGui::End();
 }
 
+void Ui::DrawSprite(const size_t index, const SpriteData& sprite, const std::span<byte, 0x20>& palettes) const {
+    std::vector<Pixel> pixels(8 * 8);
+    const auto palette_id = sprite.oam_entry.PaletteIndex();
+
+    for (int column = 0; column < 8; column++) {
+        for (int row = 0; row < 8; row++) {
+            const byte low = sprite.tile_data[row];
+            const byte high = sprite.tile_data[row + 8];
+            const byte pixel_msb = ((high & (1 << column)) != 0) ? 0b10 : 0b00;
+            const byte pixel_lsb = ((low & (1 << column)) != 0) ? 0b01 : 0b00;
+            const byte color_index = pixel_msb | pixel_lsb;
+
+            const size_t pixel_index = row + column * 8;
+            const auto nes_palette_color_index = ((palette_id & 0b111) << 2) | (color_index & 0b11);
+            pixels[pixel_index] = PALETTE_COLORS[palettes[nes_palette_color_index]];
+        }
+    }
+
+    glBindTexture(GL_TEXTURE_2D, sprite_textures[index]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 8, 8, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                 reinterpret_cast<unsigned char*>(pixels.data()));
+    ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(sprite_textures[index])),
+                 ImVec2(64, 64));
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 void Ui::ShowOam() {
     if (!showOam) {
         return;
@@ -510,22 +545,22 @@ void Ui::ShowOam() {
 
     ImGui::Begin("Sprites", &showOam);
 
-    const auto sprite_data = debugger.GetSprites();
+    const auto sprites = debugger.GetSprites();
 
     if (ImGui::BeginTable("ppu_sprites", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-        for (size_t i = 0; i < sprite_data.size(); i += 2) {
-            auto sprite = sprite_data[i];
+        for (size_t i = 0; i < sprites.sprites_data.size(); i += 2) {
+            auto sprite = sprites.sprites_data[i];
             ImGui::TableNextColumn();
-            ImGui::Text("%.8b", sprite.tile_data[0]);
+            DrawSprite(i, sprite, sprites.palettes);
             ImGui::TableNextColumn();
             ImGui::Text("0x%.4X", sprite.oam_entry.y);
             ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);
             ImGui::Text("0x%.4X", sprite.oam_entry.attribs);
             ImGui::Text("0x%.4X", sprite.oam_entry.x);
 
-            sprite = sprite_data[i + 1];
+            sprite = sprites.sprites_data[i + 1];
             ImGui::TableNextColumn();
-            ImGui::Text("%.8b", sprite.tile_data[0]);
+            DrawSprite(i + 1, sprite, sprites.palettes);
             ImGui::TableNextColumn();
             ImGui::Text("0x%.4X", sprite.oam_entry.y);
             ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);

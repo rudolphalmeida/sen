@@ -23,6 +23,11 @@ struct SpriteData {
     std::array<byte, 16> tile_data;
 };
 
+struct Sprites {
+    std::array<SpriteData, 64> sprites_data;
+    std::span<byte, 0x20> palettes;
+};
+
 struct PpuState {
     std::span<byte, 0x20> palettes;
     uint64_t frame_count;
@@ -82,11 +87,11 @@ class Debugger {
         return GetCpuExecutedOpcodes(this->emulator_context->cpu);
     }
 
-    static std::array<SpriteData, 64> GetSprites(const std::shared_ptr<Ppu>& ppu) {
-        std::array<SpriteData, 64> sprite_data{};
+    static Sprites GetSprites(const std::shared_ptr<Ppu>& ppu) {
+        Sprites sprites{.sprites_data = {}, .palettes = std::span<byte, 0x20>{&ppu->palette_table[0], 0x20}};
         auto chr_mem = ppu->cartridge->chr_rom;
         word sprite_pattern_table_address = ppu->SpritePatternTableAddress();
-        std::ranges::transform(ppu->oam, sprite_data.begin(), [&](Sprite sprite) -> SpriteData {
+        std::ranges::transform(ppu->oam, sprites.sprites_data.begin(), [&](Sprite sprite) -> SpriteData {
             std::array<byte, 16> tile_data{};
             std::ranges::copy(
                 &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4)],
@@ -95,10 +100,10 @@ class Debugger {
             return {.oam_entry = sprite, .tile_data=tile_data};
         });
 
-        return sprite_data;
+        return sprites;
     }
-    std::array<SpriteData, 64> GetSprites() { return GetSprites(this->emulator_context->ppu); }
-    [[nodiscard]] std::array<SpriteData, 64> GetSprites() const { return GetSprites(this->emulator_context->ppu); }
+    Sprites GetSprites() { return GetSprites(this->emulator_context->ppu); }
+    [[nodiscard]] Sprites GetSprites() const { return GetSprites(this->emulator_context->ppu); }
 
 
     static PpuState GetPpuState(const std::shared_ptr<Ppu>& ppu) {
