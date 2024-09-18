@@ -14,6 +14,8 @@
 #include <imgui_impl_opengl3.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
+
+#include <bitset>
 #include <libconfig.h++>
 
 #include "constants.hxx"
@@ -29,8 +31,26 @@ enum class UiStyle {
     Dark = 2,
 };
 
+constexpr int NUM_PANELS = 8;
+enum class UiPanel {
+    Registers = 0,
+    PatternTables = 1,
+    PpuMemory = 2,
+    CpuMemory = 3,
+    Sprites = 4,
+    Opcodes = 5,
+    Debugger = 6,
+    Logs = 7,
+};
+
 struct SenSettings {
     libconfig::Config cfg{};
+
+    [[nodiscard]] int Width() const { return cfg.getRoot()["ui"]["width"]; }
+    void Width(int width) const { cfg.getRoot()["ui"]["width"] = width; }
+
+    [[nodiscard]] int Height() const { return cfg.getRoot()["ui"]["height"]; }
+    void Height(int height) const { cfg.getRoot()["ui"]["height"] = height; }
 
     [[nodiscard]] int ScaleFactor() const { return cfg.getRoot()["ui"]["scale"]; }
     void SetScale(int scale) const { cfg.getRoot()["ui"]["scale"] = scale; }
@@ -38,8 +58,21 @@ struct SenSettings {
     [[nodiscard]] UiStyle GetUiStyle() const {
         return static_cast<enum UiStyle>((int)cfg.getRoot()["ui"]["style"]);
     }
+
     void SetUiStyle(enum UiStyle style) const {
         cfg.getRoot()["ui"]["style"] = static_cast<int>(style);
+    }
+
+    [[nodiscard]] int GetOpenPanels() const {
+        return cfg.getRoot()["ui"]["open_panels"];
+    }
+
+    void SetOpenPanels(const int open_panels) const {
+        cfg.getRoot()["ui"]["open_panels"] = open_panels;
+    }
+
+    void TogglePanel(UiPanel panel) const {
+        cfg.getRoot()["ui"]["open_panels"] = static_cast<int>(cfg.getRoot()["ui"]["open_panels"]) ^ (1 << static_cast<int>(panel));
     }
 
     void RecentRoms(std::vector<const char*>& paths) const {
@@ -126,10 +159,7 @@ class Ui {
         std::span<byte, 32> nes_palette,
         int palette_id);
 
-    bool showRegisters{false};
-    bool showPatternTables{false};
-    bool showPpuMemory{false};
-    bool showOam{false};
+    std::array<bool, NUM_PANELS> open_panels{};
 
     void ShowMenuBar();
     void ShowRegisters();
@@ -152,6 +182,14 @@ class Ui {
     void Run();
 
     ~Ui() {
+        int panels = 0;
+        for (int i = 0; i < NUM_PANELS; i++) {
+            if (open_panels[i]) {
+                panels |= (1 << i);
+            }
+        }
+        settings.SetOpenPanels(panels);
+
         try {
             settings.cfg.writeFile("test.cfg");
         } catch (const libconfig::FileIOException& e) {

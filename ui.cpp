@@ -44,6 +44,26 @@ Ui::Ui() {
     if (!ui.exists("style")) {
         ui.add("style", libconfig::Setting::TypeInt) = static_cast<int>(UiStyle::Dark);
     }
+    if (!ui.exists("open_panels")) {
+        ui.add("open_panels", libconfig::Setting::TypeInt) = 0;
+    } else {
+        const auto saved_open_panels = settings.GetOpenPanels();
+        for (int i = 0; i < NUM_PANELS; i++) {
+            open_panels[i] = (saved_open_panels & (1 << i)) != 0;
+        }
+    }
+    int width = NES_WIDTH * DEFAULT_SCALE_FACTOR + 15;
+    int height = NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55;
+    if (!ui.exists("width")) {
+        ui.add("width", libconfig::Setting::TypeInt) = width;
+    } else {
+        width = settings.Width();
+    }
+    if (!ui.exists("height")) {
+        ui.add("height", libconfig::Setting::TypeInt) = height;
+    } else {
+        height = settings.Height();
+    }
 
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) {
@@ -60,8 +80,8 @@ Ui::Ui() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // Required on Mac
 #endif
 
-    window = glfwCreateWindow(NES_WIDTH * DEFAULT_SCALE_FACTOR + 15,
-                              NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55,
+    window = glfwCreateWindow(width,
+                              height,
                               "sen - NES Emulator",
                               nullptr,
                               nullptr);
@@ -71,6 +91,16 @@ Ui::Ui() {
     }
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);  // Enable vsync
+
+    glfwSetWindowUserPointer(window, static_cast<void*>(this));
+    glfwSetWindowSizeCallback(window, [](GLFWwindow* _window, const int width, const int height) {
+        const auto self = static_cast<Ui*>(glfwGetWindowUserPointer(_window));
+        self->settings.Width(width);
+        self->settings.Height(height);
+
+        glViewport(0, 0, width, height);
+    });
+
     spdlog::info("Initialized GLFW window and OpenGL context");
 
     // Setup Dear ImGui context
@@ -243,9 +273,9 @@ void Ui::RenderUi() {
 
     // Rendering
     ImGui::Render();
-    int display_w, display_h;
-    glfwGetFramebufferSize(window, &display_w, &display_h);
-    glViewport(0, 0, display_w, display_h);
+    // int display_w, display_h;
+    // glfwGetFramebufferSize(window, &display_w, &display_h);
+    // glViewport(0, 0, display_w, display_h);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -347,17 +377,20 @@ void Ui::ShowMenuBar() {
                 }
                 ImGui::EndMenu();
             }
-            if (ImGui::MenuItem("Registers", nullptr, showRegisters, emulation_running)) {
-                showRegisters = !showRegisters;
+            if (ImGui::MenuItem("Registers", nullptr, open_panels[static_cast<int>(UiPanel::Registers)], emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::Registers)] = !open_panels[static_cast<int>(UiPanel::Registers)];
             }
-            if (ImGui::MenuItem("Pattern Tables", nullptr, showPatternTables, emulation_running)) {
-                showPatternTables = !showPatternTables;
+            if (ImGui::MenuItem("Pattern Tables", nullptr, open_panels[static_cast<int>(UiPanel::PatternTables)], emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::PatternTables)] = !open_panels[static_cast<int>(UiPanel::PatternTables)];
+                settings.TogglePanel(UiPanel::PatternTables);
             }
-            if (ImGui::MenuItem("PPU Memory", nullptr, showPpuMemory, emulation_running)) {
-                showPpuMemory = !showPpuMemory;
+            if (ImGui::MenuItem("PPU Memory", nullptr, open_panels[static_cast<int>(UiPanel::PpuMemory)], emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::PpuMemory)] = !open_panels[static_cast<int>(UiPanel::PpuMemory)];
+                settings.TogglePanel(UiPanel::PpuMemory);
             }
-            if (ImGui::MenuItem("Sprites", nullptr, showOam, emulation_running)) {
-                showOam = !showOam;
+            if (ImGui::MenuItem("Sprites", nullptr, open_panels[static_cast<int>(UiPanel::Sprites)], emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::Sprites)] = !open_panels[static_cast<int>(UiPanel::Sprites)];
+                settings.TogglePanel(UiPanel::Sprites);
             }
             ImGui::EndMenu();
         }
@@ -367,148 +400,148 @@ void Ui::ShowMenuBar() {
 }
 
 void Ui::ShowRegisters() {
-    if (!showRegisters) {
+    if (!open_panels[static_cast<int>(UiPanel::Registers)]) {
         return;
     }
 
-    ImGui::Begin("Registers", &showRegisters);
-    ImGui::SeparatorText("CPU Registers");
-    auto cpu_state = debugger.GetCpuState();
-    if (ImGui::BeginTable("cpu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-        ImGui::TableSetupColumn("Register");
-        ImGui::TableSetupColumn("Value");
-        ImGui::TableHeadersRow();
+    if (ImGui::Begin("Registers", &open_panels[static_cast<int>(UiPanel::Registers)])) {
+        ImGui::SeparatorText("CPU Registers");
+        auto cpu_state = debugger.GetCpuState();
+        if (ImGui::BeginTable("cpu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+            ImGui::TableSetupColumn("Register");
+            ImGui::TableSetupColumn("Value");
+            ImGui::TableHeadersRow();
 
-        ImGui::TableNextColumn();
-        ImGui::Text("A");
-        ImGui::TableNextColumn();
-        ImGui::Text("0x%.2X", cpu_state.a);
+            ImGui::TableNextColumn();
+            ImGui::Text("A");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.2X", cpu_state.a);
 
-        ImGui::TableNextRow();
+            ImGui::TableNextRow();
 
-        ImGui::TableNextColumn();
-        ImGui::Text("X");
-        ImGui::TableNextColumn();
-        ImGui::Text("0x%.2X", cpu_state.x);
+            ImGui::TableNextColumn();
+            ImGui::Text("X");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.2X", cpu_state.x);
 
-        ImGui::TableNextRow();
+            ImGui::TableNextRow();
 
-        ImGui::TableNextColumn();
-        ImGui::Text("Y");
-        ImGui::TableNextColumn();
-        ImGui::Text("0x%.2X", cpu_state.y);
+            ImGui::TableNextColumn();
+            ImGui::Text("Y");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.2X", cpu_state.y);
 
-        ImGui::TableNextRow();
+            ImGui::TableNextRow();
 
-        ImGui::TableNextColumn();
-        ImGui::Text("S");
-        ImGui::TableNextColumn();
-        ImGui::Text("0x%.2X", cpu_state.s);
+            ImGui::TableNextColumn();
+            ImGui::Text("S");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.2X", cpu_state.s);
 
-        ImGui::TableNextRow();
+            ImGui::TableNextRow();
 
-        ImGui::TableNextColumn();
-        ImGui::Text("PC");
-        ImGui::TableNextColumn();
-        ImGui::Text("0x%.4X", cpu_state.pc);
+            ImGui::TableNextColumn();
+            ImGui::Text("PC");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.4X", cpu_state.pc);
 
-        ImGui::TableNextRow();
+            ImGui::TableNextRow();
 
-        ImGui::TableNextColumn();
-        ImGui::Text("P");
-        ImGui::TableNextColumn();
+            ImGui::TableNextColumn();
+            ImGui::Text("P");
+            ImGui::TableNextColumn();
 
-        constexpr ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
+            constexpr ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
 
-        if ((cpu_state.p & static_cast<byte>(StatusFlag::Carry)) != 0) {
-            ImGui::Text("C");
-        } else {
-            ImGui::TextColored(gray, "C");
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::Carry)) != 0) {
+                ImGui::Text("C");
+            } else {
+                ImGui::TextColored(gray, "C");
+            }
+            ImGui::SameLine();
+
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::Zero)) != 0) {
+                ImGui::Text("Z");
+            } else {
+                ImGui::TextColored(gray, "Z");
+            }
+            ImGui::SameLine();
+
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::InterruptDisable)) != 0) {
+                ImGui::Text("I");
+            } else {
+                ImGui::TextColored(gray, "I");
+            }
+            ImGui::SameLine();
+
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::Decimal)) != 0) {
+                ImGui::Text("D");
+            } else {
+                ImGui::TextColored(gray, "D");
+            }
+            ImGui::SameLine();
+
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::Overflow)) != 0) {
+                ImGui::Text("V");
+            } else {
+                ImGui::TextColored(gray, "V");
+            }
+            ImGui::SameLine();
+
+            if ((cpu_state.p & static_cast<byte>(StatusFlag::Negative)) != 0) {
+                ImGui::Text("N");
+            } else {
+                ImGui::TextColored(gray, "N");
+            }
+
+            ImGui::EndTable();
         }
-        ImGui::SameLine();
 
-        if ((cpu_state.p & static_cast<byte>(StatusFlag::Zero)) != 0) {
-            ImGui::Text("Z");
-        } else {
-            ImGui::TextColored(gray, "Z");
-        }
-        ImGui::SameLine();
+        ImGui::SeparatorText("PPU Registers");
+        const auto ppu_state = debugger.GetPpuState();
+        if (ImGui::BeginTable("ppu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+            ImGui::TableSetupColumn("Register");
+            ImGui::TableSetupColumn("Value");
+            ImGui::TableHeadersRow();
 
-        if ((cpu_state.p & static_cast<byte>(StatusFlag::InterruptDisable)) != 0) {
-            ImGui::Text("I");
-        } else {
-            ImGui::TextColored(gray, "I");
-        }
-        ImGui::SameLine();
-
-        if ((cpu_state.p & static_cast<byte>(StatusFlag::Decimal)) != 0) {
-            ImGui::Text("D");
-        } else {
-            ImGui::TextColored(gray, "D");
-        }
-        ImGui::SameLine();
-
-        if ((cpu_state.p & static_cast<byte>(StatusFlag::Overflow)) != 0) {
+            ImGui::TableNextColumn();
+            ImGui::Text("Frame Count");
+            ImGui::TableNextColumn();
+            ImGui::Text("%lu", ppu_state.frame_count);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("PPUCTRL");
+            ImGui::TableNextColumn();
+            ImGui::Text("%.8b", ppu_state.ppuctrl);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("PPUMASK");
+            ImGui::TableNextColumn();
+            ImGui::Text("%.8b", ppu_state.ppumask);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("PPUSTATUS");
+            ImGui::TableNextColumn();
+            ImGui::Text("%.8b", ppu_state.ppustatus);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("OAMADDR");
+            ImGui::TableNextColumn();
+            ImGui::Text("%.8b", ppu_state.oamaddr);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
             ImGui::Text("V");
-        } else {
-            ImGui::TextColored(gray, "V");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.4X", ppu_state.v);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("T");
+            ImGui::TableNextColumn();
+            ImGui::Text("0x%.4X", ppu_state.t);
+
+            ImGui::EndTable();
         }
-        ImGui::SameLine();
-
-        if ((cpu_state.p & static_cast<byte>(StatusFlag::Negative)) != 0) {
-            ImGui::Text("N");
-        } else {
-            ImGui::TextColored(gray, "N");
-        }
-
-        ImGui::EndTable();
     }
-
-    ImGui::SeparatorText("PPU Registers");
-    const auto ppu_state = debugger.GetPpuState();
-    if (ImGui::BeginTable("ppu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-        ImGui::TableSetupColumn("Register");
-        ImGui::TableSetupColumn("Value");
-        ImGui::TableHeadersRow();
-
-        ImGui::TableNextColumn();
-        ImGui::Text("Frame Count");
-        ImGui::TableNextColumn();
-        ImGui::Text("%lu", ppu_state.frame_count);
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        ImGui::Text("PPUCTRL");
-        ImGui::TableNextColumn();
-        ImGui::Text("%.8b", ppu_state.ppuctrl);
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        ImGui::Text("PPUMASK");
-        ImGui::TableNextColumn();
-        ImGui::Text("%.8b", ppu_state.ppumask);
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        ImGui::Text("PPUSTATUS");
-        ImGui::TableNextColumn();
-        ImGui::Text("%.8b", ppu_state.ppustatus);
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        ImGui::Text("OAMADDR");
-        ImGui::TableNextColumn();
-        ImGui::Text("%.8b", ppu_state.oamaddr);
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        ImGui::Text("V");
-        ImGui::TableNextColumn();
-        ImGui::Text("0x%.4X", ppu_state.v);
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
-        ImGui::Text("T");
-        ImGui::TableNextColumn();
-        ImGui::Text("0x%.4X", ppu_state.t);
-
-        ImGui::EndTable();
-    }
-
     ImGui::End();
 }
 
@@ -539,97 +572,93 @@ void Ui::DrawSprite(const size_t index, const SpriteData& sprite, const std::spa
 }
 
 void Ui::ShowOam() {
-    if (!showOam) {
+    if (!open_panels[static_cast<int>(UiPanel::Sprites)]) {
         return;
     }
 
-    ImGui::Begin("Sprites", &showOam);
+    if (ImGui::Begin("Sprites", &open_panels[static_cast<int>(UiPanel::Sprites)])) {
+        const auto sprites = debugger.GetSprites();
 
-    const auto sprites = debugger.GetSprites();
+        if (ImGui::BeginTable("ppu_sprites", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+            for (size_t i = 0; i < sprites.sprites_data.size(); i += 2) {
+                auto sprite = sprites.sprites_data[i];
+                ImGui::TableNextColumn();
+                DrawSprite(i, sprite, sprites.palettes);
+                ImGui::TableNextColumn();
+                ImGui::Text("(%d, %d)", sprite.oam_entry.x, sprite.oam_entry.y);
+                ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);
+                ImGui::Text("0x%.4X", sprite.oam_entry.attribs);
 
-    if (ImGui::BeginTable("ppu_sprites", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-        for (size_t i = 0; i < sprites.sprites_data.size(); i += 2) {
-            auto sprite = sprites.sprites_data[i];
-            ImGui::TableNextColumn();
-            DrawSprite(i, sprite, sprites.palettes);
-            ImGui::TableNextColumn();
-            ImGui::Text("0x%.4X", sprite.oam_entry.y);
-            ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);
-            ImGui::Text("0x%.4X", sprite.oam_entry.attribs);
-            ImGui::Text("0x%.4X", sprite.oam_entry.x);
+                sprite = sprites.sprites_data[i + 1];
+                ImGui::TableNextColumn();
+                DrawSprite(i + 1, sprite, sprites.palettes);
+                ImGui::TableNextColumn();
+                ImGui::Text("(%d, %d)", sprite.oam_entry.x, sprite.oam_entry.y);
+                ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);
+                ImGui::Text("0x%.4X", sprite.oam_entry.attribs);
 
-            sprite = sprites.sprites_data[i + 1];
-            ImGui::TableNextColumn();
-            DrawSprite(i + 1, sprite, sprites.palettes);
-            ImGui::TableNextColumn();
-            ImGui::Text("0x%.4X", sprite.oam_entry.y);
-            ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);
-            ImGui::Text("0x%.4X", sprite.oam_entry.attribs);
-            ImGui::Text("0x%.4X", sprite.oam_entry.x);
-
-            ImGui::TableNextRow();
+                ImGui::TableNextRow();
+            }
+            ImGui::EndTable();
         }
-        ImGui::EndTable();
     }
-
     ImGui::End();
 }
 
 
 void Ui::ShowPpuMemory() {
-    if (!showPpuMemory) {
+    if (!open_panels[static_cast<int>(UiPanel::PpuMemory)]) {
         return;
     }
 
-    ImGui::Begin("PPU Memory", &showPpuMemory);
-
-    static std::vector<byte> ppu_memory;
-    ppu_memory.resize(0x4000);
-    debugger.LoadPpuMemory(ppu_memory);
-    static MemoryEditor ppu_mem_edit;
-    ppu_mem_edit.ReadOnly = true;
-    ppu_mem_edit.DrawContents(ppu_memory.data(), 0x4000);
-
+    if (ImGui::Begin("PPU Memory", &open_panels[static_cast<int>(UiPanel::PpuMemory)])) {
+        static std::vector<byte> ppu_memory;
+        ppu_memory.resize(0x4000);
+        debugger.LoadPpuMemory(ppu_memory);
+        static MemoryEditor ppu_mem_edit;
+        ppu_mem_edit.ReadOnly = true;
+        ppu_mem_edit.DrawContents(ppu_memory.data(), 0x4000);
+    }
     ImGui::End();
 }
 
 void Ui::ShowPatternTables() {
-    if (!showPatternTables) {
+    if (!open_panels[static_cast<int>(UiPanel::PatternTables)]) {
         return;
     }
 
-    ImGui::Begin("Pattern Tables", &showPatternTables);
-    auto [left, right, palettes] = debugger.GetPatternTableState();
-    static int palette_id = 0;
-    if (ImGui::InputInt("Palette ID", &palette_id)) {
-        if (palette_id < 0) {
-            palette_id = 0;
+    if (ImGui::Begin("Pattern Tables", &open_panels[static_cast<int>(UiPanel::PatternTables)])) {
+        auto [left, right, palettes] = debugger.GetPatternTableState();
+        static int palette_id = 0;
+        if (ImGui::InputInt("Palette ID", &palette_id)) {
+            if (palette_id < 0) {
+                palette_id = 0;
+            }
+
+            if (palette_id > 7) {
+                palette_id = 7;
+            }
         }
 
-        if (palette_id > 7) {
-            palette_id = 7;
-        }
+        auto left_pixels = RenderPixelsForPatternTable(left, palettes, palette_id);
+        glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                     reinterpret_cast<unsigned char*>(left_pixels.data()));
+
+        ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_left_texture)),
+                     ImVec2(385, 385));
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        ImGui::Separator();
+
+        auto right_pixels = RenderPixelsForPatternTable(right, palettes, palette_id);
+        glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                     reinterpret_cast<unsigned char*>(right_pixels.data()));
+        ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_right_texture)),
+                     ImVec2(385, 385));
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
-
-    auto left_pixels = RenderPixelsForPatternTable(left, palettes, palette_id);
-    glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                 reinterpret_cast<unsigned char*>(left_pixels.data()));
-
-    ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_left_texture)),
-                 ImVec2(385, 385));
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    ImGui::Separator();
-
-    auto right_pixels = RenderPixelsForPatternTable(right, palettes, palette_id);
-    glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                 reinterpret_cast<unsigned char*>(right_pixels.data()));
-    ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_right_texture)),
-                 ImVec2(385, 385));
-    glBindTexture(GL_TEXTURE_2D, 0);
-
     ImGui::End();
 }
 
