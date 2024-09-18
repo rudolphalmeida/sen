@@ -111,6 +111,7 @@ Ui::Ui() {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
     spdlog::info("Initialized ImGui context");
 
     // Setup Dear ImGui style
@@ -244,55 +245,24 @@ void Ui::RenderUi() {
         ShowPatternTables();
         ShowPpuMemory();
         ShowOam();
+        ShowOpcodes();
     }
-
-    //             ImGui::SeparatorText("Opcodes");
-    //             for (auto& executed_opcode : executed_opcodes.values) {
-    //                 auto [opcode_class, opcode, addressing_mode, length, cycles, label] =
-    //                 OPCODES[executed_opcode.opcode]; switch (length) {
-    //                     case 1:
-    //                         ImGui::Text("0x%.4X: %s", executed_opcode.pc, label);
-    //                     break;
-    //                     case 2:
-    //                         ImGui::Text("0x%.4X: %s 0x%.2X", executed_opcode.pc, label,
-    //                                     executed_opcode.arg1);
-    //                     break;
-    //                     case 3:
-    //                         ImGui::Text("0x%.4X: %s 0x%.2X 0x%.2X", executed_opcode.pc, label,
-    //                                     executed_opcode.arg1, executed_opcode.arg2);
-    //                     break;
-    //                     default:
-    //                         spdlog::error("Unknown opcode size {}", length);
-    //                     break;
-    //                 }
-    //             }
 
     ImGui::PopStyleVar(1);
 
     ImGui::EndFrame();
 
-    // Rendering
     ImGui::Render();
-    // int display_w, display_h;
-    // glfwGetFramebufferSize(window, &display_w, &display_h);
-    // glViewport(0, 0, display_w, display_h);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-    // TODO: Enable this when I figure out how to get multi viewports to work
-    //        auto& io = ImGui::GetIO();
-    //        // Update and Render additional Platform Windows
-    //        // (Platform functions may change the current OpenGL context, so we save/restore
-    //        it to make
-    //        // it easier to paste this code elsewhere.
-    //        //  For this specific demo app we could also call glfwMakeContextCurrent(window)
-    //        directly) if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-    //            GLFWwindow* backup_current_context = glfwGetCurrentContext();
-    //            ImGui::UpdatePlatformWindows();
-    //            ImGui::RenderPlatformWindowsDefault();
-    //            glfwMakeContextCurrent(backup_current_context);
-    //        }
+    if (const auto& io = ImGui::GetIO(); io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        GLFWwindow* backup_current_context = glfwGetCurrentContext();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+        glfwMakeContextCurrent(backup_current_context);
+    }
 }
 
 void Ui::ShowMenuBar() {
@@ -353,8 +323,8 @@ void Ui::ShowMenuBar() {
         if (ImGui::BeginMenu("View")) {
             ImGui::Text("Framerate: %.2f", ImGui::GetIO().Framerate);
             if (ImGui::BeginMenu("Scale")) {
-                for (int i = 1; i < 5; i++) {
-                    if (ImGui::MenuItem(fmt::format("{}", i).c_str(), nullptr,
+                for (int i = 1; i <= 5; i++) {
+                    if (ImGui::MenuItem(SCALING_FACTORS[i - 1], nullptr,
                                         settings.ScaleFactor() == i, emulation_running)) {
                         settings.SetScale(i);
                     }
@@ -380,17 +350,17 @@ void Ui::ShowMenuBar() {
             if (ImGui::MenuItem("Registers", nullptr, open_panels[static_cast<int>(UiPanel::Registers)], emulation_running)) {
                 open_panels[static_cast<int>(UiPanel::Registers)] = !open_panels[static_cast<int>(UiPanel::Registers)];
             }
+            if (ImGui::MenuItem("Opcodes", nullptr, open_panels[static_cast<int>(UiPanel::Opcodes)], emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::Opcodes)] = !open_panels[static_cast<int>(UiPanel::Opcodes)];
+            }
             if (ImGui::MenuItem("Pattern Tables", nullptr, open_panels[static_cast<int>(UiPanel::PatternTables)], emulation_running)) {
                 open_panels[static_cast<int>(UiPanel::PatternTables)] = !open_panels[static_cast<int>(UiPanel::PatternTables)];
-                settings.TogglePanel(UiPanel::PatternTables);
             }
             if (ImGui::MenuItem("PPU Memory", nullptr, open_panels[static_cast<int>(UiPanel::PpuMemory)], emulation_running)) {
                 open_panels[static_cast<int>(UiPanel::PpuMemory)] = !open_panels[static_cast<int>(UiPanel::PpuMemory)];
-                settings.TogglePanel(UiPanel::PpuMemory);
             }
             if (ImGui::MenuItem("Sprites", nullptr, open_panels[static_cast<int>(UiPanel::Sprites)], emulation_running)) {
                 open_panels[static_cast<int>(UiPanel::Sprites)] = !open_panels[static_cast<int>(UiPanel::Sprites)];
-                settings.TogglePanel(UiPanel::Sprites);
             }
             ImGui::EndMenu();
         }
@@ -620,6 +590,37 @@ void Ui::ShowPpuMemory() {
         ppu_mem_edit.DrawContents(ppu_memory.data(), 0x4000);
     }
     ImGui::End();
+}
+
+void Ui::ShowOpcodes() {
+    if (!open_panels[static_cast<int>(UiPanel::Opcodes)]) {
+        return;
+    }
+
+    if (ImGui::Begin("Opcodes", &open_panels[static_cast<int>(UiPanel::Opcodes)])) {
+        auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
+        for (auto& executed_opcode : executed_opcodes.values) {
+            auto [opcode_class, opcode, addressing_mode, length, cycles, label] =
+            OPCODES[executed_opcode.opcode]; switch (length) {
+                case 1:
+                    ImGui::Text("(%u): 0x%.4X -> %s", executed_opcode.start_cycle, executed_opcode.pc, label);
+                break;
+                case 2:
+                    ImGui::Text("(%u): 0x%.4X -> %s 0x%.2X", executed_opcode.start_cycle, executed_opcode.pc, label,
+                                executed_opcode.arg1);
+                break;
+                case 3:
+                    ImGui::Text("(%u): 0x%.4X -> %s 0x%.2X 0x%.2X", executed_opcode.start_cycle, executed_opcode.pc, label,
+                                executed_opcode.arg1, executed_opcode.arg2);
+                break;
+                default:
+                    spdlog::error("Unknown opcode size {}", length);
+                break;
+            }
+        }
+    }
+    ImGui::End();
+
 }
 
 void Ui::ShowPatternTables() {

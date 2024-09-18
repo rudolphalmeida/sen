@@ -167,6 +167,7 @@ struct Opcode {
 };
 
 struct ExecutedOpcode {
+    uint64_t start_cycle;
     word pc;
     byte opcode;
     byte arg1{};
@@ -195,7 +196,7 @@ class Cpu {
     std::shared_ptr<BusType> bus{};
     std::shared_ptr<bool> nmi_requested{};
 
-    FixedSizeQueue<ExecutedOpcode> executed_opcodes{50};
+    FixedSizeQueue<ExecutedOpcode> executed_opcodes{30};
 
     // Addressing Modes
 
@@ -619,6 +620,7 @@ void Cpu<BusType>::Execute() {
     auto opcode = OPCODES[Fetch()];
 
     ExecutedOpcode executed_opcode{
+        .start_cycle = initial_cycles,
         .pc = static_cast<word>(pc - 1),
         .opcode = opcode.opcode,
     };
