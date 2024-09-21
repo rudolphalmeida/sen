@@ -8,6 +8,7 @@
 #include <libconfig.h++>
 
 #include "imgui_memory_editor.h"
+#include "IconsFontAwesome5.h"
 
 #include "constants.hxx"
 #include "cpu.hxx"
@@ -113,6 +114,19 @@ Ui::Ui() {
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
     spdlog::info("Initialized ImGui context");
+
+    // Icon Fonts
+    io.Fonts->AddFontDefault();
+    const float baseFontSize = 13.0f; // 13.0f is the size of the default font. Change to the font size you use.
+    const float iconFontSize = baseFontSize * 2.0f / 3.0f; // FontAwesome fonts need to have their sizes reduced by 2.0f/3.0f in order to align correctly
+
+    // merge in icons from Font Awesome
+    static constexpr ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+    ImFontConfig icons_config;
+    icons_config.MergeMode = true;
+    icons_config.PixelSnapH = true;
+    icons_config.GlyphMinAdvanceX = iconFontSize;
+    io.Fonts->AddFontFromFileTTF( FONT_ICON_FILE_NAME_FAS, iconFontSize, &icons_config, icons_ranges );
 
     // Setup Dear ImGui style
     switch (settings.GetUiStyle()) {
@@ -246,6 +260,7 @@ void Ui::RenderUi() {
         ShowPpuMemory();
         ShowOam();
         ShowOpcodes();
+        ShowDebugger();
     }
 
     ImGui::PopStyleVar(1);
@@ -346,6 +361,10 @@ void Ui::ShowMenuBar() {
                     settings.SetUiStyle(UiStyle::Dark);
                 }
                 ImGui::EndMenu();
+            }
+
+            if (ImGui::MenuItem("Debugger", nullptr, open_panels[static_cast<int>(UiPanel::Debugger)], emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::Debugger)] = !open_panels[static_cast<int>(UiPanel::Debugger)];
             }
             if (ImGui::MenuItem("Registers", nullptr, open_panels[static_cast<int>(UiPanel::Registers)], emulation_running)) {
                 open_panels[static_cast<int>(UiPanel::Registers)] = !open_panels[static_cast<int>(UiPanel::Registers)];
@@ -601,26 +620,48 @@ void Ui::ShowOpcodes() {
         auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
         for (auto& executed_opcode : executed_opcodes.values) {
             auto [opcode_class, opcode, addressing_mode, length, cycles, label] =
-            OPCODES[executed_opcode.opcode]; switch (length) {
+                OPCODES[executed_opcode.opcode];
+            switch (length) {
                 case 1:
-                    ImGui::Text("(%u): 0x%.4X -> %s", executed_opcode.start_cycle, executed_opcode.pc, label);
-                break;
+                    ImGui::Text("(%lu): 0x%.4X -> %s", executed_opcode.start_cycle,
+                                executed_opcode.pc, label);
+                    break;
                 case 2:
-                    ImGui::Text("(%u): 0x%.4X -> %s 0x%.2X", executed_opcode.start_cycle, executed_opcode.pc, label,
-                                executed_opcode.arg1);
-                break;
+                    ImGui::Text("(%lu): 0x%.4X -> %s 0x%.2X", executed_opcode.start_cycle,
+                                executed_opcode.pc, label, executed_opcode.arg1);
+                    break;
                 case 3:
-                    ImGui::Text("(%u): 0x%.4X -> %s 0x%.2X 0x%.2X", executed_opcode.start_cycle, executed_opcode.pc, label,
-                                executed_opcode.arg1, executed_opcode.arg2);
-                break;
+                    ImGui::Text("(%lu): 0x%.4X -> %s 0x%.2X 0x%.2X", executed_opcode.start_cycle,
+                                executed_opcode.pc, label, executed_opcode.arg1,
+                                executed_opcode.arg2);
+                    break;
                 default:
                     spdlog::error("Unknown opcode size {}", length);
-                break;
+                    break;
             }
         }
     }
     ImGui::End();
+}
 
+void Ui::ShowDebugger() {
+    if (!open_panels[static_cast<int>(UiPanel::Debugger)]) {
+        return;
+    }
+
+    if (ImGui::Begin("Debugger", &open_panels[static_cast<int>(UiPanel::Debugger)])) {
+        if (ImGui::Button(ICON_FA_PLAY, ImVec2(40, 40))) {}
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_STOP)) {}
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_ARROW_CIRCLE_RIGHT)) {}
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_CHART_LINE)) {}
+        ImGui::SameLine();
+        if (ImGui::Button(ICON_FA_SQUARE)) {}
+    }
+
+    ImGui::End();
 }
 
 void Ui::ShowPatternTables() {

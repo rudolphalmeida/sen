@@ -166,6 +166,7 @@ class Ui {
     void ShowPatternTables();
     void ShowPpuMemory();
     void ShowOpcodes();
+    void ShowDebugger();
 
     void DrawSprite(size_t index, const SpriteData& sprite, const std::span<byte, 0x20>& palettes) const;
     void ShowOam();
