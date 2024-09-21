@@ -117,8 +117,8 @@ Ui::Ui() {
 
     // Icon Fonts
     io.Fonts->AddFontDefault();
-    const float baseFontSize = 13.0f; // 13.0f is the size of the default font. Change to the font size you use.
-    const float iconFontSize = baseFontSize * 2.0f / 3.0f; // FontAwesome fonts need to have their sizes reduced by 2.0f/3.0f in order to align correctly
+    constexpr float baseFontSize = 24.0f;
+    constexpr float iconFontSize = baseFontSize * 2.0f / 3.0f; // FontAwesome fonts need to have their sizes reduced by 2.0f/3.0f in order to align correctly
 
     // merge in icons from Font Awesome
     static constexpr ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
@@ -650,15 +650,31 @@ void Ui::ShowDebugger() {
     }
 
     if (ImGui::Begin("Debugger", &open_panels[static_cast<int>(UiPanel::Debugger)])) {
-        if (ImGui::Button(ICON_FA_PLAY, ImVec2(40, 40))) {}
+        if (ImGui::Button(emulation_running ? ICON_FA_PAUSE : ICON_FA_PLAY, ImVec2(30, 30))) {
+            emulation_running = !emulation_running;
+        }
+        ImGui::SetItemTooltip("Play/Pause");
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_STOP)) {}
+        if (ImGui::Button(ICON_FA_STOP, ImVec2(30, 30))) {}
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_ARROW_CIRCLE_RIGHT)) {}
+        ImGui::SetItemTooltip("Stop");
+
+        if (emulation_running) {
+            ImGui::BeginDisabled();
+        }
+
+        if (ImGui::Button(ICON_FA_ARROW_CIRCLE_RIGHT, ImVec2(30, 30))) {}
+        ImGui::SetItemTooltip("Step");
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_CHART_LINE)) {}
+        if (ImGui::Button(ICON_FA_STEP_FORWARD, ImVec2(30, 30))) {}
+        ImGui::SetItemTooltip("Step scanline");
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_SQUARE)) {}
+        if (ImGui::Button(ICON_FA_TV, ImVec2(30, 30))) {}
+        ImGui::SetItemTooltip("Step frame");
+
+        if (emulation_running) {
+            ImGui::EndDisabled();
+        }
     }
 
     ImGui::End();
