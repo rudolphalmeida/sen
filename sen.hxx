@@ -36,6 +36,7 @@ class Sen {
    public:
     explicit Sen(const RomArgs& rom_args);
 
+    void StepOpcode();
     void RunForOneFrame();
 
     void ControllerPress(ControllerPort port, ControllerKey key);

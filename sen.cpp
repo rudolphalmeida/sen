@@ -18,6 +18,14 @@ Sen::Sen(const RomArgs& rom_args) {
     bus = std::make_shared<Bus>(std::move(cartridge), ppu, controller);
     cpu = Cpu<Bus>(bus, nmi_requested);
 }
+void Sen::StepOpcode() {
+    if (!running) {
+        running = true;
+        cpu.Start();
+    }
+
+    cpu.Execute();
+}
 
 void Sen::RunForOneFrame() {
     if (!running) {

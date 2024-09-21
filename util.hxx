@@ -22,6 +22,10 @@ class FixedSizeQueue {
     std::deque<T> values{};
     explicit FixedSizeQueue(size_t max_size) : max_size{max_size} {}
 
+    [[nodiscard]] size_t Size() const {
+        return values.size();
+    }
+
     void PushBack(T value) {
         if (values.size() > max_size) {
             values.pop_front();

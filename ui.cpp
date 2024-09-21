@@ -94,12 +94,11 @@ Ui::Ui() {
     glfwSwapInterval(1);  // Enable vsync
 
     glfwSetWindowUserPointer(window, static_cast<void*>(this));
-    glfwSetWindowSizeCallback(window, [](GLFWwindow* _window, const int width, const int height) {
+    glfwSetWindowSizeCallback(window, [](GLFWwindow* _window, const int _width, const int _height) {
         const auto self = static_cast<Ui*>(glfwGetWindowUserPointer(_window));
-        self->settings.Width(width);
-        self->settings.Height(height);
-
-        glViewport(0, 0, width, height);
+        self->settings.Width(_width);
+        self->settings.Height(_height);
+        glViewport(0, 0, _width, _height);
     });
 
     spdlog::info("Initialized GLFW window and OpenGL context");
@@ -212,7 +211,7 @@ void Ui::RenderUi() {
     ImGui::NewFrame();
 
 #ifdef IMGUI_HAS_VIEWPORT
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
     ImGui::SetNextWindowViewport(viewport->ID);
@@ -395,7 +394,7 @@ void Ui::ShowRegisters() {
 
     if (ImGui::Begin("Registers", &open_panels[static_cast<int>(UiPanel::Registers)])) {
         ImGui::SeparatorText("CPU Registers");
-        auto cpu_state = debugger.GetCpuState();
+        const auto [a, x, y, s, pc, p] = debugger.GetCpuState();
         if (ImGui::BeginTable("cpu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
             ImGui::TableSetupColumn("Register");
             ImGui::TableSetupColumn("Value");
@@ -404,35 +403,35 @@ void Ui::ShowRegisters() {
             ImGui::TableNextColumn();
             ImGui::Text("A");
             ImGui::TableNextColumn();
-            ImGui::Text("0x%.2X", cpu_state.a);
+            ImGui::Text("0x%.2X", a);
 
             ImGui::TableNextRow();
 
             ImGui::TableNextColumn();
             ImGui::Text("X");
             ImGui::TableNextColumn();
-            ImGui::Text("0x%.2X", cpu_state.x);
+            ImGui::Text("0x%.2X", x);
 
             ImGui::TableNextRow();
 
             ImGui::TableNextColumn();
             ImGui::Text("Y");
             ImGui::TableNextColumn();
-            ImGui::Text("0x%.2X", cpu_state.y);
+            ImGui::Text("0x%.2X", y);
 
             ImGui::TableNextRow();
 
             ImGui::TableNextColumn();
             ImGui::Text("S");
             ImGui::TableNextColumn();
-            ImGui::Text("0x%.2X", cpu_state.s);
+            ImGui::Text("0x%.2X", s);
 
             ImGui::TableNextRow();
 
             ImGui::TableNextColumn();
             ImGui::Text("PC");
             ImGui::TableNextColumn();
-            ImGui::Text("0x%.4X", cpu_state.pc);
+            ImGui::Text("0x%.4X", pc);
 
             ImGui::TableNextRow();
 
@@ -442,42 +441,42 @@ void Ui::ShowRegisters() {
 
             constexpr ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
 
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::Carry)) != 0) {
+            if ((p & static_cast<byte>(StatusFlag::Carry)) != 0) {
                 ImGui::Text("C");
             } else {
                 ImGui::TextColored(gray, "C");
             }
             ImGui::SameLine();
 
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::Zero)) != 0) {
+            if ((p & static_cast<byte>(StatusFlag::Zero)) != 0) {
                 ImGui::Text("Z");
             } else {
                 ImGui::TextColored(gray, "Z");
             }
             ImGui::SameLine();
 
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::InterruptDisable)) != 0) {
+            if ((p & static_cast<byte>(StatusFlag::InterruptDisable)) != 0) {
                 ImGui::Text("I");
             } else {
                 ImGui::TextColored(gray, "I");
             }
             ImGui::SameLine();
 
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::Decimal)) != 0) {
+            if ((p & static_cast<byte>(StatusFlag::Decimal)) != 0) {
                 ImGui::Text("D");
             } else {
                 ImGui::TextColored(gray, "D");
             }
             ImGui::SameLine();
 
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::Overflow)) != 0) {
+            if ((p & static_cast<byte>(StatusFlag::Overflow)) != 0) {
                 ImGui::Text("V");
             } else {
                 ImGui::TextColored(gray, "V");
             }
             ImGui::SameLine();
 
-            if ((cpu_state.p & static_cast<byte>(StatusFlag::Negative)) != 0) {
+            if ((p & static_cast<byte>(StatusFlag::Negative)) != 0) {
                 ImGui::Text("N");
             } else {
                 ImGui::TextColored(gray, "N");
@@ -487,7 +486,7 @@ void Ui::ShowRegisters() {
         }
 
         ImGui::SeparatorText("PPU Registers");
-        const auto ppu_state = debugger.GetPpuState();
+        const auto [palettes, frame_count, v, t, ppuctrl, ppumask, ppustatus, oamaddr] = debugger.GetPpuState();
         if (ImGui::BeginTable("ppu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
             ImGui::TableSetupColumn("Register");
             ImGui::TableSetupColumn("Value");
@@ -496,37 +495,37 @@ void Ui::ShowRegisters() {
             ImGui::TableNextColumn();
             ImGui::Text("Frame Count");
             ImGui::TableNextColumn();
-            ImGui::Text("%lu", ppu_state.frame_count);
+            ImGui::Text("%lu", frame_count);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUCTRL");
             ImGui::TableNextColumn();
-            ImGui::Text("%.8b", ppu_state.ppuctrl);
+            ImGui::Text("%.8b", ppuctrl);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUMASK");
             ImGui::TableNextColumn();
-            ImGui::Text("%.8b", ppu_state.ppumask);
+            ImGui::Text("%.8b", ppumask);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUSTATUS");
             ImGui::TableNextColumn();
-            ImGui::Text("%.8b", ppu_state.ppustatus);
+            ImGui::Text("%.8b", ppustatus);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("OAMADDR");
             ImGui::TableNextColumn();
-            ImGui::Text("%.8b", ppu_state.oamaddr);
+            ImGui::Text("%.8b", oamaddr);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("V");
             ImGui::TableNextColumn();
-            ImGui::Text("0x%.4X", ppu_state.v);
+            ImGui::Text("0x%.4X", v);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("T");
             ImGui::TableNextColumn();
-            ImGui::Text("0x%.4X", ppu_state.t);
+            ImGui::Text("0x%.4X", t);
 
             ImGui::EndTable();
         }
@@ -566,21 +565,21 @@ void Ui::ShowOam() {
     }
 
     if (ImGui::Begin("Sprites", &open_panels[static_cast<int>(UiPanel::Sprites)])) {
-        const auto sprites = debugger.GetSprites();
+        const auto [sprites_data, palettes] = debugger.GetSprites();
 
         if (ImGui::BeginTable("ppu_sprites", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-            for (size_t i = 0; i < sprites.sprites_data.size(); i += 2) {
-                auto sprite = sprites.sprites_data[i];
+            for (size_t i = 0; i < sprites_data.size(); i += 2) {
+                auto sprite = sprites_data[i];
                 ImGui::TableNextColumn();
-                DrawSprite(i, sprite, sprites.palettes);
+                DrawSprite(i, sprite, palettes);
                 ImGui::TableNextColumn();
                 ImGui::Text("(%d, %d)", sprite.oam_entry.x, sprite.oam_entry.y);
                 ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);
                 ImGui::Text("0x%.4X", sprite.oam_entry.attribs);
 
-                sprite = sprites.sprites_data[i + 1];
+                sprite = sprites_data[i + 1];
                 ImGui::TableNextColumn();
-                DrawSprite(i + 1, sprite, sprites.palettes);
+                DrawSprite(i + 1, sprite, palettes);
                 ImGui::TableNextColumn();
                 ImGui::Text("(%d, %d)", sprite.oam_entry.x, sprite.oam_entry.y);
                 ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);
@@ -617,28 +616,79 @@ void Ui::ShowOpcodes() {
     }
 
     if (ImGui::Begin("Opcodes", &open_panels[static_cast<int>(UiPanel::Opcodes)])) {
-        auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
-        for (auto& executed_opcode : executed_opcodes.values) {
+        int i = 0;
+        for (const auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
+             auto& executed_opcode : executed_opcodes.values) {
             auto [opcode_class, opcode, addressing_mode, length, cycles, label] =
                 OPCODES[executed_opcode.opcode];
-            switch (length) {
-                case 1:
-                    ImGui::Text("(%lu): 0x%.4X -> %s", executed_opcode.start_cycle,
-                                executed_opcode.pc, label);
+
+            std::string formatted_args;
+            switch (addressing_mode) {
+                case AddressingMode::Absolute: {
+                    assert(length == 3);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 | static_cast<uint16_t>(executed_opcode.arg1);
+                    if (opcode_class == OpcodeClass::JMP || opcode_class == OpcodeClass::JSR) {
+                        formatted_args = std::format("0x{:04X}", address);
+                    } else {
+                        formatted_args = std::format("(0x{:04X})", address);
+                    }
+
                     break;
-                case 2:
-                    ImGui::Text("(%lu): 0x%.4X -> %s 0x%.2X", executed_opcode.start_cycle,
-                                executed_opcode.pc, label, executed_opcode.arg1);
+                }
+                case AddressingMode::AbsoluteXIndexed: {
+                    assert(length == 3);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 | static_cast<uint16_t>(executed_opcode.arg1);
+                    formatted_args = std::format("(0x{:04X} + X)", address);
                     break;
-                case 3:
-                    ImGui::Text("(%lu): 0x%.4X -> %s 0x%.2X 0x%.2X", executed_opcode.start_cycle,
-                                executed_opcode.pc, label, executed_opcode.arg1,
-                                executed_opcode.arg2);
+                }
+                case AddressingMode::AbsoluteYIndexed: {
+                    assert(length == 3);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 | static_cast<uint16_t>(executed_opcode.arg1);
+                    formatted_args = std::format("(0x{:04X} + Y)", address);
+                    break;
+                }
+                case AddressingMode::Immediate:
+                    assert(length == 2);
+                    formatted_args = std::format("#0x{:02X}", executed_opcode.arg1);
+                    break;
+                case AddressingMode::Indirect:
+                    assert(length == 2);
+                    formatted_args = std::format("(0x{:02X})", executed_opcode.arg1);
+                    break;
+                case AddressingMode::IndirectX:
+                    assert(length == 2);
+                    formatted_args = std::format("(0x{:02X} + X)", executed_opcode.arg1);
+                    break;
+                case AddressingMode::IndirectY:
+                    assert(length == 2);
+                    formatted_args = std::format("(0x{:02X}) + Y", executed_opcode.arg1);
+                    break;
+                case AddressingMode::Relative:
+                    assert(length == 2);
+                    formatted_args = std::format("0x{:02X}", static_cast<int8_t>(executed_opcode.arg1));
+                    break;
+                case AddressingMode::ZeroPage:
+                    assert(length == 2);
+                    formatted_args = std::format("(0x{:04X})", executed_opcode.arg1);
+                    break;
+                case AddressingMode::ZeroPageX:
+                    assert(length == 2);
+                    formatted_args = std::format("(0x{:04X} + X) % 256", executed_opcode.arg1);
+                    break;
+                case AddressingMode::ZeroPageY:
+                    assert(length == 2);
+                    formatted_args = std::format("(0x{:04X} + Y) % 256", executed_opcode.arg1);
                     break;
                 default:
-                    spdlog::error("Unknown opcode size {}", length);
                     break;
             }
+
+            if (i == (executed_opcodes.Size() - 1)) {
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "(%lu): 0x%.4X -> %s %s", executed_opcode.start_cycle, executed_opcode.pc, label, formatted_args.c_str());
+            } else {
+                ImGui::Text("(%lu): 0x%.4X -> %s %s", executed_opcode.start_cycle, executed_opcode.pc, label, formatted_args.c_str());
+            }
+            i++;
         }
     }
     ImGui::End();
@@ -663,7 +713,9 @@ void Ui::ShowDebugger() {
             ImGui::BeginDisabled();
         }
 
-        if (ImGui::Button(ICON_FA_ARROW_CIRCLE_RIGHT, ImVec2(30, 30))) {}
+        if (ImGui::Button(ICON_FA_ARROW_CIRCLE_RIGHT, ImVec2(30, 30))) {
+            emulator_context->StepOpcode();
+        }
         ImGui::SetItemTooltip("Step");
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_STEP_FORWARD, ImVec2(30, 30))) {}
