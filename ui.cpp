@@ -7,8 +7,8 @@
 #include <spdlog/spdlog.h>
 #include <libconfig.h++>
 
-#include "imgui_memory_editor.h"
 #include "IconsFontAwesome5.h"
+#include "imgui_memory_editor.h"
 
 #include "constants.hxx"
 #include "cpu.hxx"
@@ -81,11 +81,7 @@ Ui::Ui() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // Required on Mac
 #endif
 
-    window = glfwCreateWindow(width,
-                              height,
-                              "sen - NES Emulator",
-                              nullptr,
-                              nullptr);
+    window = glfwCreateWindow(width, height, "sen - NES Emulator", nullptr, nullptr);
     if (window == nullptr) {
         spdlog::error("Failed to create GLFW3 window");
         std::exit(-1);
@@ -111,21 +107,27 @@ Ui::Ui() {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;    // Enable Multi-Viewport /
+                                                           // Platform Windows
     spdlog::info("Initialized ImGui context");
 
     // Icon Fonts
     io.Fonts->AddFontDefault();
     constexpr float baseFontSize = 24.0f;
-    constexpr float iconFontSize = baseFontSize * 2.0f / 3.0f; // FontAwesome fonts need to have their sizes reduced by 2.0f/3.0f in order to align correctly
+    constexpr float iconFontSize =
+        baseFontSize * 2.0f / 3.0f;  // FontAwesome fonts need to have their sizes reduced
+                                     // by 2.0f/3.0f in order to align correctly
 
     // merge in icons from Font Awesome
-    static constexpr ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+    static constexpr ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
     ImFontConfig icons_config;
     icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
     icons_config.GlyphMinAdvanceX = iconFontSize;
-    io.Fonts->AddFontFromFileTTF( FONT_ICON_FILE_NAME_FAS, iconFontSize, &icons_config, icons_ranges );
+    io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAS, iconFontSize, &icons_config,
+                                 icons_ranges);
+
+    SetImGuiStyle();
 
     // Setup Dear ImGui style
     switch (settings.GetUiStyle()) {
@@ -137,6 +139,9 @@ Ui::Ui() {
             break;
         case UiStyle::Dark:
             ImGui::StyleColorsDark();
+            break;
+        case UiStyle::SuperDark:
+            EmbraceTheDarkness();
             break;
     }
 
@@ -173,7 +178,6 @@ Ui::Ui() {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
     }
 }
 
@@ -359,26 +363,47 @@ void Ui::ShowMenuBar() {
                     ImGui::StyleColorsDark();
                     settings.SetUiStyle(UiStyle::Dark);
                 }
+                if (ImGui::MenuItem("Super Dark", nullptr,
+                                    settings.GetUiStyle() == UiStyle::SuperDark)) {
+                    EmbraceTheDarkness();
+                    settings.SetUiStyle(UiStyle::SuperDark);
+                }
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Debugger", nullptr, open_panels[static_cast<int>(UiPanel::Debugger)], emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::Debugger)] = !open_panels[static_cast<int>(UiPanel::Debugger)];
+            if (ImGui::MenuItem("Debugger", nullptr,
+                                open_panels[static_cast<int>(UiPanel::Debugger)],
+                                emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::Debugger)] =
+                    !open_panels[static_cast<int>(UiPanel::Debugger)];
             }
-            if (ImGui::MenuItem("Registers", nullptr, open_panels[static_cast<int>(UiPanel::Registers)], emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::Registers)] = !open_panels[static_cast<int>(UiPanel::Registers)];
+            if (ImGui::MenuItem("Registers", nullptr,
+                                open_panels[static_cast<int>(UiPanel::Registers)],
+                                emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::Registers)] =
+                    !open_panels[static_cast<int>(UiPanel::Registers)];
             }
-            if (ImGui::MenuItem("Opcodes", nullptr, open_panels[static_cast<int>(UiPanel::Opcodes)], emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::Opcodes)] = !open_panels[static_cast<int>(UiPanel::Opcodes)];
+            if (ImGui::MenuItem("Opcodes", nullptr, open_panels[static_cast<int>(UiPanel::Opcodes)],
+                                emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::Opcodes)] =
+                    !open_panels[static_cast<int>(UiPanel::Opcodes)];
             }
-            if (ImGui::MenuItem("Pattern Tables", nullptr, open_panels[static_cast<int>(UiPanel::PatternTables)], emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::PatternTables)] = !open_panels[static_cast<int>(UiPanel::PatternTables)];
+            if (ImGui::MenuItem("Pattern Tables", nullptr,
+                                open_panels[static_cast<int>(UiPanel::PatternTables)],
+                                emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::PatternTables)] =
+                    !open_panels[static_cast<int>(UiPanel::PatternTables)];
             }
-            if (ImGui::MenuItem("PPU Memory", nullptr, open_panels[static_cast<int>(UiPanel::PpuMemory)], emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::PpuMemory)] = !open_panels[static_cast<int>(UiPanel::PpuMemory)];
+            if (ImGui::MenuItem("PPU Memory", nullptr,
+                                open_panels[static_cast<int>(UiPanel::PpuMemory)],
+                                emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::PpuMemory)] =
+                    !open_panels[static_cast<int>(UiPanel::PpuMemory)];
             }
-            if (ImGui::MenuItem("Sprites", nullptr, open_panels[static_cast<int>(UiPanel::Sprites)], emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::Sprites)] = !open_panels[static_cast<int>(UiPanel::Sprites)];
+            if (ImGui::MenuItem("Sprites", nullptr, open_panels[static_cast<int>(UiPanel::Sprites)],
+                                emulation_running)) {
+                open_panels[static_cast<int>(UiPanel::Sprites)] =
+                    !open_panels[static_cast<int>(UiPanel::Sprites)];
             }
             ImGui::EndMenu();
         }
@@ -395,7 +420,8 @@ void Ui::ShowRegisters() {
     if (ImGui::Begin("Registers", &open_panels[static_cast<int>(UiPanel::Registers)])) {
         ImGui::SeparatorText("CPU Registers");
         const auto [a, x, y, s, pc, p] = debugger.GetCpuState();
-        if (ImGui::BeginTable("cpu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+        if (ImGui::BeginTable("cpu_registers", 2,
+                              ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
             ImGui::TableSetupColumn("Register");
             ImGui::TableSetupColumn("Value");
             ImGui::TableHeadersRow();
@@ -486,8 +512,10 @@ void Ui::ShowRegisters() {
         }
 
         ImGui::SeparatorText("PPU Registers");
-        const auto [palettes, frame_count, v, t, ppuctrl, ppumask, ppustatus, oamaddr] = debugger.GetPpuState();
-        if (ImGui::BeginTable("ppu_registers", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+        const auto [palettes, frame_count, v, t, ppuctrl, ppumask, ppustatus, oamaddr] =
+            debugger.GetPpuState();
+        if (ImGui::BeginTable("ppu_registers", 2,
+                              ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
             ImGui::TableSetupColumn("Register");
             ImGui::TableSetupColumn("Value");
             ImGui::TableHeadersRow();
@@ -533,7 +561,9 @@ void Ui::ShowRegisters() {
     ImGui::End();
 }
 
-void Ui::DrawSprite(const size_t index, const SpriteData& sprite, const std::span<byte, 0x20>& palettes) const {
+void Ui::DrawSprite(const size_t index,
+                    const SpriteData& sprite,
+                    const std::span<byte, 0x20>& palettes) const {
     std::vector<Pixel> pixels(8 * 8);
     const auto palette_id = sprite.oam_entry.PaletteIndex() + 4;
 
@@ -593,7 +623,6 @@ void Ui::ShowOam() {
     ImGui::End();
 }
 
-
 void Ui::ShowPpuMemory() {
     if (!open_panels[static_cast<int>(UiPanel::PpuMemory)]) {
         return;
@@ -626,7 +655,8 @@ void Ui::ShowOpcodes() {
             switch (addressing_mode) {
                 case AddressingMode::Absolute: {
                     assert(length == 3);
-                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 | static_cast<uint16_t>(executed_opcode.arg1);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                             static_cast<uint16_t>(executed_opcode.arg1);
                     if (opcode_class == OpcodeClass::JMP || opcode_class == OpcodeClass::JSR) {
                         formatted_args = std::format("0x{:04X}", address);
                     } else {
@@ -637,13 +667,15 @@ void Ui::ShowOpcodes() {
                 }
                 case AddressingMode::AbsoluteXIndexed: {
                     assert(length == 3);
-                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 | static_cast<uint16_t>(executed_opcode.arg1);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                             static_cast<uint16_t>(executed_opcode.arg1);
                     formatted_args = std::format("(0x{:04X} + X)", address);
                     break;
                 }
                 case AddressingMode::AbsoluteYIndexed: {
                     assert(length == 3);
-                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 | static_cast<uint16_t>(executed_opcode.arg1);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                             static_cast<uint16_t>(executed_opcode.arg1);
                     formatted_args = std::format("(0x{:04X} + Y)", address);
                     break;
                 }
@@ -665,7 +697,8 @@ void Ui::ShowOpcodes() {
                     break;
                 case AddressingMode::Relative:
                     assert(length == 2);
-                    formatted_args = std::format("0x{:02X}", static_cast<int8_t>(executed_opcode.arg1));
+                    formatted_args =
+                        std::format("0x{:02X}", static_cast<int8_t>(executed_opcode.arg1));
                     break;
                 case AddressingMode::ZeroPage:
                     assert(length == 2);
@@ -684,9 +717,12 @@ void Ui::ShowOpcodes() {
             }
 
             if (i == (executed_opcodes.Size() - 1)) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "(%lu): 0x%.4X -> %s %s", executed_opcode.start_cycle, executed_opcode.pc, label, formatted_args.c_str());
+                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "(%lu): 0x%.4X -> %s %s",
+                                   executed_opcode.start_cycle, executed_opcode.pc, label,
+                                   formatted_args.c_str());
             } else {
-                ImGui::Text("(%lu): 0x%.4X -> %s %s", executed_opcode.start_cycle, executed_opcode.pc, label, formatted_args.c_str());
+                ImGui::Text("(%lu): 0x%.4X -> %s %s", executed_opcode.start_cycle,
+                            executed_opcode.pc, label, formatted_args.c_str());
             }
             i++;
         }
@@ -705,7 +741,8 @@ void Ui::ShowDebugger() {
         }
         ImGui::SetItemTooltip("Play/Pause");
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_STOP, ImVec2(30, 30))) {}
+        if (ImGui::Button(ICON_FA_STOP, ImVec2(30, 30))) {
+        }
         ImGui::SameLine();
         ImGui::SetItemTooltip("Stop");
 
@@ -718,10 +755,12 @@ void Ui::ShowDebugger() {
         }
         ImGui::SetItemTooltip("Step");
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_STEP_FORWARD, ImVec2(30, 30))) {}
+        if (ImGui::Button(ICON_FA_STEP_FORWARD, ImVec2(30, 30))) {
+        }
         ImGui::SetItemTooltip("Step scanline");
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_TV, ImVec2(30, 30))) {}
+        if (ImGui::Button(ICON_FA_TV, ImVec2(30, 30))) {
+        }
         ImGui::SetItemTooltip("Step frame");
 
         if (emulation_running) {
