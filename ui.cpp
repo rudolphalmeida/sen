@@ -683,10 +683,13 @@ void Ui::ShowOpcodes() {
                     assert(length == 2);
                     formatted_args = std::format("#0x{:02X}", executed_opcode.arg1);
                     break;
-                case AddressingMode::Indirect:
-                    assert(length == 2);
-                    formatted_args = std::format("(0x{:02X})", executed_opcode.arg1);
+                case AddressingMode::Indirect: {
+                    assert(length == 3);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                             static_cast<uint16_t>(executed_opcode.arg1);
+                    formatted_args = std::format("(0x{:04X})", address);
                     break;
+                }
                 case AddressingMode::IndirectX:
                     assert(length == 2);
                     formatted_args = std::format("(0x{:02X} + X)", executed_opcode.arg1);
