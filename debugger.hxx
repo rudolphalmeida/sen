@@ -30,13 +30,18 @@ struct Sprites {
 
 struct PpuState {
     std::span<byte, 0x20> palettes;
+
     uint64_t frame_count;
+    unsigned int scanline;
+    unsigned int line_cycles;
+
     word v;
     word t;
     byte ppuctrl;
     byte ppumask;
     byte ppustatus;
     byte oamaddr;
+
 };
 
 struct PatternTablesState {
@@ -111,6 +116,8 @@ class Debugger {
         return PpuState{
             .palettes = std::span<byte, 0x20>{&ppu->palette_table[0], 0x20},
             .frame_count = ppu->frame_count,
+            .scanline = ppu->scanline,
+            .line_cycles = ppu->line_cycles,
             .v = ppu->v.value,
             .t = ppu->t.value,
             .ppuctrl = ppu->ppuctrl,

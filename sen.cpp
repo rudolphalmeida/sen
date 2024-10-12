@@ -27,6 +27,20 @@ void Sen::StepOpcode() {
     cpu.Execute();
 }
 
+void Sen::RunForOneScanline() {
+    if (!running) {
+        running = true;
+        cpu.Start();
+    }
+
+    const auto ppu_start_scanline = ppu->Scanline();
+
+    cpu.Execute();
+    while (ppu->Scanline() == ppu_start_scanline) {
+        cpu.Execute();
+    }
+}
+
 void Sen::RunForOneFrame() {
     if (!running) {
         running = true;

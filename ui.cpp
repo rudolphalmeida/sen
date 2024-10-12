@@ -107,8 +107,10 @@ Ui::Ui() {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
+#ifdef WIN32
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;    // Enable Multi-Viewport /
                                                            // Platform Windows
+#endif
     spdlog::info("Initialized ImGui context");
 
     // Icon Fonts
@@ -275,12 +277,14 @@ void Ui::RenderUi() {
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+#ifdef WIN32
     if (const auto& io = ImGui::GetIO(); io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
         GLFWwindow* backup_current_context = glfwGetCurrentContext();
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
         glfwMakeContextCurrent(backup_current_context);
     }
+#endif
 }
 
 void Ui::ShowMenuBar() {
@@ -512,7 +516,7 @@ void Ui::ShowRegisters() {
         }
 
         ImGui::SeparatorText("PPU Registers");
-        const auto [palettes, frame_count, v, t, ppuctrl, ppumask, ppustatus, oamaddr] =
+        const auto [palettes, frame_count, scanline, line_cycles, v, t, ppuctrl, ppumask, ppustatus, oamaddr] =
             debugger.GetPpuState();
         if (ImGui::BeginTable("ppu_registers", 2,
                               ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
@@ -524,6 +528,16 @@ void Ui::ShowRegisters() {
             ImGui::Text("Frame Count");
             ImGui::TableNextColumn();
             ImGui::Text("%lu", frame_count);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("Scanline");
+            ImGui::TableNextColumn();
+            ImGui::Text("%lu", scanline);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("Scanline Cycles");
+            ImGui::TableNextColumn();
+            ImGui::Text("%lu", line_cycles);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUCTRL");
@@ -759,10 +773,12 @@ void Ui::ShowDebugger() {
         ImGui::SetItemTooltip("Step");
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_STEP_FORWARD, ImVec2(30, 30))) {
+            emulator_context->RunForOneScanline();
         }
         ImGui::SetItemTooltip("Step scanline");
         ImGui::SameLine();
         if (ImGui::Button(ICON_FA_TV, ImVec2(30, 30))) {
+            emulator_context->RunForOneFrame();
         }
         ImGui::SetItemTooltip("Step frame");
 

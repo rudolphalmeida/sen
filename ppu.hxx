@@ -188,6 +188,10 @@ class Ppu {
     Ppu(std::shared_ptr<Cartridge> cartridge, std::shared_ptr<bool> nmi_requested)
         : cartridge{std::move(cartridge)}, nmi_requested{std::move(nmi_requested)} {}
 
+    [[nodiscard]] unsigned int Scanline() const {
+        return scanline;
+    }
+
     void Tick();
 
     byte CpuRead(word address);
