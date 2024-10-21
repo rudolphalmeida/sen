@@ -36,16 +36,14 @@ struct Sprite {
 class Ppu {
    private:
     struct ActiveSprite {
-        byte palette_index;
-        size_t order;
         byte tile_lsb;
         byte tile_msb;
-        size_t offset_into_tile;
     };
 
     std::array<byte, 2048> vram{};
     std::array<Sprite, 64> oam{};
     std::vector<Sprite> secondary_oam{};
+    std::vector<ActiveSprite> scanline_sprites_tile_data{};
 
     // Due to mirroring of the palette indices we don't need exactly 32 bytes
     // Still keep it at 32 for easy indexing using the address
@@ -170,6 +168,9 @@ class Ppu {
     void FineYIncrement();
     void CoarseXIncrement();
     void SecondaryOamClear();
+    void EvaluateNextLineSprites();
+    [[nodiscard]] std::optional<size_t> SpriteForPixel(byte) const;
+    size_t PatternTableAddressSprite(const Sprite& sprite) const;
 
     [[nodiscard]] size_t VramIndex(word address) const;
 

@@ -55,7 +55,7 @@ struct SenSettings {
     void SetScale(int scale) const { cfg.getRoot()["ui"]["scale"] = scale; }
 
     [[nodiscard]] UiStyle GetUiStyle() const {
-        return static_cast<enum UiStyle>((int)cfg.getRoot()["ui"]["style"]);
+        return static_cast<enum UiStyle>(static_cast<int>(cfg.getRoot()["ui"]["style"]));
     }
 
     void SetUiStyle(enum UiStyle style) const {

@@ -532,12 +532,12 @@ void Ui::ShowRegisters() {
             ImGui::TableNextColumn();
             ImGui::Text("Scanline");
             ImGui::TableNextColumn();
-            ImGui::Text("%lu", scanline);
+            ImGui::Text("%u", scanline);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("Scanline Cycles");
             ImGui::TableNextColumn();
-            ImGui::Text("%lu", line_cycles);
+            ImGui::Text("%u", line_cycles);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUCTRL");

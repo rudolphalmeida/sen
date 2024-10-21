@@ -18,17 +18,56 @@ void Ppu::Tick() {
                 }
             }
 
-            if (line_cycles == 1 && scanline != PRE_RENDER_SCANLINE) {
-                SecondaryOamClear();
+            if (line_cycles == 64 && scanline != PRE_RENDER_SCANLINE) {
+                // TODO: This is where the actual secondary OAM clear happens
+                // SecondaryOamClear();
             }
 
             if (line_cycles == 256) {
+                // TODO: Do the secondary OAM clear here since we use the data structure when rendering
+                if (scanline != PRE_RENDER_SCANLINE) {
+                    SecondaryOamClear();
+                }
                 FineYIncrement();
+                EvaluateNextLineSprites();
             }
 
             if (line_cycles == 257) {
                 // hori(v) = hori(t)
                 v.as_scroll.coarse_x_scroll = t.as_scroll.coarse_x_scroll;
+            }
+
+            if (InRange<unsigned int>(257, line_cycles, 320)) {
+                const size_t sprite_index = (line_cycles - 257) / 8;
+                const auto& sprite = sprite_index < secondary_oam.size() ?  secondary_oam[sprite_index] : Sprite { .y = 0xFF, .tile_index = 0xFF, .attribs = 0xFF, .x = 0xFF};
+
+                scanline_sprites_tile_data.resize(secondary_oam.size());
+                switch (const size_t cycle_into_sprite = (line_cycles - 257) % 8) {
+                    case 1:
+                    case 3:
+                        // TODO: Garbage nametable read here
+                        if (sprite_index < secondary_oam.size()) {
+                            scanline_sprites_tile_data[sprite_index] = ActiveSprite {.tile_lsb = 0x00, .tile_msb = 0x00};
+                        }
+                        break;
+                    case 5: {
+                        // TODO: Sprite vertical flip
+                        const auto data_ = PpuRead(PatternTableAddressSprite(sprite));
+                        if (sprite_index < secondary_oam.size()) {
+                            scanline_sprites_tile_data[sprite_index].tile_lsb = data_;
+                        }
+                        break;
+                    }
+                    case 7: {
+                        const auto data_ = PpuRead(PatternTableAddressSprite(sprite) + 8);
+                        if (sprite_index < secondary_oam.size()) {
+                            scanline_sprites_tile_data[sprite_index].tile_msb = data_;
+                        }
+                        break;
+                    }
+                    default:
+                        break;
+                }
             }
 
             if (InRange<unsigned int>(321, line_cycles, 336)) {
@@ -38,7 +77,7 @@ void Ppu::Tick() {
 
             if (line_cycles == 338 || line_cycles == 340) {
                 // Unused nametable fetches
-                // PpuRead(0x2000 | (v.value & 0x0FFF));
+                auto _ = PpuRead(0x2000 | (v.value & 0x0FFF));
             }
 
             if (scanline == PRE_RENDER_SCANLINE && InRange<unsigned int>(280, line_cycles, 304)) {
@@ -58,6 +97,10 @@ void Ppu::Tick() {
             framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
         }
     }
+}
+
+size_t Ppu::PatternTableAddressSprite(const Sprite& sprite) const {
+    return SpriteHeight() == 16 ? ((sprite.tile_index & 1) << 12) | ((sprite.tile_index & 0xFE) << 4) | ((scanline & 8) << 1) | (scanline & 7) : ((ppuctrl & 8) << 9) | (sprite.tile_index << 4) | (scanline & 7);
 }
 
 void Ppu::FineYIncrement() {  // Fine Y increment
@@ -90,20 +133,67 @@ void Ppu::ShiftShifters() {
 }
 
 void Ppu::RenderPixel() {  // Output pixels
-    byte pixel_msb = (bg_pattern_msb_shift_reg & (1 << (15 - fine_x))) ? 1 : 0;
-    byte pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << (15 - fine_x))) ? 1 : 0;
-    byte background_pixel = (pixel_msb << 1) | (pixel_lsb);
+    const byte bg_pixel_msb = (bg_pattern_msb_shift_reg & (1 << (15 - fine_x))) ? 1 : 0;
+    const byte bg_pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << (15 - fine_x))) ? 1 : 0;
+    const byte bg_pixel = (bg_pixel_msb << 1) | (bg_pixel_lsb);
 
-    byte attrib_msb = (bg_attrib_msb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
-    byte attrib_lsb = (bg_attrib_lsb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
-    byte palette_offset = (attrib_msb << 1) | attrib_lsb;
+    const byte bg_attrib_msb = (bg_attrib_msb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
+    const byte bg_attrib_lsb = (bg_attrib_lsb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
+    const byte bg_palette_offset = (bg_attrib_msb << 1) | bg_attrib_lsb;
 
-    byte palette_address = (palette_offset << 2) | background_pixel;
-    byte pixel = palette_table[palette_address];
+    const byte bg_palette_address = (bg_palette_offset << 2) | bg_pixel;
+    const byte bg_pixel_color_id = palette_table[bg_palette_address];
 
-    byte screen_y = scanline;
-    byte screen_x = line_cycles - 1;
-    framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
+    const byte screen_x = line_cycles - 1;
+    const byte screen_y = scanline;
+
+    if (const auto sprite_index = SpriteForPixel(screen_x)) {
+        const auto sprite = secondary_oam[*sprite_index];
+        auto sprite_data = scanline_sprites_tile_data[*sprite_index];
+
+        // Index from left
+        const auto sprite_pixel_index = sprite.FlipHorizontal() ? (screen_x - sprite.x) : 7 - (screen_x - sprite.x);
+        const byte sp_pixel_msb = ((sprite_data.tile_msb & (1 << sprite_pixel_index)) != 0) ? 1 : 0;
+        const byte sp_pixel_lsb = ((sprite_data.tile_lsb & (1 << sprite_pixel_index)) != 0) ? 1 : 0;
+        const byte sp_pixel = (sp_pixel_msb << 1) | (sp_pixel_lsb);
+        const byte sp_palette_offset = sprite.PaletteIndex() + 4;
+        const byte sp_palette_address = (sp_palette_offset << 2) | sp_pixel;
+        const byte sp_pixel_color_id = palette_table[sp_palette_address];
+
+        if (sprite.tile_index == 0 && sp_pixel_color_id != 0 && bg_pixel_color_id != 0) {
+            ppustatus |= (0b1 << 6);
+        }
+
+        if (!bg_pixel_color_id) {
+            if (!sp_pixel_color_id) {
+                framebuffer[screen_y * NES_WIDTH + screen_x] = PpuRead(0x3F00);
+            } else {
+                framebuffer[screen_y * NES_WIDTH + screen_x] = sp_pixel_color_id;
+            }
+        } else {
+            if (!sp_pixel_color_id) {
+                framebuffer[screen_y * NES_WIDTH + screen_x] = bg_pixel_color_id;
+            } else {
+                framebuffer[screen_y * NES_WIDTH + screen_x] = sp_pixel_color_id;
+            }
+        }
+    } else {
+        framebuffer[screen_y * NES_WIDTH + screen_x] = bg_pixel_color_id;
+    }
+
+}
+
+std::optional<size_t> Ppu::SpriteForPixel(const byte screen_x) const {
+    std::optional<size_t> sprite_for_pixel = std::nullopt;
+
+    for (int i = secondary_oam.size() - 1; i >= 0; i--) {
+        auto& sprite = secondary_oam[i];
+        if (screen_x >= sprite.x && ((screen_x - sprite.x) < 8)) {
+            sprite_for_pixel = std::make_optional(static_cast<size_t>(i));
+        }
+    }
+
+    return sprite_for_pixel;
 }
 
 void Ppu::ReadNextTileData(unsigned int cycle) {
@@ -157,6 +247,23 @@ void Ppu::CoarseXIncrement() {
 }
 
 void Ppu::SecondaryOamClear() {
+    secondary_oam.clear();
+}
+
+void Ppu::EvaluateNextLineSprites() {
+    int sprites_found = 0;
+
+    const byte target_y = scanline;
+
+    for (const auto& sprite : oam) {
+        if (InRange<byte>(target_y, sprite.y, target_y + 8)) {
+            if (secondary_oam.size() == 8) {
+                spdlog::debug("TODO: Implement sprite overflow");
+                break;
+            }
+            secondary_oam.push_back(sprite);
+        }
+    }
 }
 
 void Ppu::ReloadShiftersFromLatches() {
