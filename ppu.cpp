@@ -27,9 +27,9 @@ void Ppu::Tick() {
                 // TODO: Do the secondary OAM clear here since we use the data structure when rendering
                 if (scanline != PRE_RENDER_SCANLINE) {
                     SecondaryOamClear();
+                    EvaluateNextLineSprites();
                 }
                 FineYIncrement();
-                EvaluateNextLineSprites();
             }
 
             if (line_cycles == 257) {
@@ -37,7 +37,7 @@ void Ppu::Tick() {
                 v.as_scroll.coarse_x_scroll = t.as_scroll.coarse_x_scroll;
             }
 
-            if (InRange<unsigned int>(257, line_cycles, 320)) {
+            if (InRange<unsigned int>(257, line_cycles, 320) && scanline != PRE_RENDER_SCANLINE) {
                 const size_t sprite_index = (line_cycles - 257) / 8;
                 const auto& sprite = sprite_index < secondary_oam.size() ?  secondary_oam[sprite_index] : Sprite { .y = 0xFF, .tile_index = 0xFF, .attribs = 0xFF, .x = 0xFF};
 
@@ -160,7 +160,8 @@ void Ppu::RenderPixel() {  // Output pixels
         const byte sp_palette_address = (sp_palette_offset << 2) | sp_pixel;
         const byte sp_pixel_color_id = palette_table[sp_palette_address];
 
-        if (sprite.tile_index == 0 && sp_pixel_color_id != 0 && bg_pixel_color_id != 0) {
+        if (((ppustatus & 0x40) == 0x00) && sprite.tile_index == 0 && sp_pixel_color_id != 0 && bg_pixel_color_id != 0) {
+            spdlog::debug("Sprite 0 hit at ({}, {})", screen_x, screen_y);
             ppustatus |= (0b1 << 6);
         }
 
@@ -251,12 +252,8 @@ void Ppu::SecondaryOamClear() {
 }
 
 void Ppu::EvaluateNextLineSprites() {
-    int sprites_found = 0;
-
-    const byte target_y = scanline;
-
     for (const auto& sprite : oam) {
-        if (InRange<byte>(target_y, sprite.y, target_y + 8)) {
+        if (InRange<byte>(scanline, sprite.y, scanline + SpriteHeight() - 1)) {
             if (secondary_oam.size() == 8) {
                 spdlog::debug("TODO: Implement sprite overflow");
                 break;
@@ -305,9 +302,9 @@ void Ppu::TickCounters() {
         }
     }
 
-    // Reset Vblank flag before rendering starts for the next frame
+    // Reset Vblank and Sprite 0 flag before rendering starts for the next frame
     if (scanline == PRE_RENDER_SCANLINE && line_cycles == VBLANK_SET_RESET_CYCLE) {
-        ppustatus &= 0x7F;
+        ppustatus &= 0x1F;
     }
 }
 
@@ -357,6 +354,9 @@ void Ppu::CpuWrite(word address, byte data) {
             t.as_scroll.nametable_select = data & 0b11;
             break;
         case 0x2001:
+            if (((ppumask & 0x08) == 0x00) && ((data & 0x08) == 0x00)) {
+                spdlog::debug("Rendering turned on at ({}, {})", line_cycles - 1, scanline);
+            }
             ppumask = data;
             break;
         case 0x2003:
