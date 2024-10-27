@@ -659,89 +659,94 @@ void Ui::ShowOpcodes() {
     }
 
     if (ImGui::Begin("Opcodes", &open_panels[static_cast<int>(UiPanel::Opcodes)])) {
-        int i = 0;
-        for (const auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
-             auto& executed_opcode : executed_opcodes.values) {
-            auto [opcode_class, opcode, addressing_mode, length, cycles, label] =
-                OPCODES[executed_opcode.opcode];
+        if (ImGui::BeginTable("opcodes", 3)) {
+            ImGui::TableSetupColumn("Start cycle");
+            ImGui::TableSetupColumn("Program Counter");
+            ImGui::TableSetupColumn("Disassembly");
+            ImGui::TableHeadersRow();
 
-            std::string formatted_args;
-            switch (addressing_mode) {
-                case AddressingMode::Absolute: {
-                    assert(length == 3);
-                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                             static_cast<uint16_t>(executed_opcode.arg1);
-                    if (opcode_class == OpcodeClass::JMP || opcode_class == OpcodeClass::JSR) {
-                        formatted_args = std::format("0x{:04X}", address);
-                    } else {
-                        formatted_args = std::format("(0x{:04X})", address);
+            for (const auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
+                 const auto& executed_opcode: executed_opcodes.values | std::ranges::views::reverse) {
+                auto [opcode_class, opcode, addressing_mode, length, cycles, label] =
+                    OPCODES[executed_opcode.opcode];
+
+                std::string formatted_args;
+                switch (addressing_mode) {
+                    case AddressingMode::Absolute: {
+                        assert(length == 3);
+                        const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                                 static_cast<uint16_t>(executed_opcode.arg1);
+                        if (opcode_class == OpcodeClass::JMP || opcode_class == OpcodeClass::JSR) {
+                            formatted_args = std::format("0x{:04X}", address);
+                        } else {
+                            formatted_args = std::format("(0x{:04X})", address);
+                        }
+
+                        break;
                     }
-
-                    break;
-                }
-                case AddressingMode::AbsoluteXIndexed: {
-                    assert(length == 3);
-                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                             static_cast<uint16_t>(executed_opcode.arg1);
-                    formatted_args = std::format("(0x{:04X} + X)", address);
-                    break;
-                }
-                case AddressingMode::AbsoluteYIndexed: {
-                    assert(length == 3);
-                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                             static_cast<uint16_t>(executed_opcode.arg1);
-                    formatted_args = std::format("(0x{:04X} + Y)", address);
-                    break;
-                }
-                case AddressingMode::Immediate:
-                    assert(length == 2);
+                    case AddressingMode::AbsoluteXIndexed: {
+                        assert(length == 3);
+                        const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                                 static_cast<uint16_t>(executed_opcode.arg1);
+                        formatted_args = std::format("(0x{:04X} + X)", address);
+                        break;
+                    }
+                    case AddressingMode::AbsoluteYIndexed: {
+                        assert(length == 3);
+                        const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                                 static_cast<uint16_t>(executed_opcode.arg1);
+                        formatted_args = std::format("(0x{:04X} + Y)", address);
+                        break;
+                    }
+                    case AddressingMode::Immediate:
+                        assert(length == 2);
                     formatted_args = std::format("#0x{:02X}", executed_opcode.arg1);
                     break;
-                case AddressingMode::Indirect: {
-                    assert(length == 3);
-                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                             static_cast<uint16_t>(executed_opcode.arg1);
-                    formatted_args = std::format("(0x{:04X})", address);
-                    break;
-                }
-                case AddressingMode::IndirectX:
-                    assert(length == 2);
+                    case AddressingMode::Indirect: {
+                        assert(length == 3);
+                        const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                                 static_cast<uint16_t>(executed_opcode.arg1);
+                        formatted_args = std::format("(0x{:04X})", address);
+                        break;
+                    }
+                    case AddressingMode::IndirectX:
+                        assert(length == 2);
                     formatted_args = std::format("(0x{:02X} + X)", executed_opcode.arg1);
                     break;
-                case AddressingMode::IndirectY:
-                    assert(length == 2);
+                    case AddressingMode::IndirectY:
+                        assert(length == 2);
                     formatted_args = std::format("(0x{:02X}) + Y", executed_opcode.arg1);
                     break;
-                case AddressingMode::Relative:
-                    assert(length == 2);
+                    case AddressingMode::Relative:
+                        assert(length == 2);
                     formatted_args =
                         std::format("0x{:02X}", static_cast<int8_t>(executed_opcode.arg1));
                     break;
-                case AddressingMode::ZeroPage:
-                    assert(length == 2);
+                    case AddressingMode::ZeroPage:
+                        assert(length == 2);
                     formatted_args = std::format("(0x{:04X})", executed_opcode.arg1);
                     break;
-                case AddressingMode::ZeroPageX:
-                    assert(length == 2);
+                    case AddressingMode::ZeroPageX:
+                        assert(length == 2);
                     formatted_args = std::format("(0x{:04X} + X) % 256", executed_opcode.arg1);
                     break;
-                case AddressingMode::ZeroPageY:
-                    assert(length == 2);
+                    case AddressingMode::ZeroPageY:
+                        assert(length == 2);
                     formatted_args = std::format("(0x{:04X} + Y) % 256", executed_opcode.arg1);
                     break;
-                default:
-                    break;
+                    default:
+                        break;
+                }
+
+                ImGui::TableNextColumn();
+                ImGui::Text("%lu", executed_opcode.start_cycle);
+                ImGui::TableNextColumn();
+                ImGui::Text("0x%.4X", executed_opcode.pc);
+                ImGui::TableNextColumn();
+                ImGui::Text("%s %s", label, formatted_args.c_str());
             }
 
-            if (i == (executed_opcodes.Size() - 1)) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "(%lu): 0x%.4X -> %s %s",
-                                   executed_opcode.start_cycle, executed_opcode.pc, label,
-                                   formatted_args.c_str());
-            } else {
-                ImGui::Text("(%lu): 0x%.4X -> %s %s", executed_opcode.start_cycle,
-                            executed_opcode.pc, label, formatted_args.c_str());
-            }
-            i++;
+            ImGui::EndTable();
         }
     }
     ImGui::End();
