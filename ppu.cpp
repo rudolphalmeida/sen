@@ -152,7 +152,7 @@ void Ppu::RenderPixel() {  // Output pixels
     const byte bg_attrib_lsb = (bg_attrib_lsb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
     const byte bg_palette_offset = (bg_attrib_msb << 1) | bg_attrib_lsb;
 
-    const byte bg_palette_address = (bg_palette_offset << 2) | bg_pixel;
+    const byte bg_palette_address = bg_pixel == 0 ? bg_pixel : (bg_palette_offset << 2) | bg_pixel;
     const byte bg_pixel_color_id = palette_table[bg_palette_address];
 
     const byte screen_x = line_cycles - 1;
