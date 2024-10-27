@@ -35,13 +35,13 @@ void Ppu::Tick() {
             if (line_cycles == 257) {
                 // hori(v) = hori(t)
                 v.as_scroll.coarse_x_scroll = t.as_scroll.coarse_x_scroll;
+                v.as_scroll.nametable_select = t.as_scroll.nametable_select;
             }
 
             if (InRange<unsigned int>(257, line_cycles, 320) && scanline != PRE_RENDER_SCANLINE) {
                 const size_t sprite_index = (line_cycles - 257) / 8;
-                const auto& sprite = sprite_index < secondary_oam.size() ?  secondary_oam[sprite_index] : Sprite { .y = 0xFF, .tile_index = 0xFF, .attribs = 0xFF, .x = 0xFF};
+                const auto& sprite = sprite_index < secondary_oam.size() ?  secondary_oam[sprite_index].second : Sprite { .y = 0xFF, .tile_index = 0xFF, .attribs = 0xFF, .x = 0xFF};
 
-                scanline_sprites_tile_data.resize(secondary_oam.size());
                 switch (const size_t cycle_into_sprite = (line_cycles - 257) % 8) {
                     case 1:
                     case 3:
@@ -90,17 +90,28 @@ void Ppu::Tick() {
     } else {
         if (InRange<unsigned int>(0, scanline, POST_RENDER_SCANLINE - 1) &&
             InRange<unsigned int>(1, line_cycles, 256)) {
-            byte pixel = PpuRead(0x3F00);
+            const byte pixel = PpuRead(0x3F00);
 
-            byte screen_y = scanline;
-            byte screen_x = line_cycles - 1;
+            const byte screen_y = scanline;
+            const byte screen_x = line_cycles - 1;
             framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
         }
     }
 }
 
 size_t Ppu::PatternTableAddressSprite(const Sprite& sprite) const {
-    return SpriteHeight() == 16 ? ((sprite.tile_index & 1) << 12) | ((sprite.tile_index & 0xFE) << 4) | ((scanline & 8) << 1) | (scanline & 7) : ((ppuctrl & 8) << 9) | (sprite.tile_index << 4) | (scanline & 7);
+    word addr = 0x0000;
+    if (SpriteHeight() == 16) {
+        addr = (sprite.tile_index & 1) << 12;
+        addr |= (sprite.tile_index & 0xFE) << 4;
+        addr |= (scanline & 0x08) << 1;
+    } else {
+        addr = SpritePatternTableAddress();  // Pattern table from PPUCTRL
+        addr |= sprite.tile_index << 4;      // Tile into the table
+    }
+    addr |= sprite.FlipVertical() ? ~(scanline & 7) : (scanline & 7); // Offset of LSB line for this scanline
+
+    return addr;
 }
 
 void Ppu::FineYIncrement() {  // Fine Y increment
@@ -148,31 +159,30 @@ void Ppu::RenderPixel() {  // Output pixels
     const byte screen_y = scanline;
 
     if (const auto sprite_index = SpriteForPixel(screen_x)) {
-        const auto sprite = secondary_oam[*sprite_index];
-        auto sprite_data = scanline_sprites_tile_data[*sprite_index];
+        const auto [index_in_oam ,sprite] = secondary_oam[*sprite_index];
+        auto [tile_lsb, tile_msb] = scanline_sprites_tile_data[*sprite_index];
 
         // Index from left
         const auto sprite_pixel_index = sprite.FlipHorizontal() ? (screen_x - sprite.x) : 7 - (screen_x - sprite.x);
-        const byte sp_pixel_msb = ((sprite_data.tile_msb & (1 << sprite_pixel_index)) != 0) ? 1 : 0;
-        const byte sp_pixel_lsb = ((sprite_data.tile_lsb & (1 << sprite_pixel_index)) != 0) ? 1 : 0;
+        const byte sp_pixel_msb = ((tile_msb & (1 << sprite_pixel_index)) != 0) ? 1 : 0;
+        const byte sp_pixel_lsb = ((tile_lsb & (1 << sprite_pixel_index)) != 0) ? 1 : 0;
         const byte sp_pixel = (sp_pixel_msb << 1) | (sp_pixel_lsb);
         const byte sp_palette_offset = sprite.PaletteIndex() + 4;
         const byte sp_palette_address = (sp_palette_offset << 2) | sp_pixel;
         const byte sp_pixel_color_id = palette_table[sp_palette_address];
 
-        if (((ppustatus & 0x40) == 0x00) && sprite.tile_index == 0 && sp_pixel_color_id != 0 && bg_pixel_color_id != 0) {
-            spdlog::debug("Sprite 0 hit at ({}, {})", screen_x, screen_y);
-            ppustatus |= (0b1 << 6);
+        if (((ppustatus & 0x40) == 0x00) && index_in_oam == 0 && sp_pixel != 0 && bg_pixel != 0) {
+            ppustatus |= 0x40;
         }
 
-        if (!bg_pixel_color_id) {
-            if (!sp_pixel_color_id) {
+        if (!bg_pixel) {
+            if (!sp_pixel) {
                 framebuffer[screen_y * NES_WIDTH + screen_x] = PpuRead(0x3F00);
             } else {
                 framebuffer[screen_y * NES_WIDTH + screen_x] = sp_pixel_color_id;
             }
         } else {
-            if (!sp_pixel_color_id) {
+            if (!sp_pixel || sprite.BgOverSprite()) {
                 framebuffer[screen_y * NES_WIDTH + screen_x] = bg_pixel_color_id;
             } else {
                 framebuffer[screen_y * NES_WIDTH + screen_x] = sp_pixel_color_id;
@@ -181,15 +191,14 @@ void Ppu::RenderPixel() {  // Output pixels
     } else {
         framebuffer[screen_y * NES_WIDTH + screen_x] = bg_pixel_color_id;
     }
-
 }
 
 std::optional<size_t> Ppu::SpriteForPixel(const byte screen_x) const {
     std::optional<size_t> sprite_for_pixel = std::nullopt;
 
-    for (int i = secondary_oam.size() - 1; i >= 0; i--) {
-        auto& sprite = secondary_oam[i];
-        if (screen_x >= sprite.x && ((screen_x - sprite.x) < 8)) {
+    for (int i = static_cast<int>(secondary_oam.size()) - 1; i >= 0; i--) {
+        if (const auto& [_, sprite] = secondary_oam[i];
+            screen_x >= sprite.x && ((screen_x - sprite.x) < 8)) {
             sprite_for_pixel = std::make_optional(static_cast<size_t>(i));
         }
     }
@@ -197,7 +206,7 @@ std::optional<size_t> Ppu::SpriteForPixel(const byte screen_x) const {
     return sprite_for_pixel;
 }
 
-void Ppu::ReadNextTileData(unsigned int cycle) {
+void Ppu::ReadNextTileData(const unsigned int cycle) {
     switch (cycle) {  // 0, 1, ..., 7
         case 0:
             // Coarse X increment
@@ -211,22 +220,22 @@ void Ppu::ReadNextTileData(unsigned int cycle) {
             // Fetch AT byte
             bg_attrib_data = PpuRead(0x23C0 | (v.value & 0x0C00) | ((v.value >> 4) & 0x38) |
                                      ((v.value >> 2) & 0x07));
-            byte coarse_x = v.as_scroll.coarse_x_scroll;
-            byte coarse_y = v.as_scroll.coarse_y_scroll();
-            byte left_or_right = (coarse_x / 2) % 2;
-            byte top_or_bottom = (coarse_y / 2) % 2;
-            byte offset = ((top_or_bottom << 1) | left_or_right) * 2;
+            const byte coarse_x = v.as_scroll.coarse_x_scroll;
+            const byte coarse_y = v.as_scroll.coarse_y_scroll();
+            const byte left_or_right = (coarse_x / 2) % 2;
+            const byte top_or_bottom = (coarse_y / 2) % 2;
+            const byte offset = ((top_or_bottom << 1) | left_or_right) * 2;
             bg_attrib_data = ((bg_attrib_data & (0b11 << offset)) >> offset) & 0b11;
             break;
         }
         case 5:
-            // Fetch BG lsbits
+            // Fetch BG ls bits
             bg_pattern_lsb_latch =
                 PpuRead(BgPatternTableAddress() + (static_cast<word>(tile_id_latch) << 4) +
                         v.as_scroll.fine_y_scroll);
             break;
         case 7:
-            // Fetch BG msbits
+            // Fetch BG ms bits
             bg_pattern_msb_latch =
                 PpuRead(BgPatternTableAddress() + (static_cast<word>(tile_id_latch) << 4) +
                         v.as_scroll.fine_y_scroll + 8);
@@ -252,15 +261,17 @@ void Ppu::SecondaryOamClear() {
 }
 
 void Ppu::EvaluateNextLineSprites() {
-    for (const auto& sprite : oam) {
-        if (const auto offset_y = scanline - sprite.y - 1; InRange<byte>(0, offset_y, 7)) {
+    for (size_t i = 0; i < 64; i++) {
+        const auto& sprite = oam[i];
+        if (scanline >= sprite.y && ((scanline - sprite.y) < SpriteHeight())) {
             if (secondary_oam.size() == 8) {
                 spdlog::debug("TODO: Implement sprite overflow");
                 break;
             }
-            secondary_oam.push_back(sprite);
+            secondary_oam.emplace_back(i, sprite);
         }
     }
+    scanline_sprites_tile_data.resize(secondary_oam.size());
 }
 
 void Ppu::ReloadShiftersFromLatches() {
@@ -308,7 +319,7 @@ void Ppu::TickCounters() {
     }
 }
 
-byte Ppu::CpuRead(word address) {
+byte Ppu::CpuRead(const word address) {
     switch (0x2000 + (address & 0b111)) {
         case 0x2002:
             io_data_bus = (ppustatus & 0xE0) | (io_data_bus & 0x1F);
@@ -410,7 +421,7 @@ byte Ppu::PpuRead(word address) const {
     return 0;
 }
 
-void Ppu::PpuWrite(word address, byte data) {
+void Ppu::PpuWrite(word address, const byte data) {
     address &= 0x3FFF;
     if (InRange<word>(0x0000, address, 0x1FFF)) {
         cartridge->PpuWrite(address, data);
@@ -426,7 +437,7 @@ void Ppu::PpuWrite(word address, byte data) {
     }
 }
 
-size_t Ppu::VramIndex(word address) const {
+size_t Ppu::VramIndex(const word address) const {
     switch (cartridge->NametableMirroring()) {
         case Horizontal:
             return (address & ~0x400) - 0x2000;

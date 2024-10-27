@@ -20,7 +20,7 @@ struct Sprite {
         return attribs & 0b11;
     }
 
-    [[nodiscard]] byte Priority() const {
+    [[nodiscard]] byte BgOverSprite() const {
         return (attribs & 0x20) >> 5;
     }
 
@@ -42,7 +42,7 @@ class Ppu {
 
     std::array<byte, 2048> vram{};
     std::array<Sprite, 64> oam{};
-    std::vector<Sprite> secondary_oam{};
+    std::vector<std::pair<size_t, Sprite>> secondary_oam{};
     std::vector<ActiveSprite> scanline_sprites_tile_data{};
 
     // Due to mirroring of the palette indices we don't need exactly 32 bytes
@@ -138,7 +138,7 @@ class Ppu {
 
     [[nodiscard]] byte VramAddressIncrement() const { return (ppuctrl & 0x04) != 0x00 ? 32 : 1; }
     [[nodiscard]] word SpritePatternTableAddress() const {
-        return (ppuctrl & 0x08) != 0x00 ? 0x1000 : 0x0000;
+        return (ppuctrl & 0x08) << 9;
     }
     [[nodiscard]] word BgPatternTableAddress() const {
         return (ppuctrl & 0x10) != 0x00 ? 0x1000 : 0x0000;
@@ -170,7 +170,7 @@ class Ppu {
     void SecondaryOamClear();
     void EvaluateNextLineSprites();
     [[nodiscard]] std::optional<size_t> SpriteForPixel(byte) const;
-    size_t PatternTableAddressSprite(const Sprite& sprite) const;
+    [[nodiscard]] size_t PatternTableAddressSprite(const Sprite& sprite) const;
 
     [[nodiscard]] size_t VramIndex(word address) const;
 
