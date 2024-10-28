@@ -414,7 +414,7 @@ byte Ppu::PpuRead(word address) const {
     } else if (InRange<word>(0x2000, address, 0x2FFF)) {
         return vram[VramIndex(address)];
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
-        return vram[address - 0x3000];
+        return PpuRead(address - 0x1000);
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
         return palette_table[address & 0x1F];
     }
@@ -428,7 +428,7 @@ void Ppu::PpuWrite(word address, const byte data) {
     } else if (InRange<word>(0x2000, address, 0x2FFF)) {
         vram[VramIndex(address)] = data;
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
-        vram[address - 0x3000] = data;
+        PpuWrite(address - 0x1000, data);
     } else if (InRange<word>(0x3F00, address, 0x3FFF)) {
         palette_table[address & 0x1F] = data;
         if ((address & 0b11) == 0) {
@@ -440,10 +440,11 @@ void Ppu::PpuWrite(word address, const byte data) {
 size_t Ppu::VramIndex(const word address) const {
     switch (cartridge->NametableMirroring()) {
         case Horizontal:
-            return (address & ~0x400) - 0x2000;
+            return ((address >> 1) & 0x400) | (address & 0x3FF);
         case Vertical:
-            return (address & ~0x800) - 0x2000;
+            return address & 0x7FF;
         case FourScreenVram:
+            // TODO Mirroring
             break;
     }
     spdlog::error("Unknown mirroring option");
