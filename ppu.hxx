@@ -76,7 +76,7 @@ class Ppu {
             [[nodiscard]] byte coarse_y_scroll() const {
                 return (coarse_y_scroll_high << 3) | coarse_y_scroll_low;
             }
-            void coarse_y_scroll(byte data) {
+            void coarse_y_scroll(const byte data) {
                 coarse_y_scroll_low = data;
                 coarse_y_scroll_high = (data >> 3);
             }

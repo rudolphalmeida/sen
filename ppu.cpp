@@ -35,7 +35,7 @@ void Ppu::Tick() {
             if (line_cycles == 257) {
                 // hori(v) = hori(t)
                 v.as_scroll.coarse_x_scroll = t.as_scroll.coarse_x_scroll;
-                v.as_scroll.nametable_select = t.as_scroll.nametable_select;
+                v.as_scroll.nametable_select = (v.as_scroll.nametable_select & 0b10) | (t.as_scroll.nametable_select & 0b01);
             }
 
             if (InRange<unsigned int>(257, line_cycles, 320) && scanline != PRE_RENDER_SCANLINE) {
@@ -51,7 +51,6 @@ void Ppu::Tick() {
                         }
                         break;
                     case 5: {
-                        // TODO: Sprite vertical flip
                         const auto data_ = PpuRead(PatternTableAddressSprite(sprite));
                         if (sprite_index < secondary_oam.size()) {
                             scanline_sprites_tile_data[sprite_index].tile_lsb = data_;
@@ -84,7 +83,7 @@ void Ppu::Tick() {
                 // vert(v) == vert(t) each tick
                 v.as_scroll.coarse_y_scroll(t.as_scroll.coarse_y_scroll());
                 v.as_scroll.fine_y_scroll = t.as_scroll.fine_y_scroll;
-                v.as_scroll.nametable_select = t.as_scroll.nametable_select;
+                v.as_scroll.nametable_select = (v.as_scroll.nametable_select & 0b01) | (t.as_scroll.nametable_select & 0b10);
             }
         }
     } else {
@@ -109,7 +108,7 @@ size_t Ppu::PatternTableAddressSprite(const Sprite& sprite) const {
         addr = SpritePatternTableAddress();  // Pattern table from PPUCTRL
         addr |= sprite.tile_index << 4;      // Tile into the table
     }
-    addr |= sprite.FlipVertical() ? ~(scanline & 7) : (scanline & 7); // Offset of LSB line for this scanline
+    addr |= sprite.FlipVertical() ? ~(scanline & (SpriteHeight() - 1)) : (scanline & (SpriteHeight() - 1)); // Offset of LSB line for this scanline
 
     return addr;
 }
@@ -208,15 +207,11 @@ std::optional<size_t> Ppu::SpriteForPixel(const byte screen_x) const {
 
 void Ppu::ReadNextTileData(const unsigned int cycle) {
     switch (cycle) {  // 0, 1, ..., 7
-        case 0:
-            // Coarse X increment
-            CoarseXIncrement();
-            break;
-        case 1:
+        case 2:
             // Fetch NT byte
             tile_id_latch = PpuRead(0x2000 | (v.value & 0x0FFF));
             break;
-        case 3: {
+        case 4: {
             // Fetch AT byte
             bg_attrib_data = PpuRead(0x23C0 | (v.value & 0x0C00) | ((v.value >> 4) & 0x38) |
                                      ((v.value >> 2) & 0x07));
@@ -228,19 +223,20 @@ void Ppu::ReadNextTileData(const unsigned int cycle) {
             bg_attrib_data = ((bg_attrib_data & (0b11 << offset)) >> offset) & 0b11;
             break;
         }
-        case 5:
+        case 6:
             // Fetch BG ls bits
             bg_pattern_lsb_latch =
                 PpuRead(BgPatternTableAddress() + (static_cast<word>(tile_id_latch) << 4) +
                         v.as_scroll.fine_y_scroll);
             break;
-        case 7:
+        case 0:
             // Fetch BG ms bits
             bg_pattern_msb_latch =
                 PpuRead(BgPatternTableAddress() + (static_cast<word>(tile_id_latch) << 4) +
                         v.as_scroll.fine_y_scroll + 8);
 
             ReloadShiftersFromLatches();
+            CoarseXIncrement();
             break;
 
         default:
@@ -365,9 +361,6 @@ void Ppu::CpuWrite(word address, byte data) {
             t.as_scroll.nametable_select = data & 0b11;
             break;
         case 0x2001:
-            if (((ppumask & 0x08) == 0x00) && ((data & 0x08) == 0x00)) {
-                spdlog::debug("Rendering turned on at ({}, {})", line_cycles - 1, scanline);
-            }
             ppumask = data;
             break;
         case 0x2003:
@@ -379,8 +372,7 @@ void Ppu::CpuWrite(word address, byte data) {
         case 0x2005:
             if (write_toggle) {  // Second Write
                 t.as_scroll.fine_y_scroll = data & 0b111;
-                t.as_scroll.coarse_y_scroll_low = (data & 0x38) >> 3;
-                t.as_scroll.coarse_y_scroll_high = (data & 0xC0) >> 6;
+                t.as_scroll.coarse_y_scroll((data & 0xF8) >> 3);
             } else {  // First Write
                 fine_x = data & 0b111;
                 t.as_scroll.coarse_x_scroll = (data & 0xF8) >> 3;
