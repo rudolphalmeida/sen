@@ -115,7 +115,7 @@ size_t Ppu::PatternTableAddressSprite(const Sprite& sprite) const {
 
 void Ppu::FineYIncrement() {  // Fine Y increment
     if ((v.value & 0x7000) != 0x7000) {
-        v.value += 0x1000;
+        v.value = (v.value + 0x1000) & 0x7FFF;
     } else {
         v.value &= ~0x7000;
         byte y = v.as_scroll.coarse_y_scroll();
@@ -248,7 +248,7 @@ void Ppu::CoarseXIncrement() {
         v.value &= ~0x001F;
         v.value ^= 0x0400;
     } else {
-        v.value += 1;
+        v.value = (v.value + 1) & 0x7FFF;
     }
 }
 
@@ -327,17 +327,23 @@ byte Ppu::CpuRead(const word address) {
             io_data_bus = reinterpret_cast<byte*>(oam.data())[oamaddr];
             break;
         case 0x2007:
-            if (const auto ppu_address = v.value; ppu_address > 0x3EFF) {  // Reading palettes
-                io_data_bus = PpuRead(ppu_address);
-            } else if (ppudata_buf) {
-                // Use previously read value from buffer and reset buffer
-                io_data_bus = ppudata_buf.value();
-                ppudata_buf.reset();
+            // https://www.nesdev.org/wiki/PPU_scrolling#$2007_reads_and_writes
+            if ((ShowBackground() || ShowSprites()) && (InRange<unsigned>(0, scanline, POST_RENDER_SCANLINE - 1) || scanline == PRE_RENDER_SCANLINE)) {
+                CoarseXIncrement();
+                FineYIncrement();
+                io_data_bus = 0x00;
             } else {
-                // Read value into PPUDATA read buffer
-                ppudata_buf.emplace(PpuRead(ppu_address));
+                if (const auto ppu_address = v.value & 0x3FFF; ppu_address >= 0x3F00) {  // Reading palettes
+                    io_data_bus = PpuRead(ppu_address);
+                } else {
+                    // Use previously read value from buffer and reset buffer
+                    if (ppudata_buf) {
+                        io_data_bus = ppudata_buf.value();
+                    }
+                    ppudata_buf.emplace(PpuRead(ppu_address));
+                }
+                v.value = (v.value + VramAddressIncrement()) & 0x7FFF;
             }
-            v.value += VramAddressIncrement();
             break;
         default:
             break;
@@ -391,7 +397,7 @@ void Ppu::CpuWrite(word address, byte data) {
             break;
         case 0x2007:
             PpuWrite(v.value, data);
-            v.value += VramAddressIncrement();
+            v.value = (v.value + VramAddressIncrement()) & 0x7FFF;
             break;
         default:
             spdlog::debug("Write to not implemented PPU address {:#06X} with {:#04X}", address,
