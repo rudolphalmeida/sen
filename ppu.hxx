@@ -169,7 +169,6 @@ class Ppu {
     void CoarseXIncrement();
     void SecondaryOamClear();
     void EvaluateNextLineSprites();
-    [[nodiscard]] std::optional<size_t> SpriteForPixel(byte) const;
     [[nodiscard]] size_t PatternTableAddressSprite(const Sprite& sprite) const;
 
     [[nodiscard]] size_t VramIndex(word address) const;

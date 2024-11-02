@@ -38,7 +38,7 @@ struct Cartridge {
     std::optional<std::vector<byte>> chr_ram = std::nullopt;
 
    public:
-    Cartridge(RomHeader header,
+    Cartridge(const RomHeader& header,
               std::vector<byte> prg_rom,
               std::vector<byte> chr_rom,
               std::unique_ptr<Mapper> mapper,

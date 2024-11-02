@@ -147,62 +147,53 @@ void Ppu::RenderPixel() {  // Output pixels
     const byte bg_pixel_lsb = (bg_pattern_lsb_shift_reg & (1 << (15 - fine_x))) ? 1 : 0;
     const byte bg_pixel = (bg_pixel_msb << 1) | (bg_pixel_lsb);
 
-    const byte bg_attrib_msb = (bg_attrib_msb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
-    const byte bg_attrib_lsb = (bg_attrib_lsb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
-    const byte bg_palette_offset = (bg_attrib_msb << 1) | bg_attrib_lsb;
-
-    const byte bg_palette_address = bg_pixel == 0 ? bg_pixel : (bg_palette_offset << 2) | bg_pixel;
-    const byte bg_pixel_color_id = palette_table[bg_palette_address];
-
     const byte screen_x = line_cycles - 1;
     const byte screen_y = scanline;
 
-    if (const auto sprite_index = SpriteForPixel(screen_x)) {
-        const auto [index_in_oam ,sprite] = secondary_oam[*sprite_index];
-        auto [tile_lsb, tile_msb] = scanline_sprites_tile_data[*sprite_index];
+    bool had_sprite_on_pixel = false;
+    bool rendered_sprite_on_pixel = false;
+    for (int i = static_cast<int>(secondary_oam.size()) - 1; i >= 0; i--) {
+        const auto& [oam_index, sprite] = secondary_oam[i];
 
-        // Index from left
+        if (screen_x < sprite.x || ((screen_x - sprite.x) >= 8)) {
+            continue;
+        }
+        had_sprite_on_pixel = true;
+
+        auto [tile_lsb, tile_msb] = scanline_sprites_tile_data[i];
+
         const auto sprite_pixel_index = sprite.FlipHorizontal() ? (screen_x - sprite.x) : 7 - (screen_x - sprite.x);
         const byte sp_pixel_msb = ((tile_msb & (1 << sprite_pixel_index)) != 0) ? 1 : 0;
         const byte sp_pixel_lsb = ((tile_lsb & (1 << sprite_pixel_index)) != 0) ? 1 : 0;
         const byte sp_pixel = (sp_pixel_msb << 1) | (sp_pixel_lsb);
+
+        if (((ppustatus & 0x40) == 0x00) && oam_index == 0 && sp_pixel != 0 && bg_pixel != 0) {
+            ppustatus |= 0x40;
+        }
+
+        if (!sp_pixel || (sprite.BgOverSprite() && bg_pixel)) {
+            continue;
+        }
+
         const byte sp_palette_offset = sprite.PaletteIndex() + 4;
         const byte sp_palette_address = (sp_palette_offset << 2) | sp_pixel;
         const byte sp_pixel_color_id = palette_table[sp_palette_address];
 
-        if (((ppustatus & 0x40) == 0x00) && index_in_oam == 0 && sp_pixel != 0 && bg_pixel != 0) {
-            ppustatus |= 0x40;
-        }
+        framebuffer[screen_y * NES_WIDTH + screen_x] = sp_pixel_color_id;
+        rendered_sprite_on_pixel = true;
+    }
 
-        if (!bg_pixel) {
-            if (!sp_pixel) {
-                framebuffer[screen_y * NES_WIDTH + screen_x] = PpuRead(0x3F00);
-            } else {
-                framebuffer[screen_y * NES_WIDTH + screen_x] = sp_pixel_color_id;
-            }
-        } else {
-            if (!sp_pixel || sprite.BgOverSprite()) {
-                framebuffer[screen_y * NES_WIDTH + screen_x] = bg_pixel_color_id;
-            } else {
-                framebuffer[screen_y * NES_WIDTH + screen_x] = sp_pixel_color_id;
-            }
-        }
-    } else {
+    if (!had_sprite_on_pixel && !bg_pixel) {
+        framebuffer[screen_y * NES_WIDTH + screen_x] = PpuRead(0x3F00);
+    } else if (!rendered_sprite_on_pixel) {
+        const byte bg_attrib_msb = (bg_attrib_msb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
+        const byte bg_attrib_lsb = (bg_attrib_lsb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
+        const byte bg_palette_offset = (bg_attrib_msb << 1) | bg_attrib_lsb;
+        const byte bg_palette_address = bg_pixel == 0 ? bg_pixel : (bg_palette_offset << 2) | bg_pixel;
+        const byte bg_pixel_color_id = palette_table[bg_palette_address];
+
         framebuffer[screen_y * NES_WIDTH + screen_x] = bg_pixel_color_id;
     }
-}
-
-std::optional<size_t> Ppu::SpriteForPixel(const byte screen_x) const {
-    std::optional<size_t> sprite_for_pixel = std::nullopt;
-
-    for (int i = static_cast<int>(secondary_oam.size()) - 1; i >= 0; i--) {
-        if (const auto& [_, sprite] = secondary_oam[i];
-            screen_x >= sprite.x && ((screen_x - sprite.x) < 8)) {
-            sprite_for_pixel = std::make_optional(static_cast<size_t>(i));
-        }
-    }
-
-    return sprite_for_pixel;
 }
 
 void Ppu::ReadNextTileData(const unsigned int cycle) {
