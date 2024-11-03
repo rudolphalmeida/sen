@@ -169,7 +169,6 @@ class Ppu {
     void CoarseXIncrement();
     void SecondaryOamClear();
     void EvaluateNextLineSprites();
-    [[nodiscard]] size_t PatternTableAddressSprite(const Sprite& sprite) const;
 
     [[nodiscard]] size_t VramIndex(word address) const;
 

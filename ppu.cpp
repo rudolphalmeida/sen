@@ -42,6 +42,20 @@ void Ppu::Tick() {
                 const size_t sprite_index = (line_cycles - 257) / 8;
                 const auto& sprite = sprite_index < secondary_oam.size() ?  secondary_oam[sprite_index].second : Sprite { .y = 0xFF, .tile_index = 0xFF, .attribs = 0xFF, .x = 0xFF};
 
+                unsigned int offset_into_sprite;
+                if (sprite.FlipVertical()) {
+                    offset_into_sprite = SpriteHeight() - 1 - (scanline - sprite.y);
+                } else {
+                    offset_into_sprite = scanline - sprite.y;
+                }
+
+                word line_pattern_table_addr;
+                if (SpriteHeight() == 16) {
+                    line_pattern_table_addr = (((sprite.tile_index & 0x01) ? 0x1000 : 0x0000) | ((sprite.tile_index & ~0x01) << 4)) + (offset_into_sprite >= 8 ? offset_into_sprite + 8 : offset_into_sprite);
+                } else {
+                    line_pattern_table_addr = ((sprite.tile_index << 4) | SpritePatternTableAddress()) + offset_into_sprite;
+                }
+
                 switch (const size_t cycle_into_sprite = (line_cycles - 257) % 8) {
                     case 1:
                     case 3:
@@ -51,14 +65,14 @@ void Ppu::Tick() {
                         }
                         break;
                     case 5: {
-                        const auto data_ = PpuRead(PatternTableAddressSprite(sprite));
+                        const auto data_ = PpuRead(line_pattern_table_addr);
                         if (sprite_index < secondary_oam.size()) {
                             scanline_sprites_tile_data[sprite_index].tile_lsb = data_;
                         }
                         break;
                     }
                     case 7: {
-                        const auto data_ = PpuRead(PatternTableAddressSprite(sprite) + 8);
+                        const auto data_ = PpuRead(line_pattern_table_addr + 8);
                         if (sprite_index < secondary_oam.size()) {
                             scanline_sprites_tile_data[sprite_index].tile_msb = data_;
                         }
@@ -96,21 +110,6 @@ void Ppu::Tick() {
             framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
         }
     }
-}
-
-size_t Ppu::PatternTableAddressSprite(const Sprite& sprite) const {
-    word addr = 0x0000;
-    if (SpriteHeight() == 16) {
-        addr = (sprite.tile_index & 1) << 12;
-        addr |= (sprite.tile_index & 0xFE) << 4;
-        addr |= (scanline & 0x08) << 1;
-    } else {
-        addr = SpritePatternTableAddress();  // Pattern table from PPUCTRL
-        addr |= sprite.tile_index << 4;      // Tile into the table
-    }
-    addr |= sprite.FlipVertical() ? ~(scanline & (SpriteHeight() - 1)) : (scanline & (SpriteHeight() - 1)); // Offset of LSB line for this scanline
-
-    return addr;
 }
 
 void Ppu::FineYIncrement() {  // Fine Y increment
@@ -249,8 +248,8 @@ void Ppu::SecondaryOamClear() {
 
 void Ppu::EvaluateNextLineSprites() {
     for (size_t i = 0; i < 64; i++) {
-        const auto& sprite = oam[i];
-        if (scanline >= sprite.y && ((scanline - sprite.y) < SpriteHeight())) {
+        if (const auto& sprite = oam[i];
+            scanline >= sprite.y && ((scanline - sprite.y) < SpriteHeight())) {
             if (secondary_oam.size() == 8) {
                 spdlog::debug("TODO: Implement sprite overflow");
                 break;
