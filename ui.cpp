@@ -612,22 +612,83 @@ void Ui::ShowOam() {
         const auto [sprites_data, palettes] = debugger.GetSprites();
 
         if (ImGui::BeginTable("ppu_sprites", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+            constexpr ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
             for (size_t i = 0; i < sprites_data.size(); i += 2) {
                 auto sprite = sprites_data[i];
                 ImGui::TableNextColumn();
                 DrawSprite(i, sprite, palettes);
                 ImGui::TableNextColumn();
                 ImGui::Text("(%d, %d)", sprite.oam_entry.x, sprite.oam_entry.y);
-                ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);
-                ImGui::Text("0x%.4X", sprite.oam_entry.attribs);
+                ImGui::Text("0x%.2X", sprite.oam_entry.tile_index);
+                {
+                    const auto attribs = sprite.oam_entry.attribs;
+                    const auto palette_index = attribs & 0b11;
+                    const bool bg_over_sprite = (attribs & 0x20) != 0x00;
+                    const bool flip_horizontal = (attribs & 0x40) != 0x00;
+                    const bool flip_vertical = (attribs & 0x80) != 0x00;
+
+                    if (flip_vertical) {
+                        ImGui::Text("V");
+                    } else {
+                        ImGui::TextColored(gray, "V");
+                    }
+                    ImGui::SetItemTooltip("Flip Vertical");
+                    ImGui::SameLine();
+                    if (flip_horizontal) {
+                        ImGui::Text("H");
+                    } else {
+                        ImGui::TextColored(gray, "H");
+                    }
+                    ImGui::SetItemTooltip("Flip Horizontal");
+                    ImGui::SameLine();
+                    if (bg_over_sprite) {
+                        ImGui::Text("BG");
+                    } else {
+                        ImGui::TextColored(gray, "BG");
+                    }
+                    ImGui::SetItemTooltip("Background over Sprite");
+                    ImGui::SameLine();
+
+                    ImGui::Text("%d", palette_index);
+                }
 
                 sprite = sprites_data[i + 1];
                 ImGui::TableNextColumn();
                 DrawSprite(i + 1, sprite, palettes);
                 ImGui::TableNextColumn();
                 ImGui::Text("(%d, %d)", sprite.oam_entry.x, sprite.oam_entry.y);
-                ImGui::Text("0x%.4X", sprite.oam_entry.tile_index);
-                ImGui::Text("0x%.4X", sprite.oam_entry.attribs);
+                ImGui::Text("0x%.2X", sprite.oam_entry.tile_index);
+                {
+                    const auto attribs = sprite.oam_entry.attribs;
+                    const auto palette_index = attribs & 0b11;
+                    const bool bg_over_sprite = (attribs & 0x20) != 0x00;
+                    const bool flip_horizontal = (attribs & 0x40) != 0x00;
+                    const bool flip_vertical = (attribs & 0x80) != 0x00;
+
+                    if (flip_vertical) {
+                        ImGui::Text("V");
+                    } else {
+                        ImGui::TextColored(gray, "V");
+                    }
+                    ImGui::SetItemTooltip("Flip Vertical");
+                    ImGui::SameLine();
+                    if (flip_horizontal) {
+                        ImGui::Text("H");
+                    } else {
+                        ImGui::TextColored(gray, "H");
+                    }
+                    ImGui::SetItemTooltip("Flip Horizontal");
+                    ImGui::SameLine();
+                    if (bg_over_sprite) {
+                        ImGui::Text("BG");
+                    } else {
+                        ImGui::TextColored(gray, "BG");
+                    }
+                    ImGui::SetItemTooltip("Background over Sprite");
+                    ImGui::SameLine();
+
+                    ImGui::Text("%d", palette_index);
+                }
 
                 ImGui::TableNextRow();
             }
