@@ -12,6 +12,7 @@ find_package(fmt CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(nfd CONFIG REQUIRED)
 find_package(libconfig CONFIG REQUIRED)
+find_package(portaudio CONFIG REQUIRED)
 
 add_library(libsen
     constants.hxx
@@ -22,7 +23,9 @@ add_library(libsen
     cpu.hxx debugger.hxx
     bus.hxx bus.cpp
     ppu.hxx ppu.cpp
-    controller.hxx)
+    controller.hxx
+        apu.cpp
+        apu.hxx)
 target_link_libraries(libsen PRIVATE
     spdlog::spdlog
     spdlog::spdlog_header_only
@@ -43,6 +46,7 @@ target_link_libraries(sen PRIVATE
     nfd::nfd
     imgui::imgui
     libconfig::config libconfig::config++
+    portaudio_static
 )
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)
