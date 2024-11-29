@@ -7,6 +7,7 @@
     "catch2",
     "libconfig",
     "nativefiledialog-extended",
+    "portaudio",
     {
       "name": "imgui",
       "features": [
