@@ -14,6 +14,10 @@
 #include "cpu.hxx"
 #include "ui.hxx"
 
+#define DEVICE_FORMAT       ma_format_u8
+#define DEVICE_CHANNELS     2
+#define DEVICE_SAMPLE_RATE 48000
+
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 
 static void glfw_error_callback(int error, const char* description) {
@@ -35,18 +39,18 @@ Ui::Ui() {
     if (!root.exists("ui")) {
         root.add("ui", libconfig::Setting::TypeGroup);
     }
-    libconfig::Setting& ui = root["ui"];
-    if (!ui.exists("scale")) {
-        ui.add("scale", libconfig::Setting::TypeInt) = DEFAULT_SCALE_FACTOR;
+    libconfig::Setting& ui_settings = root["ui"];
+    if (!ui_settings.exists("scale")) {
+        ui_settings.add("scale", libconfig::Setting::TypeInt) = DEFAULT_SCALE_FACTOR;
     }
-    if (!ui.exists("recents")) {
-        ui.add("recents", libconfig::Setting::TypeArray);
+    if (!ui_settings.exists("recents")) {
+        ui_settings.add("recents", libconfig::Setting::TypeArray);
     }
-    if (!ui.exists("style")) {
-        ui.add("style", libconfig::Setting::TypeInt) = static_cast<int>(UiStyle::Dark);
+    if (!ui_settings.exists("style")) {
+        ui_settings.add("style", libconfig::Setting::TypeInt) = static_cast<int>(UiStyle::Dark);
     }
-    if (!ui.exists("open_panels")) {
-        ui.add("open_panels", libconfig::Setting::TypeInt) = 0;
+    if (!ui_settings.exists("open_panels")) {
+        ui_settings.add("open_panels", libconfig::Setting::TypeInt) = 0;
     } else {
         const auto saved_open_panels = settings.GetOpenPanels();
         for (int i = 0; i < NUM_PANELS; i++) {
@@ -55,13 +59,13 @@ Ui::Ui() {
     }
     int width = NES_WIDTH * DEFAULT_SCALE_FACTOR + 15;
     int height = NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55;
-    if (!ui.exists("width")) {
-        ui.add("width", libconfig::Setting::TypeInt) = width;
+    if (!ui_settings.exists("width")) {
+        ui_settings.add("width", libconfig::Setting::TypeInt) = width;
     } else {
         width = settings.Width();
     }
-    if (!ui.exists("height")) {
-        ui.add("height", libconfig::Setting::TypeInt) = height;
+    if (!ui_settings.exists("height")) {
+        ui_settings.add("height", libconfig::Setting::TypeInt) = height;
     } else {
         height = settings.Height();
     }
@@ -108,8 +112,8 @@ Ui::Ui() {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
 #ifdef WIN32
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;    // Enable Multi-Viewport /
-                                                           // Platform Windows
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Multi-Viewport /
+                                                         // Platform Windows
 #endif
     spdlog::info("Initialized ImGui context");
 
@@ -181,6 +185,38 @@ Ui::Ui() {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     }
+
+    ma_device_config deviceConfig;
+
+    deviceConfig = ma_device_config_init(ma_device_type_playback);
+    deviceConfig.playback.format = DEVICE_FORMAT;
+    deviceConfig.playback.channels = DEVICE_CHANNELS;
+    deviceConfig.sampleRate = DEVICE_SAMPLE_RATE;
+    deviceConfig.dataCallback = [](ma_device* device, void* output, const void*,
+                                   ma_uint32 frame_count) {
+        const auto ui = static_cast<Ui*>(device->pUserData);
+        ui->RunForSamples(frame_count);
+        memset(output, 0x00, frame_count);
+    };
+    deviceConfig.pUserData = this;
+
+    if (ma_device_init(nullptr, &deviceConfig, &device) != MA_SUCCESS) {
+        spdlog::error("Failed to open playback device.\n");
+        std::exit(-4);
+    }
+
+    if (ma_device_start(&device) != MA_SUCCESS) {
+        spdlog::error("Failed to start playback device.\n");
+        ma_device_uninit(&device);
+        std::exit(-5);
+    }
+}
+void Ui::RunForSamples(uint32_t cycles) {
+    if (!emulator_context || !emulation_running) {
+        return;
+    }
+
+    spdlog::debug("Run for {}", cycles);
 }
 
 void Ui::HandleInput() const {
@@ -195,7 +231,7 @@ void Ui::HandleInput() const {
     }
 }
 
-void Ui::Run() {
+void Ui::MainLoop() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         HandleInput();
@@ -254,7 +290,7 @@ void Ui::RenderUi() {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NES_WIDTH, NES_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE,
                      reinterpret_cast<unsigned char*>(pixels.data()));
         ImGui::Image(
-            reinterpret_cast<void*>(static_cast<intptr_t>(display_texture)),
+            static_cast<ImTextureID>(display_texture),
             ImVec2(NES_WIDTH * settings.ScaleFactor(), NES_HEIGHT * settings.ScaleFactor()));
         glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -516,8 +552,8 @@ void Ui::ShowRegisters() {
         }
 
         ImGui::SeparatorText("PPU Registers");
-        const auto [palettes, frame_count, scanline, line_cycles, v, t, ppuctrl, ppumask, ppustatus, oamaddr] =
-            debugger.GetPpuState();
+        const auto [palettes, frame_count, scanline, line_cycles, v, t, ppuctrl, ppumask, ppustatus,
+                    oamaddr] = debugger.GetPpuState();
         if (ImGui::BeginTable("ppu_registers", 2,
                               ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
             ImGui::TableSetupColumn("Register");
@@ -598,8 +634,7 @@ void Ui::DrawSprite(const size_t index,
     glBindTexture(GL_TEXTURE_2D, sprite_textures[index]);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 8, 8, 0, GL_RGB, GL_UNSIGNED_BYTE,
                  reinterpret_cast<unsigned char*>(pixels.data()));
-    ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(sprite_textures[index])),
-                 ImVec2(64, 64));
+    ImGui::Image(static_cast<ImTextureID>(sprite_textures[index]), ImVec2(64, 64));
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -727,7 +762,8 @@ void Ui::ShowOpcodes() {
             ImGui::TableHeadersRow();
 
             for (const auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
-                 const auto& executed_opcode: executed_opcodes.values | std::ranges::views::reverse) {
+                 const auto& executed_opcode :
+                 executed_opcodes.values | std::ranges::views::reverse) {
                 auto [opcode_class, opcode, addressing_mode, length, cycles, label] =
                     OPCODES[executed_opcode.opcode];
 
@@ -761,8 +797,8 @@ void Ui::ShowOpcodes() {
                     }
                     case AddressingMode::Immediate:
                         assert(length == 2);
-                    formatted_args = std::format("#0x{:02X}", executed_opcode.arg1);
-                    break;
+                        formatted_args = std::format("#0x{:02X}", executed_opcode.arg1);
+                        break;
                     case AddressingMode::Indirect: {
                         assert(length == 3);
                         const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
@@ -772,29 +808,29 @@ void Ui::ShowOpcodes() {
                     }
                     case AddressingMode::IndirectX:
                         assert(length == 2);
-                    formatted_args = std::format("(0x{:02X} + X)", executed_opcode.arg1);
-                    break;
+                        formatted_args = std::format("(0x{:02X} + X)", executed_opcode.arg1);
+                        break;
                     case AddressingMode::IndirectY:
                         assert(length == 2);
-                    formatted_args = std::format("(0x{:02X}) + Y", executed_opcode.arg1);
-                    break;
+                        formatted_args = std::format("(0x{:02X}) + Y", executed_opcode.arg1);
+                        break;
                     case AddressingMode::Relative:
                         assert(length == 2);
-                    formatted_args =
-                        std::format("0x{:02X}", static_cast<int8_t>(executed_opcode.arg1));
-                    break;
+                        formatted_args =
+                            std::format("0x{:02X}", static_cast<int8_t>(executed_opcode.arg1));
+                        break;
                     case AddressingMode::ZeroPage:
                         assert(length == 2);
-                    formatted_args = std::format("(0x{:04X})", executed_opcode.arg1);
-                    break;
+                        formatted_args = std::format("(0x{:04X})", executed_opcode.arg1);
+                        break;
                     case AddressingMode::ZeroPageX:
                         assert(length == 2);
-                    formatted_args = std::format("(0x{:04X} + X) % 256", executed_opcode.arg1);
-                    break;
+                        formatted_args = std::format("(0x{:04X} + X) % 256", executed_opcode.arg1);
+                        break;
                     case AddressingMode::ZeroPageY:
                         assert(length == 2);
-                    formatted_args = std::format("(0x{:04X} + Y) % 256", executed_opcode.arg1);
-                    break;
+                        formatted_args = std::format("(0x{:04X} + Y) % 256", executed_opcode.arg1);
+                        break;
                     default:
                         break;
                 }
@@ -879,8 +915,7 @@ void Ui::ShowPatternTables() {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
                      reinterpret_cast<unsigned char*>(left_pixels.data()));
 
-        ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_left_texture)),
-                     ImVec2(385, 385));
+        ImGui::Image(static_cast<ImTextureID>(pattern_table_left_texture), ImVec2(385, 385));
         glBindTexture(GL_TEXTURE_2D, 0);
 
         ImGui::Separator();
@@ -889,8 +924,7 @@ void Ui::ShowPatternTables() {
         glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
                      reinterpret_cast<unsigned char*>(right_pixels.data()));
-        ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(pattern_table_right_texture)),
-                     ImVec2(385, 385));
+        ImGui::Image(static_cast<ImTextureID>(pattern_table_right_texture), ImVec2(385, 385));
         glBindTexture(GL_TEXTURE_2D, 0);
     }
     ImGui::End();
