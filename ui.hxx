@@ -13,7 +13,7 @@
 #include <imgui_impl_opengl3.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
-#include <portaudio.h>
+
 #include <libconfig.h++>
 
 #include "constants.hxx"
@@ -284,11 +284,6 @@ class Ui {
         }
 
         // Cleanup
-        if (const auto err = Pa_Terminate(); err != paNoError) {
-            spdlog::error("Failed to terminate PortAUdio");
-            std::exit(-1);
-        }
-
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
