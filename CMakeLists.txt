@@ -3,7 +3,6 @@ project(sen VERSION 0.1.0)
 
 set(CMAKE_CXX_STANDARD 20)
 
-set(CMAKE_FIND_DEBUG_MODE 1)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
@@ -13,6 +12,8 @@ find_package(fmt CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(nfd CONFIG REQUIRED)
 find_package(libconfig CONFIG REQUIRED)
+
+find_path(MINIAUDIO_INCLUDE_DIRS "miniaudio.h")
 
 add_library(libsen
     constants.hxx
@@ -33,7 +34,9 @@ target_link_libraries(libsen PRIVATE
 target_include_directories(libsen PUBLIC .)
 target_compile_definitions(libsen PUBLIC $<$<CONFIG:RelWithDebInfo>:LOG_DEBUG>)
 
-add_executable(sen main.cpp ui.hxx ui.cpp imgui_memory_editor.h stb_image_write.h stb_image_write.cpp IconsFontAwesome5.h)
+add_executable(sen main.cpp ui.hxx ui.cpp imgui_memory_editor.h stb_image_write.h stb_image_write.cpp IconsFontAwesome5.h
+        miniaudio.cpp)
+target_include_directories(sen PRIVATE ${MINIAUDIO_INCLUDE_DIRS})
 target_link_libraries(sen PRIVATE
     libsen
     spdlog::spdlog
@@ -44,6 +47,7 @@ target_link_libraries(sen PRIVATE
     nfd::nfd
     imgui::imgui
     libconfig::config libconfig::config++
+    dl pthread m
 )
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)

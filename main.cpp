@@ -8,7 +8,7 @@ int main(int, char**) {
     NFD_Init();
 
     Ui ui{};
-    ui.Run();
+    ui.MainLoop();
 
     NFD_Quit();
 

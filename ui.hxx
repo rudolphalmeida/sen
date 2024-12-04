@@ -13,8 +13,8 @@
 #include <imgui_impl_opengl3.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
-
 #include <libconfig.h++>
+#include <miniaudio.h>
 
 #include "constants.hxx"
 #include "debugger.hxx"
@@ -125,6 +125,7 @@ static const std::tuple<int, ControllerKey> KEYMAP[0x8] = {
 class Ui {
    private:
     SenSettings settings{};
+    ma_device device{};
 
     GLFWwindow* window{};
 
@@ -266,7 +267,8 @@ class Ui {
    public:
     Ui();
 
-    void Run();
+    void RunForSamples(uint32_t cycles);
+    void MainLoop();
 
     ~Ui() {
         int panels = 0;
@@ -284,6 +286,8 @@ class Ui {
         }
 
         // Cleanup
+        ma_device_uninit(&device);
+
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
