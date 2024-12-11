@@ -64,8 +64,8 @@ class Debugger {
     explicit Debugger(std::shared_ptr<Sen> emulator_context)
         : emulator_context{std::move(emulator_context)} {}
 
-    [[nodiscard]] std::span<byte, NES_WIDTH * NES_HEIGHT> Framebuffer() const {
-        return std::span<byte, NES_WIDTH * NES_HEIGHT>{emulator_context->ppu->framebuffer.data(),
+    [[nodiscard]] std::span<word, NES_WIDTH * NES_HEIGHT> Framebuffer() const {
+        return std::span<word, NES_WIDTH * NES_HEIGHT>{emulator_context->ppu->framebuffer.data(),
                                                        NES_WIDTH * NES_HEIGHT};
     }
 

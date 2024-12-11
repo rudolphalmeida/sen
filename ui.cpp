@@ -14,8 +14,8 @@
 #include "cpu.hxx"
 #include "ui.hxx"
 
-#define DEVICE_FORMAT       ma_format_u8
-#define DEVICE_CHANNELS     2
+#define DEVICE_FORMAT ma_format_u8
+#define DEVICE_CHANNELS 2
 #define DEVICE_SAMPLE_RATE 48000
 
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
@@ -40,8 +40,11 @@ Ui::Ui() {
         root.add("ui", libconfig::Setting::TypeGroup);
     }
     libconfig::Setting& ui_settings = root["ui"];
+    int scale_factor = DEFAULT_SCALE_FACTOR;
     if (!ui_settings.exists("scale")) {
         ui_settings.add("scale", libconfig::Setting::TypeInt) = DEFAULT_SCALE_FACTOR;
+    } else {
+        scale_factor = settings.ScaleFactor();
     }
     if (!ui_settings.exists("recents")) {
         ui_settings.add("recents", libconfig::Setting::TypeArray);
@@ -186,30 +189,36 @@ Ui::Ui() {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     }
 
-    ma_device_config deviceConfig;
+    pixels = std::vector<Pixel>(NES_WIDTH * NES_HEIGHT * scale_factor * scale_factor);
+    crt_init(&crt, NES_WIDTH * scale_factor, NES_HEIGHT * scale_factor, CRT_PIX_FORMAT_RGB,
+             reinterpret_cast<unsigned char*>(pixels.data()));
+    crt.blend = 1;
+    crt.scanlines = 10;
 
-    deviceConfig = ma_device_config_init(ma_device_type_playback);
-    deviceConfig.playback.format = DEVICE_FORMAT;
-    deviceConfig.playback.channels = DEVICE_CHANNELS;
-    deviceConfig.sampleRate = DEVICE_SAMPLE_RATE;
-    deviceConfig.dataCallback = [](ma_device* device, void* output, const void*,
-                                   ma_uint32 frame_count) {
-        const auto ui = static_cast<Ui*>(device->pUserData);
-        ui->RunForSamples(frame_count);
-        memset(output, 0x00, frame_count);
-    };
-    deviceConfig.pUserData = this;
-
-    if (ma_device_init(nullptr, &deviceConfig, &device) != MA_SUCCESS) {
-        spdlog::error("Failed to open playback device.\n");
-        std::exit(-4);
-    }
-
-    if (ma_device_start(&device) != MA_SUCCESS) {
-        spdlog::error("Failed to start playback device.\n");
-        ma_device_uninit(&device);
-        std::exit(-5);
-    }
+    // ma_device_config deviceConfig;
+    //
+    // deviceConfig = ma_device_config_init(ma_device_type_playback);
+    // deviceConfig.playback.format = DEVICE_FORMAT;
+    // deviceConfig.playback.channels = DEVICE_CHANNELS;
+    // deviceConfig.sampleRate = DEVICE_SAMPLE_RATE;
+    // deviceConfig.dataCallback = [](ma_device* device, void* output, const void*,
+    //                                ma_uint32 frame_count) {
+    //     const auto ui = static_cast<Ui*>(device->pUserData);
+    //     ui->RunForSamples(frame_count);
+    //     memset(output, 0x00, frame_count * 2);
+    // };
+    // deviceConfig.pUserData = this;
+    //
+    // if (ma_device_init(nullptr, &deviceConfig, &device) != MA_SUCCESS) {
+    //     spdlog::error("Failed to open playback device.\n");
+    //     std::exit(-4);
+    // }
+    //
+    // if (ma_device_start(&device) != MA_SUCCESS) {
+    //     spdlog::error("Failed to start playback device.\n");
+    //     ma_device_uninit(&device);
+    //     std::exit(-5);
+    // }
 }
 void Ui::RunForSamples(uint32_t cycles) {
     if (!emulator_context || !emulation_running) {
@@ -277,21 +286,23 @@ void Ui::RenderUi() {
             "Game", nullptr,
             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
 
-        const auto framebuffer = debugger.Framebuffer();
-        std::vector<Pixel> pixels(NES_WIDTH * NES_HEIGHT);
-        for (int y = 0; y < NES_HEIGHT; y++) {
-            for (int x = 0; x < NES_WIDTH; x++) {
-                const byte color_index = framebuffer[y * NES_WIDTH + x];
-                pixels[y * NES_WIDTH + x] = PALETTE_COLORS[color_index];
-            }
-        }
+            const auto framebuffer = debugger.Framebuffer();
+            ntsc.data = framebuffer.data(); /* buffer from your rendering */
+            ntsc.w = NES_WIDTH;
+            ntsc.h = NES_HEIGHT;
+            ntsc.hue = hue;
+            ntsc.dot_crawl_offset = 1;
+            ntsc.border_color = 1;
+            ntsc.xoffset = 0;
+            ntsc.yoffset = 0;
+            crt_modulate(&crt, &ntsc);
+            crt_demodulate(&crt, noise);
 
         glBindTexture(GL_TEXTURE_2D, display_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NES_WIDTH, NES_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                     reinterpret_cast<unsigned char*>(pixels.data()));
-        ImGui::Image(
-            static_cast<ImTextureID>(display_texture),
-            ImVec2(NES_WIDTH * settings.ScaleFactor(), NES_HEIGHT * settings.ScaleFactor()));
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NES_WIDTH * settings.ScaleFactor(), NES_HEIGHT * settings.ScaleFactor(), 0, GL_RGB, GL_UNSIGNED_BYTE,
+                     pixels.data());
+        ImGui::Image(display_texture, ImVec2(NES_WIDTH * settings.ScaleFactor(),
+                                             NES_HEIGHT * settings.ScaleFactor()));
         glBindTexture(GL_TEXTURE_2D, 0);
 
         ImGui::End();
@@ -304,7 +315,7 @@ void Ui::RenderUi() {
         ShowDebugger();
     }
 
-    ImGui::PopStyleVar(1);
+    ImGui::PopStyleVar();
 
     ImGui::EndFrame();
 
@@ -385,6 +396,8 @@ void Ui::ShowMenuBar() {
                     if (ImGui::MenuItem(SCALING_FACTORS[i - 1], nullptr,
                                         settings.ScaleFactor() == i, emulation_running)) {
                         settings.SetScale(i);
+                        pixels.resize(NES_WIDTH * NES_HEIGHT * i * i);
+                        crt_resize(&crt, NES_WIDTH * i, NES_HEIGHT * i, CRT_PIX_FORMAT_RGB, reinterpret_cast<unsigned char*>(pixels.data()));
                     }
                 }
                 ImGui::EndMenu();

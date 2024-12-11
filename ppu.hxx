@@ -117,7 +117,7 @@ class Ppu {
     std::shared_ptr<Cartridge> cartridge{};
     std::shared_ptr<bool> nmi_requested{};
 
-    std::array<byte, NES_WIDTH * NES_HEIGHT> framebuffer{};
+    std::array<word, NES_WIDTH * NES_HEIGHT> framebuffer{};
 
     // Properties for the PPU
     [[nodiscard]] word BaseNametableAddress() const {

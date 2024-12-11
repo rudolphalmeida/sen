@@ -107,7 +107,9 @@ void Ppu::Tick() {
 
             const byte screen_y = scanline;
             const byte screen_x = line_cycles - 1;
-            framebuffer[screen_y * NES_WIDTH + screen_x] = pixel;
+            const byte emphasis_bits = static_cast<word>(ppumask & 0xE0) << 1;
+
+            framebuffer[screen_y * NES_WIDTH + screen_x] = emphasis_bits | (pixel & 0x3F);
         }
     }
 }
@@ -148,6 +150,7 @@ void Ppu::RenderPixel() {  // Output pixels
 
     const byte screen_x = line_cycles - 1;
     const byte screen_y = scanline;
+    const byte emphasis_bits = static_cast<word>(ppumask & 0xE0) << 1;
 
     bool had_sprite_on_pixel = false;
     bool rendered_sprite_on_pixel = false;
@@ -178,12 +181,12 @@ void Ppu::RenderPixel() {  // Output pixels
         const byte sp_palette_address = (sp_palette_offset << 2) | sp_pixel;
         const byte sp_pixel_color_id = palette_table[sp_palette_address];
 
-        framebuffer[screen_y * NES_WIDTH + screen_x] = sp_pixel_color_id;
+        framebuffer[screen_y * NES_WIDTH + screen_x] = emphasis_bits | (sp_pixel_color_id & 0x3F);
         rendered_sprite_on_pixel = true;
     }
 
     if (!had_sprite_on_pixel && !bg_pixel) {
-        framebuffer[screen_y * NES_WIDTH + screen_x] = PpuRead(0x3F00);
+        framebuffer[screen_y * NES_WIDTH + screen_x] = emphasis_bits | (PpuRead(0x3F00) & 0x3F);
     } else if (!rendered_sprite_on_pixel) {
         const byte bg_attrib_msb = (bg_attrib_msb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
         const byte bg_attrib_lsb = (bg_attrib_lsb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
@@ -191,7 +194,7 @@ void Ppu::RenderPixel() {  // Output pixels
         const byte bg_palette_address = bg_pixel == 0 ? bg_pixel : (bg_palette_offset << 2) | bg_pixel;
         const byte bg_pixel_color_id = palette_table[bg_palette_address];
 
-        framebuffer[screen_y * NES_WIDTH + screen_x] = bg_pixel_color_id;
+        framebuffer[screen_y * NES_WIDTH + screen_x] = emphasis_bits | (bg_pixel_color_id & 0x3F);
     }
 }
 

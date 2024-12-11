@@ -21,6 +21,9 @@
 #include "sen.hxx"
 #include "util.hxx"
 
+#define CRT_SYSTEM CRT_SYSTEM_NES
+#include "crt_core.h"
+
 constexpr int DEFAULT_SCALE_FACTOR = 4;
 
 enum class UiStyle {
@@ -123,7 +126,7 @@ static const std::tuple<int, ControllerKey> KEYMAP[0x8] = {
 };
 
 class Ui {
-   private:
+private:
     SenSettings settings{};
     ma_device device{};
 
@@ -139,6 +142,14 @@ class Ui {
     unsigned int pattern_table_right_texture{};
     unsigned int display_texture{};
     std::array<unsigned int, 64> sprite_textures{};
+
+    std::vector<Pixel> pixels;
+
+    CRT crt{};
+    NTSC_SETTINGS ntsc{};
+    int color = 1;
+    int noise = 12;
+    int hue = 350;
 
     void LoadRomFile(const char* path) {
         loaded_rom_file_path = std::make_optional<std::filesystem::path>(path);
