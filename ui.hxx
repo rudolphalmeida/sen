@@ -147,8 +147,7 @@ private:
 
     CRT crt{};
     NTSC_SETTINGS ntsc{};
-    int color = 1;
-    int noise = 12;
+    int noise = 2;
     int hue = 350;
 
     void LoadRomFile(const char* path) {

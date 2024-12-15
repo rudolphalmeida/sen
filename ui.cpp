@@ -193,7 +193,7 @@ Ui::Ui() {
     crt_init(&crt, NES_WIDTH * scale_factor, NES_HEIGHT * scale_factor, CRT_PIX_FORMAT_RGB,
              reinterpret_cast<unsigned char*>(pixels.data()));
     crt.blend = 1;
-    crt.scanlines = 10;
+    crt.scanlines = 1;
 
     // ma_device_config deviceConfig;
     //
@@ -292,7 +292,7 @@ void Ui::RenderUi() {
             ntsc.h = NES_HEIGHT;
             ntsc.hue = hue;
             ntsc.dot_crawl_offset = 1;
-            ntsc.border_color = 1;
+            ntsc.border_color = 255;
             ntsc.xoffset = 0;
             ntsc.yoffset = 0;
             crt_modulate(&crt, &ntsc);
@@ -397,6 +397,9 @@ void Ui::ShowMenuBar() {
                                         settings.ScaleFactor() == i, emulation_running)) {
                         settings.SetScale(i);
                         pixels.resize(NES_WIDTH * NES_HEIGHT * i * i);
+                        std::ranges::for_each(pixels, [](auto& pixel) {
+                            pixel = Pixel();
+                        });
                         crt_resize(&crt, NES_WIDTH * i, NES_HEIGHT * i, CRT_PIX_FORMAT_RGB, reinterpret_cast<unsigned char*>(pixels.data()));
                     }
                 }
