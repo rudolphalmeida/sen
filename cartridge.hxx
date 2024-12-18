@@ -17,14 +17,11 @@ enum Mirroring {
 };
 
 struct RomHeader {
-    Mirroring mirroring;
-
     size_t prg_rom_size;
     size_t chr_rom_size;
-
+    Mirroring mirroring;
+    word mapper_number;
     bool battery_backed_ram = false;
-
-    byte mapper_number;
 };
 
 struct Cartridge {
@@ -49,11 +46,11 @@ struct Cartridge {
           mapper{std::move(mapper)},
           chr_ram{std::move(chr_ram)} {}
 
-    byte CpuRead(word addr) { return prg_rom[mapper->MapCpuAddr(addr)]; }
-    void CpuWrite(word addr, byte data) {}
+    [[nodiscard]] byte CpuRead(const word address) const { return prg_rom[mapper->MapCpuAddr(address)]; }
+    void CpuWrite(word address, byte data) {}
 
-    byte PpuRead(word addr) { return chr_rom[addr]; }
-    void PpuWrite(word addr, byte data) {}
+    [[nodiscard]] byte PpuRead(const word address) const { return chr_rom[address]; }
+    void PpuWrite(word address, byte data) {}
 
     [[nodiscard]] Mirroring NametableMirroring() const {
         return header.mirroring;

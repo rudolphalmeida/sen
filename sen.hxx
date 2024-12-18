@@ -40,8 +40,8 @@ class Sen {
     void RunForOneScanline();
     void RunForOneFrame();
 
-    void ControllerPress(ControllerPort port, ControllerKey key);
-    void ControllerRelease(ControllerPort port, ControllerKey key);
+    void ControllerPress(ControllerPort port, ControllerKey key) const;
+    void ControllerRelease(ControllerPort port, ControllerKey key) const;
 
     friend class Debugger;
 };

@@ -803,11 +803,11 @@ EffectiveAddress Cpu<BusType>::AbsoluteYIndexedAddressing() {
 template <typename BusType>
 EffectiveAddress Cpu<BusType>::IndirectXAddressing() {
     auto operand = static_cast<word>(Fetch());
-    auto pointer = operand + x;
+    const auto pointer = operand + x;
     bus->CpuRead(operand);  // Dummy read cycle
 
-    auto low = static_cast<word>(bus->CpuRead(pointer & 0xFF));
-    auto high = static_cast<word>(bus->CpuRead((pointer + 1) & 0xFF));
+    const auto low = static_cast<word>(bus->CpuRead(pointer & 0xFF));
+    const auto high = static_cast<word>(bus->CpuRead((pointer + 1) & 0xFF));
 
     return {(high << 8) | low, false};
 }
@@ -815,10 +815,10 @@ EffectiveAddress Cpu<BusType>::IndirectXAddressing() {
 template <typename BusType>
 EffectiveAddress Cpu<BusType>::IndirectYAddressing() {
     auto pointer = static_cast<word>(Fetch());
-    auto low = static_cast<word>(bus->CpuRead(pointer));
-    auto high = static_cast<word>(bus->CpuRead((pointer + 1) & 0xFF));
+    const auto low = static_cast<word>(bus->CpuRead(pointer));
+    const auto high = static_cast<word>(bus->CpuRead((pointer + 1) & 0xFF));
 
-    word effective = ((high << 8) | low);
+    const word effective = ((high << 8) | low);
     word non_page_crossed_address = NonPageCrossingAdd(effective, static_cast<word>(y));
     word page_crossed_address = effective + static_cast<word>(y);
     bus->CpuRead(non_page_crossed_address);
@@ -905,7 +905,7 @@ void Cpu<BusType>::STX(const Opcode& opcode) {
 }
 template <typename BusType>
 void Cpu<BusType>::JSR(const Opcode&) {
-    auto low = static_cast<word>(Fetch());
+    const auto low = static_cast<word>(Fetch());
 
     bus->CpuRead(0x100 + s);  // Dummy read cycle (3)
 
@@ -1200,8 +1200,8 @@ void Cpu<BusType>::SBC(const Opcode& opcode) {
     }
     operand ^= 0x00FF;
 
-    auto temp_a = static_cast<word>(a);
-    word result = temp_a + operand + static_cast<word>(p & static_cast<byte>(StatusFlag::Carry));
+    const auto temp_a = static_cast<word>(a);
+    const word result = temp_a + operand + static_cast<word>(p & static_cast<byte>(StatusFlag::Carry));
 
     UpdateStatusFlag(StatusFlag::Zero, (result & 0xFF) == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0x00);
@@ -1343,8 +1343,8 @@ void Cpu<BusType>::RTI(const Opcode&) {
     // Bits 54 of the popped value from the stack should be ignored
     p = (p & 0x30) | (temp_p & 0xCF);
 
-    auto low = static_cast<word>(bus->CpuRead(0x100 + s++));
-    auto high = static_cast<word>(bus->CpuRead(0x100 + s));
+    const auto low = static_cast<word>(bus->CpuRead(0x100 + s++));
+    const auto high = static_cast<word>(bus->CpuRead(0x100 + s));
 
     pc = (high << 8) | low;
 }
@@ -1474,15 +1474,15 @@ void Cpu<BusType>::ROR(const Opcode& opcode) {
 template <typename BusType>
 void Cpu<BusType>::RelativeBranchOnCondition(bool condition) {
     // First change the type, then the size, then type again
-    auto offset = static_cast<word>(static_cast<int16_t>(static_cast<int8_t>(Fetch())));
+    const auto offset = static_cast<word>(static_cast<int16_t>(static_cast<int8_t>(Fetch())));
 
     if (!condition)
         return;
 
     bus->Tick();  // Cycle 3 if branch taken
 
-    word page_crossed = pc + offset;
-    word non_page_crossed = NonPageCrossingAdd(pc, offset);
+    const word page_crossed = pc + offset;
+    const word non_page_crossed = NonPageCrossingAdd(pc, offset);
 
     pc = non_page_crossed;
 
@@ -1503,7 +1503,7 @@ void Cpu<BusType>::CompareRegisterAndMemory(const Opcode& opcode, byte reg) {
         operand = static_cast<word>(bus->CpuRead(address));
     }
 
-    byte result = reg - operand;
+    const byte result = reg - operand;
     UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0x00);
     // The carry flag is set if no borrow or greater than or equal for A - M
