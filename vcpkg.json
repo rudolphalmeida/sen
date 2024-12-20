@@ -1,7 +1,10 @@
 {
   "dependencies": [
     "fmt",
-    "glfw3",
+    {
+      "name": "glfw3",
+      "features": ["wayland"]
+    },
     "nlohmann-json",
     "spdlog",
     "catch2",
