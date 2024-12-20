@@ -35,7 +35,21 @@ target_link_libraries(libsen PRIVATE
 target_include_directories(libsen PUBLIC include)
 target_compile_definitions(libsen PUBLIC $<$<CONFIG:RelWithDebInfo>:LOG_DEBUG>)
 
-add_executable(sen src/main.cpp include/ui.hxx src/ui.cpp lib/imgui_memory_editor.h lib/stb_image_write.h lib/stb_image_write.cpp lib/IconsFontAwesome5.h lib/miniaudio.cpp lib/crt_core.h lib/crt_core.c lib/crt_nes.h lib/crt_nes.c)
+add_executable(sen
+        src/main.cpp
+        include/ui.hxx
+        src/ui.cpp
+        lib/imgui_memory_editor.h
+        lib/stb_image_write.h
+        lib/stb_image_write.cpp
+        lib/IconsFontAwesome5.h
+        lib/miniaudio.cpp
+        lib/crt_core.h
+        lib/crt_core.c
+        lib/crt_nes.h
+        lib/crt_nes.c
+        src/filters.cpp
+)
 target_include_directories(sen PRIVATE include lib ${MINIAUDIO_INCLUDE_DIRS})
 target_link_libraries(sen PRIVATE
     libsen

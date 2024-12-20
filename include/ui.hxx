@@ -11,10 +11,10 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <miniaudio.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
 #include <libconfig.h++>
-#include <miniaudio.h>
 
 #include "constants.hxx"
 #include "debugger.hxx"
@@ -45,17 +45,25 @@ enum class UiPanel {
     Logs = 7,
 };
 
+enum class FilterType {
+    NoFilter = 0,
+    Ntsc = 1,
+};
+
 struct SenSettings {
     libconfig::Config cfg{};
 
     [[nodiscard]] int Width() const { return cfg.getRoot()["ui"]["width"]; }
-    void Width(int width) const { cfg.getRoot()["ui"]["width"] = width; }
+    void Width(const int width) const { cfg.getRoot()["ui"]["width"] = width; }
 
     [[nodiscard]] int Height() const { return cfg.getRoot()["ui"]["height"]; }
-    void Height(int height) const { cfg.getRoot()["ui"]["height"] = height; }
+    void Height(const int height) const { cfg.getRoot()["ui"]["height"] = height; }
 
     [[nodiscard]] int ScaleFactor() const { return cfg.getRoot()["ui"]["scale"]; }
-    void SetScale(int scale) const { cfg.getRoot()["ui"]["scale"] = scale; }
+    void SetScale(const int scale) const { cfg.getRoot()["ui"]["scale"] = scale; }
+
+    [[nodiscard]] FilterType GetFilterType() const { return static_cast<enum FilterType>(static_cast<int>(cfg.getRoot()["ui"]["filter"])); }
+    void SetFilterType(enum FilterType filter) const { cfg.getRoot()["ui"]["filter"] = static_cast<int>(filter); }
 
     [[nodiscard]] UiStyle GetUiStyle() const {
         return static_cast<enum UiStyle>(static_cast<int>(cfg.getRoot()["ui"]["style"]));
@@ -118,6 +126,54 @@ static constexpr Pixel PALETTE_COLORS[0x40] = {
     Pixel{160, 214, 228}, Pixel{160, 162, 160}, Pixel{0, 0, 0},       Pixel{0, 0, 0},
 };
 
+struct PostProcessedData {
+    Pixel * data;
+    int width{};
+    int height{};
+};
+
+class Filter {
+   public:
+    virtual ~Filter() = default;
+    virtual PostProcessedData PostProcess(std::span<unsigned short, 61440> nes_pixels,
+                                          int scale_factor) = 0;
+};
+
+class NoFilter final : public Filter {
+   public:
+    NoFilter() : pixels(NES_WIDTH * NES_HEIGHT) {}
+
+    PostProcessedData PostProcess(std::span<unsigned short, 61440> nes_pixels,
+                                  int scale_factor) override;
+
+   private:
+    std::vector<Pixel> pixels{};
+};
+
+class NtscFilter final : public Filter {
+   public:
+    explicit NtscFilter(const int initial_scale_factor)
+        : pixels(NES_WIDTH * NES_HEIGHT * initial_scale_factor * initial_scale_factor),
+          scale_factor{initial_scale_factor} {
+        crt_init(&crt, NES_WIDTH * initial_scale_factor, NES_HEIGHT * initial_scale_factor,
+                 CRT_PIX_FORMAT_RGB, reinterpret_cast<unsigned char*>(pixels.data()));
+        crt.blend = 1;
+        crt.scanlines = 1;
+    }
+
+    PostProcessedData PostProcess(std::span<unsigned short, 61440> nes_pixels,
+                                  int scale_factor) override;
+
+   private:
+    std::vector<Pixel> pixels{};
+    int scale_factor{};
+
+    CRT crt{};
+    NTSC_SETTINGS ntsc{};
+    int noise = 2;
+    int hue = 350;
+};
+
 static const std::tuple<int, ControllerKey> KEYMAP[0x8] = {
     {GLFW_KEY_M, ControllerKey::A},          {GLFW_KEY_N, ControllerKey::B},
     {GLFW_KEY_SPACE, ControllerKey::Select}, {GLFW_KEY_ENTER, ControllerKey::Start},
@@ -126,7 +182,7 @@ static const std::tuple<int, ControllerKey> KEYMAP[0x8] = {
 };
 
 class Ui {
-private:
+   private:
     SenSettings settings{};
     ma_device device{};
 
@@ -143,12 +199,7 @@ private:
     unsigned int display_texture{};
     std::array<unsigned int, 64> sprite_textures{};
 
-    std::vector<Pixel> pixels;
-
-    CRT crt{};
-    NTSC_SETTINGS ntsc{};
-    int noise = 2;
-    int hue = 350;
+    std::unique_ptr<Filter> filter{};
 
     void LoadRomFile(const char* path) {
         loaded_rom_file_path = std::make_optional<std::filesystem::path>(path);
@@ -188,6 +239,17 @@ private:
     void StopEmulation();
 
     void HandleInput() const;
+
+    void SetFilter(const FilterType filter) {
+        switch (filter) {
+            case FilterType::NoFilter:
+                this->filter = std::make_unique<NoFilter>();
+                break;
+            case FilterType::Ntsc:
+                this->filter = std::make_unique<NtscFilter>(settings.ScaleFactor());
+                break;
+        }
+    }
 
     static void EmbraceTheDarkness() {
         ImVec4* colors = ImGui::GetStyle().Colors;

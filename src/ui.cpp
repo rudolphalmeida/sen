@@ -52,6 +52,9 @@ Ui::Ui() {
     if (!ui_settings.exists("style")) {
         ui_settings.add("style", libconfig::Setting::TypeInt) = static_cast<int>(UiStyle::Dark);
     }
+    if (!ui_settings.exists("filter")) {
+        ui_settings.add("filter", libconfig::Setting::TypeInt) = static_cast<int>(FilterType::NoFilter);
+    }
     if (!ui_settings.exists("open_panels")) {
         ui_settings.add("open_panels", libconfig::Setting::TypeInt) = 0;
     } else {
@@ -189,11 +192,7 @@ Ui::Ui() {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     }
 
-    pixels = std::vector<Pixel>(NES_WIDTH * NES_HEIGHT * scale_factor * scale_factor);
-    crt_init(&crt, NES_WIDTH * scale_factor, NES_HEIGHT * scale_factor, CRT_PIX_FORMAT_RGB,
-             reinterpret_cast<unsigned char*>(pixels.data()));
-    crt.blend = 1;
-    crt.scanlines = 1;
+    SetFilter(settings.GetFilterType());
 
     // ma_device_config deviceConfig;
     //
@@ -286,21 +285,12 @@ void Ui::RenderUi() {
             "Game", nullptr,
             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
 
-            const auto framebuffer = debugger.Framebuffer();
-            ntsc.data = framebuffer.data(); /* buffer from your rendering */
-            ntsc.w = NES_WIDTH;
-            ntsc.h = NES_HEIGHT;
-            ntsc.hue = hue;
-            ntsc.dot_crawl_offset = 1;
-            ntsc.border_color = 255;
-            ntsc.xoffset = 0;
-            ntsc.yoffset = 0;
-            crt_modulate(&crt, &ntsc);
-            crt_demodulate(&crt, noise);
+        const auto framebuffer = debugger.Framebuffer();
+        const auto [data, width, height] = filter->PostProcess(framebuffer, settings.ScaleFactor());
 
         glBindTexture(GL_TEXTURE_2D, display_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, NES_WIDTH * settings.ScaleFactor(), NES_HEIGHT * settings.ScaleFactor(), 0, GL_RGB, GL_UNSIGNED_BYTE,
-                     pixels.data());
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                     data);
         ImGui::Image(display_texture, ImVec2(NES_WIDTH * settings.ScaleFactor(),
                                              NES_HEIGHT * settings.ScaleFactor()));
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -396,11 +386,6 @@ void Ui::ShowMenuBar() {
                     if (ImGui::MenuItem(SCALING_FACTORS[i - 1], nullptr,
                                         settings.ScaleFactor() == i, emulation_running)) {
                         settings.SetScale(i);
-                        pixels.resize(NES_WIDTH * NES_HEIGHT * i * i);
-                        std::ranges::for_each(pixels, [](auto& pixel) {
-                            pixel = Pixel();
-                        });
-                        crt_resize(&crt, NES_WIDTH * i, NES_HEIGHT * i, CRT_PIX_FORMAT_RGB, reinterpret_cast<unsigned char*>(pixels.data()));
                     }
                 }
                 ImGui::EndMenu();
@@ -423,6 +408,18 @@ void Ui::ShowMenuBar() {
                                     settings.GetUiStyle() == UiStyle::SuperDark)) {
                     EmbraceTheDarkness();
                     settings.SetUiStyle(UiStyle::SuperDark);
+                }
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Filter")) {
+                if (ImGui::MenuItem("None", nullptr, settings.GetFilterType() == FilterType::NoFilter)) {
+                    settings.SetFilterType(FilterType::NoFilter);
+                    SetFilter(FilterType::NoFilter);
+                }
+                if (ImGui::MenuItem("NTSC", nullptr, settings.GetFilterType() == FilterType::Ntsc)) {
+                    settings.SetFilterType(FilterType::Ntsc);
+                    SetFilter(FilterType::Ntsc);
                 }
                 ImGui::EndMenu();
             }
