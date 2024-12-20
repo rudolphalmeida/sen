@@ -42,13 +42,14 @@ add_executable(sen
         lib/imgui_memory_editor.h
         lib/stb_image_write.h
         lib/stb_image_write.cpp
-        lib/IconsFontAwesome5.h
         lib/miniaudio.cpp
         lib/crt_core.h
         lib/crt_core.c
         lib/crt_nes.h
         lib/crt_nes.c
         src/filters.cpp
+        lib/IconsFontAwesome6.h
+        lib/ImGuiNotify.hpp
 )
 target_include_directories(sen PRIVATE include lib ${MINIAUDIO_INCLUDE_DIRS})
 target_link_libraries(sen PRIVATE

@@ -7,8 +7,10 @@
 #include <spdlog/spdlog.h>
 #include <libconfig.h++>
 
-#include "IconsFontAwesome5.h"
+#include "IconsFontAwesome6.h"
 #include "imgui_memory_editor.h"
+
+#include "ImGuiNotify.hpp"
 
 #include "constants.hxx"
 #include "cpu.hxx"
@@ -307,6 +309,23 @@ void Ui::RenderUi() {
 
     ImGui::PopStyleVar();
 
+
+    // Notifications style setup
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f); // Disable round borders
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f); // Disable borders
+
+    // Notifications color setup
+    // ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.10f, 0.10f, 0.10f, 1.00f)); // Background color
+
+    // Main rendering function
+    ImGui::RenderNotifications();
+
+    //——————————————————————————————— WARNING ———————————————————————————————
+    // Argument MUST match the amount of ImGui::PushStyleVar() calls
+    ImGui::PopStyleVar(2);
+    // Argument MUST match the amount of ImGui::PushStyleColor() calls
+    // ImGui::PopStyleColor(1);
+
     ImGui::EndFrame();
 
     ImGui::Render();
@@ -348,9 +367,10 @@ void Ui::ShowMenuBar() {
             if (ImGui::BeginMenu("Open Recent")) {
                 static std::vector<const char*> recents;
                 settings.RecentRoms(recents);
-                for (const auto& recent : recents) {
+                for (auto recent : recents) {
                     if (ImGui::MenuItem(recent, nullptr, false, true)) {
                         LoadRomFile(recent);
+                        ImGui::InsertNotification({ImGuiToastType::Success, 3000, "Successfully loaded %s", recent});
                     }
                 }
 
@@ -882,12 +902,12 @@ void Ui::ShowDebugger() {
             ImGui::BeginDisabled();
         }
 
-        if (ImGui::Button(ICON_FA_ARROW_CIRCLE_RIGHT, ImVec2(30, 30))) {
+        if (ImGui::Button(ICON_FA_ARROW_ROTATE_RIGHT, ImVec2(30, 30))) {
             emulator_context->StepOpcode();
         }
         ImGui::SetItemTooltip("Step");
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_STEP_FORWARD, ImVec2(30, 30))) {
+        if (ImGui::Button(ICON_FA_FORWARD, ImVec2(30, 30))) {
             emulator_context->RunForOneScanline();
         }
         ImGui::SetItemTooltip("Step scanline");
