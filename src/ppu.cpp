@@ -1,5 +1,6 @@
 #include <spdlog/spdlog.h>
 
+#include "constants.hxx"
 #include "ppu.hxx"
 #include "util.hxx"
 
@@ -24,7 +25,8 @@ void Ppu::Tick() {
             }
 
             if (line_cycles == 256) {
-                // TODO: Do the secondary OAM clear here since we use the data structure when rendering
+                // TODO: Do the secondary OAM clear here since we use the data structure when
+                // rendering
                 if (scanline != PRE_RENDER_SCANLINE) {
                     SecondaryOamClear();
                     EvaluateNextLineSprites();
@@ -35,12 +37,16 @@ void Ppu::Tick() {
             if (line_cycles == 257) {
                 // hori(v) = hori(t)
                 v.as_scroll.coarse_x_scroll = t.as_scroll.coarse_x_scroll;
-                v.as_scroll.nametable_select = (v.as_scroll.nametable_select & 0b10) | (t.as_scroll.nametable_select & 0b01);
+                v.as_scroll.nametable_select =
+                    (v.as_scroll.nametable_select & 0b10) | (t.as_scroll.nametable_select & 0b01);
             }
 
             if (InRange<unsigned int>(257, line_cycles, 320) && scanline != PRE_RENDER_SCANLINE) {
                 const size_t sprite_index = (line_cycles - 257) / 8;
-                const auto& sprite = sprite_index < secondary_oam.size() ?  secondary_oam[sprite_index].second : Sprite { .y = 0xFF, .tile_index = 0xFF, .attribs = 0xFF, .x = 0xFF};
+                const auto& sprite =
+                    sprite_index < secondary_oam.size()
+                        ? secondary_oam[sprite_index].second
+                        : Sprite{.y = 0xFF, .tile_index = 0xFF, .attribs = 0xFF, .x = 0xFF};
 
                 unsigned int offset_into_sprite;
                 if (sprite.FlipVertical()) {
@@ -51,9 +57,14 @@ void Ppu::Tick() {
 
                 word line_pattern_table_addr;
                 if (SpriteHeight() == 16) {
-                    line_pattern_table_addr = (((sprite.tile_index & 0x01) ? 0x1000 : 0x0000) | ((sprite.tile_index & ~0x01) << 4)) + (offset_into_sprite >= 8 ? offset_into_sprite + 8 : offset_into_sprite);
+                    line_pattern_table_addr =
+                        (((sprite.tile_index & 0x01) ? 0x1000 : 0x0000) |
+                         ((sprite.tile_index & ~0x01) << 4)) +
+                        (offset_into_sprite >= 8 ? offset_into_sprite + 8 : offset_into_sprite);
                 } else {
-                    line_pattern_table_addr = ((sprite.tile_index << 4) | SpritePatternTableAddress()) + offset_into_sprite;
+                    line_pattern_table_addr =
+                        ((sprite.tile_index << 4) | SpritePatternTableAddress()) +
+                        offset_into_sprite;
                 }
 
                 switch (const size_t cycle_into_sprite = (line_cycles - 257) % 8) {
@@ -61,7 +72,8 @@ void Ppu::Tick() {
                     case 3:
                         // TODO: Garbage nametable read here
                         if (sprite_index < secondary_oam.size()) {
-                            scanline_sprites_tile_data[sprite_index] = ActiveSprite {.tile_lsb = 0x00, .tile_msb = 0x00};
+                            scanline_sprites_tile_data[sprite_index] =
+                                ActiveSprite{.tile_lsb = 0x00, .tile_msb = 0x00};
                         }
                         break;
                     case 5: {
@@ -85,6 +97,7 @@ void Ppu::Tick() {
 
             if (InRange<unsigned int>(321, line_cycles, 336)) {
                 // Fetch first two tiles on next scanline
+                ShiftShifters();
                 ReadNextTileData(line_cycles % 8);
             }
 
@@ -97,7 +110,8 @@ void Ppu::Tick() {
                 // vert(v) == vert(t) each tick
                 v.as_scroll.coarse_y_scroll(t.as_scroll.coarse_y_scroll());
                 v.as_scroll.fine_y_scroll = t.as_scroll.fine_y_scroll;
-                v.as_scroll.nametable_select = (v.as_scroll.nametable_select & 0b01) | (t.as_scroll.nametable_select & 0b10);
+                v.as_scroll.nametable_select =
+                    (v.as_scroll.nametable_select & 0b01) | (t.as_scroll.nametable_select & 0b10);
             }
         }
     } else {
@@ -150,11 +164,12 @@ void Ppu::RenderPixel() {  // Output pixels
 
     const byte screen_x = line_cycles - 1;
     const byte screen_y = scanline;
-    const byte emphasis_bits = static_cast<word>(ppumask & 0xE0) << 1;
+    const word emphasis_bits = static_cast<word>(ppumask & 0xE0) << 1;
 
     bool had_sprite_on_pixel = false;
     bool rendered_sprite_on_pixel = false;
-    for (int i = static_cast<int>(secondary_oam.size()) - 1; i >= 0; i--) {
+    for (int i = static_cast<int>(secondary_oam.size()) - 1;
+         i >= 0 && !((screen_x < 8) && !ShowSpritesInLeft()); i--) {
         const auto& [oam_index, sprite] = secondary_oam[i];
 
         if (screen_x < sprite.x || ((screen_x - sprite.x) >= 8)) {
@@ -164,7 +179,8 @@ void Ppu::RenderPixel() {  // Output pixels
 
         auto [tile_lsb, tile_msb] = scanline_sprites_tile_data[i];
 
-        const auto sprite_pixel_index = sprite.FlipHorizontal() ? (screen_x - sprite.x) : 7 - (screen_x - sprite.x);
+        const auto sprite_pixel_index =
+            sprite.FlipHorizontal() ? (screen_x - sprite.x) : 7 - (screen_x - sprite.x);
         const byte sp_pixel_msb = ((tile_msb & (1 << sprite_pixel_index)) != 0) ? 1 : 0;
         const byte sp_pixel_lsb = ((tile_lsb & (1 << sprite_pixel_index)) != 0) ? 1 : 0;
         const byte sp_pixel = (sp_pixel_msb << 1) | (sp_pixel_lsb);
@@ -185,13 +201,14 @@ void Ppu::RenderPixel() {  // Output pixels
         rendered_sprite_on_pixel = true;
     }
 
-    if (!had_sprite_on_pixel && !bg_pixel) {
+    if (!had_sprite_on_pixel && !bg_pixel || ((screen_x < 8) && !ShowBackgroundInLeft())) {
         framebuffer[screen_y * NES_WIDTH + screen_x] = emphasis_bits | (PpuRead(0x3F00) & 0x3F);
     } else if (!rendered_sprite_on_pixel) {
         const byte bg_attrib_msb = (bg_attrib_msb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
         const byte bg_attrib_lsb = (bg_attrib_lsb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;
         const byte bg_palette_offset = (bg_attrib_msb << 1) | bg_attrib_lsb;
-        const byte bg_palette_address = bg_pixel == 0 ? bg_pixel : (bg_palette_offset << 2) | bg_pixel;
+        const byte bg_palette_address =
+            bg_pixel == 0 ? bg_pixel : (bg_palette_offset << 2) | bg_pixel;
         const byte bg_pixel_color_id = palette_table[bg_palette_address];
 
         framebuffer[screen_y * NES_WIDTH + screen_x] = emphasis_bits | (bg_pixel_color_id & 0x3F);
@@ -321,12 +338,15 @@ byte Ppu::CpuRead(const word address) {
             break;
         case 0x2007:
             // https://www.nesdev.org/wiki/PPU_scrolling#$2007_reads_and_writes
-            if ((ShowBackground() || ShowSprites()) && (InRange<unsigned>(0, scanline, POST_RENDER_SCANLINE - 1) || scanline == PRE_RENDER_SCANLINE)) {
+            if ((ShowBackground() || ShowSprites()) &&
+                (InRange<unsigned>(0, scanline, POST_RENDER_SCANLINE - 1) ||
+                 scanline == PRE_RENDER_SCANLINE)) {
                 CoarseXIncrement();
                 FineYIncrement();
                 io_data_bus = 0x00;
             } else {
-                if (const auto ppu_address = v.value & 0x3FFF; ppu_address >= 0x3F00) {  // Reading palettes
+                if (const auto ppu_address = v.value & 0x3FFF;
+                    ppu_address >= 0x3F00) {  // Reading palettes
                     io_data_bus = PpuRead(ppu_address);
                 } else {
                     // Use previously read value from buffer and reset buffer

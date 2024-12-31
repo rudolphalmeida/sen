@@ -16,21 +16,13 @@ struct Sprite {
     byte attribs;
     byte x;
 
-    [[nodiscard]] byte PaletteIndex() const {
-        return attribs & 0b11;
-    }
+    [[nodiscard]] byte PaletteIndex() const { return attribs & 0b11; }
 
-    [[nodiscard]] byte BgOverSprite() const {
-        return (attribs & 0x20) >> 5;
-    }
+    [[nodiscard]] byte BgOverSprite() const { return (attribs & 0x20) >> 5; }
 
-    [[nodiscard]] bool FlipHorizontal() const {
-        return (attribs & 0x40) >> 6;
-    }
+    [[nodiscard]] bool FlipHorizontal() const { return (attribs & 0x40) >> 6; }
 
-    [[nodiscard]] bool FlipVertical() const {
-        return (attribs & 0x80) >> 7;
-    }
+    [[nodiscard]] bool FlipVertical() const { return (attribs & 0x80) >> 7; }
 };
 
 class Ppu {
@@ -137,9 +129,7 @@ class Ppu {
     }
 
     [[nodiscard]] byte VramAddressIncrement() const { return (ppuctrl & 0x04) != 0x00 ? 32 : 1; }
-    [[nodiscard]] word SpritePatternTableAddress() const {
-        return (ppuctrl & 0x08) << 9;
-    }
+    [[nodiscard]] word SpritePatternTableAddress() const { return (ppuctrl & 0x08) << 9; }
     [[nodiscard]] word BgPatternTableAddress() const {
         return (ppuctrl & 0x10) != 0x00 ? 0x1000 : 0x0000;
     }
@@ -151,9 +141,6 @@ class Ppu {
     [[nodiscard]] bool ShowSpritesInLeft() const { return (ppumask & 0x04) != 0x00; }
     [[nodiscard]] bool ShowBackground() const { return (ppumask & 0x08) != 0x00; }
     [[nodiscard]] bool ShowSprites() const { return (ppumask & 0x10) != 0x00; }
-    [[nodiscard]] bool EmphasizeRed() const { return (ppumask & 0x20) != 0x00; }
-    [[nodiscard]] bool EmphasizeGreen() const { return (ppumask & 0x40) != 0x00; }
-    [[nodiscard]] bool EmphasizeBlue() const { return (ppumask & 0x80) != 0x00; }
 
     [[nodiscard]] bool InVblank() const {
         // Bit 7 is set during VBlank
@@ -187,9 +174,7 @@ class Ppu {
     Ppu(std::shared_ptr<Cartridge> cartridge, std::shared_ptr<bool> nmi_requested)
         : cartridge{std::move(cartridge)}, nmi_requested{std::move(nmi_requested)} {}
 
-    [[nodiscard]] unsigned int Scanline() const {
-        return scanline;
-    }
+    [[nodiscard]] unsigned int Scanline() const { return scanline; }
 
     void Tick();
 
