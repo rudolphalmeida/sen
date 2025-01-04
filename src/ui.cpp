@@ -17,8 +17,8 @@
 #include "ui.hxx"
 
 #define DEVICE_FORMAT ma_format_u8
-#define DEVICE_CHANNELS 2
-#define DEVICE_SAMPLE_RATE 48000
+#define DEVICE_CHANNELS 1
+#define DEVICE_SAMPLE_RATE 44100
 
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 
@@ -99,7 +99,7 @@ Ui::Ui() {
         std::exit(-1);
     }
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);  // Enable vsync
+    // glfwSwapInterval(1);  // Enable vsync
 
     glfwSetWindowUserPointer(window, static_cast<void*>(this));
     glfwSetWindowSizeCallback(window, [](GLFWwindow* _window, const int _width, const int _height) {
@@ -196,30 +196,30 @@ Ui::Ui() {
 
     SetFilter(settings.GetFilterType());
 
-    // ma_device_config deviceConfig;
-    //
-    // deviceConfig = ma_device_config_init(ma_device_type_playback);
-    // deviceConfig.playback.format = DEVICE_FORMAT;
-    // deviceConfig.playback.channels = DEVICE_CHANNELS;
-    // deviceConfig.sampleRate = DEVICE_SAMPLE_RATE;
-    // deviceConfig.dataCallback = [](ma_device* device, void* output, const void*,
-    //                                ma_uint32 frame_count) {
-    //     const auto ui = static_cast<Ui*>(device->pUserData);
-    //     ui->RunForSamples(frame_count);
-    //     memset(output, 0x00, frame_count * 2);
-    // };
-    // deviceConfig.pUserData = this;
-    //
-    // if (ma_device_init(nullptr, &deviceConfig, &device) != MA_SUCCESS) {
-    //     spdlog::error("Failed to open playback device.\n");
-    //     std::exit(-4);
-    // }
-    //
-    // if (ma_device_start(&device) != MA_SUCCESS) {
-    //     spdlog::error("Failed to start playback device.\n");
-    //     ma_device_uninit(&device);
-    //     std::exit(-5);
-    // }
+    ma_device_config deviceConfig;
+
+    deviceConfig = ma_device_config_init(ma_device_type_playback);
+    deviceConfig.playback.format = DEVICE_FORMAT;
+    deviceConfig.playback.channels = DEVICE_CHANNELS;
+    deviceConfig.sampleRate = DEVICE_SAMPLE_RATE;
+    deviceConfig.dataCallback = [](ma_device* device, void* output, const void*,
+                                   ma_uint32 frame_count) {
+        const auto ui = static_cast<Ui*>(device->pUserData);
+        ui->RunForSamples(frame_count);
+        memset(output, 0x00, frame_count);
+    };
+    deviceConfig.pUserData = this;
+
+    if (ma_device_init(nullptr, &deviceConfig, &device) != MA_SUCCESS) {
+        spdlog::error("Failed to open playback device.\n");
+        std::exit(-4);
+    }
+
+    if (ma_device_start(&device) != MA_SUCCESS) {
+        spdlog::error("Failed to start playback device.\n");
+        ma_device_uninit(&device);
+        std::exit(-5);
+    }
 }
 void Ui::RunForSamples(uint32_t cycles) {
     if (!emulator_context || !emulation_running) {
@@ -966,7 +966,7 @@ void Ui::ShowPatternTables() {
 std::vector<Pixel> Ui::RenderPixelsForPatternTable(const std::span<byte, 4096> pattern_table,
                                                    const std::span<byte, 32> nes_palette,
                                                    const int palette_id) {
-    std::vector<Pixel> pixels(128 * 128);
+    static std::vector<Pixel> pixels(128 * 128);
 
     for (size_t column = 0; column < 128; column++) {
         const size_t tile_column = column / 8;

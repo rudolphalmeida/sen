@@ -210,7 +210,7 @@ class Ui {
         emulator_context = std::make_shared<Sen>(rom_args);
         debugger = Debugger(emulator_context);
 
-        auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
+        const auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
         glfwSetWindowTitle(window, title.c_str());
     }
 

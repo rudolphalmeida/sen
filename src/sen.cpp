@@ -10,13 +10,15 @@
 
 Sen::Sen(const RomArgs& rom_args) {
     nmi_requested = std::make_shared<bool>(false);
+    irq_requested = std::make_shared<bool>(false);
 
     auto cartridge = ParseRomFile(rom_args);
     ppu = std::make_shared<Ppu>(cartridge, nmi_requested);
+    apu = std::make_shared<Apu>(irq_requested);
     controller = std::make_shared<Controller>();
 
-    bus = std::make_shared<Bus>(std::move(cartridge), ppu, controller);
-    cpu = Cpu<Bus>(bus, nmi_requested);
+    bus = std::make_shared<Bus>(std::move(cartridge), ppu, apu, controller);
+    cpu = Cpu<Bus>(bus, nmi_requested, irq_requested);
 }
 
 void Sen::StepOpcode() {

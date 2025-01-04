@@ -11,6 +11,7 @@
 #include "controller.hxx"
 #include "cpu.hxx"
 #include "ppu.hxx"
+#include "apu.hxx"
 
 struct RomArgs {
     std::vector<byte> rom;
@@ -27,9 +28,10 @@ class Sen {
     std::shared_ptr<Bus> bus;
     std::shared_ptr<Ppu> ppu;
     std::shared_ptr<Controller> controller;
+    std::shared_ptr<Apu> apu;
     Cpu<Bus> cpu;
 
-    std::shared_ptr<bool> nmi_requested{};
+    InterruptRequestFlag nmi_requested{}, irq_requested{};
 
     static constexpr uint64_t CYCLES_PER_FRAME{29780};
 

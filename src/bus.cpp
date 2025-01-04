@@ -11,7 +11,7 @@ byte Bus::UntickedCpuRead(const word address) {
         return 0xFF;
     }
     else if (InRange<word>(0x4000, address, 0x4015)) {
-        return apu.CpuRead(address);
+        return apu->CpuRead(address);
     } else if (InRange<word>(0x4016, address, 0x4017)) {
         return controller->CpuRead(address);
     } else if (InRange<word>(0x4018, address, 0x401F)) {
@@ -29,7 +29,7 @@ void Bus::UntickedCpuWrite(const word address, const byte data) {
     } else if (address == 0x4014) {
         PerformOamDma(data);
     } else if (InRange<word>(0x4000, address, 0x4015) || address == 0x4017) {
-        apu.CpuWrite(address, data);
+        apu->CpuWrite(address, data);
     } else if (address ==  0x4016) {
         controller->CpuWrite(address, data);
     } else if (InRange<word>(0x4018, address, 0x401F)) {

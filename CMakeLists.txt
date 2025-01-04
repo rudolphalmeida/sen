@@ -33,7 +33,6 @@ target_link_libraries(libsen PRIVATE
     fmt::fmt
 )
 target_include_directories(libsen PUBLIC include)
-target_compile_definitions(libsen PUBLIC $<$<CONFIG:RelWithDebInfo>:LOG_DEBUG>)
 
 add_executable(sen
         src/main.cpp
