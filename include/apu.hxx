@@ -27,7 +27,7 @@ enum class FrameCounterStepMode {
 
 class ApuPulse {
 public:
-    byte Tick() { return 0x00; }
+    byte GetSample() { return 0x00; }
 
     void WriteRegister(const byte offset, const byte data) {
         switch (offset) {

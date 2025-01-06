@@ -56,8 +56,8 @@ void Apu::Tick(const uint64_t cpu_cycles) {
 
     if ((cpu_cycles & 0b1) == 0x00) return;
 
-    const auto pulse1_sample = pulse_1.Tick();
-    const auto pulse2_sample = pulse_2.Tick();
+    const auto pulse1_sample = pulse_1.GetSample();
+    const auto pulse2_sample = pulse_2.GetSample();
     const auto _sample = mixer.Mix(pulse1_sample, pulse2_sample);
 }
 

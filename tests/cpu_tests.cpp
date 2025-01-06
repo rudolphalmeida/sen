@@ -25,6 +25,7 @@ nlohmann::json LoadTestCasesJsonFile(byte opcode) {
 
 void TestOpcode(const nlohmann::json& tests_data) {
     auto nmi_requested = std::make_shared<bool>(false);
+    auto irq_requested = std::make_shared<bool>(false);
     std::vector<Cycle> expected_cycles{};
     // Most opcodes require at most 7 cycles
     expected_cycles.reserve(7);
@@ -36,7 +37,7 @@ void TestOpcode(const nlohmann::json& tests_data) {
 
         auto bus = std::make_shared<FlatBus>(expected_cycles);
         REQUIRE(bus->cycles == 0);  // Tests require cycles to start at zero
-        Cpu<FlatBus> cpu{bus, nmi_requested};
+        Cpu<FlatBus> cpu{bus, nmi_requested, irq_requested};
         auto cpu_state = Debugger::GetCpuState(cpu);
 
         auto initial_state = test_case["initial"];
