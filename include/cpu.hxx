@@ -654,6 +654,23 @@ void Cpu<BusType>::CheckForInterrupts() {
         auto pcl = bus->CpuRead(NMI_VECTOR);
         auto pch = bus->CpuRead(NMI_VECTOR + 1);
         pc = (static_cast<word>(pch) << 8) | static_cast<word>(pcl);
+    } else if (!IsSet(StatusFlag::InterruptDisable) && *irq_requested) {
+        *irq_requested = false;
+
+        bus->CpuRead(pc);
+        bus->CpuRead(pc);
+        bus->CpuWrite(0x100 + s--, static_cast<byte>(pc >> 8));
+        bus->CpuWrite(0x100 + s--, static_cast<byte>(pc));
+
+        UpdateStatusFlag(StatusFlag::InterruptDisable, true);
+        // Ensure the B flag is not set when pushing
+        UpdateStatusFlag(StatusFlag::B, false);
+        p |= (1 << 5);  // The unused flag is set when pushing by NMI
+        bus->CpuWrite(0x100 + s--, p);
+
+        auto pcl = bus->CpuRead(IRQ_VECTOR);
+        auto pch = bus->CpuRead(IRQ_VECTOR + 1);
+        pc = (static_cast<word>(pch) << 8) | static_cast<word>(pcl);
     }
 }
 
