@@ -26,7 +26,6 @@ void Apu::Tick(const uint64_t cpu_cycles) {
     }
 
     if (step_mode == FrameCounterStepMode::FourStep && cpu_cycles_into_frame == 29828 && raise_irq) {
-        // TODO: Set IRQ interrupt
         *irq_requested = true;
     }
 
@@ -56,9 +55,9 @@ void Apu::Tick(const uint64_t cpu_cycles) {
 
     if ((cpu_cycles & 0b1) == 0x00) return;
 
-    const auto pulse1_sample = pulse_1.GetSample();
-    const auto pulse2_sample = pulse_2.GetSample();
-    const auto _sample = mixer.Mix(pulse1_sample, pulse2_sample);
+    const auto pulse1_sample = (enabled_channels & static_cast<byte>(ApuChannel::Pulse1)) ? pulse_1.GetSample() : 0x00;
+    const auto pulse2_sample = (enabled_channels & static_cast<byte>(ApuChannel::Pulse2)) ? pulse_2.GetSample() : 0x00;
+    samples.push_back(Mix(pulse1_sample, pulse2_sample));
 }
 
 byte Apu::CpuRead(const word address) {
@@ -70,6 +69,8 @@ void Apu::CpuWrite(const word address, const byte data) {
         pulse_1.WriteRegister(address - 0x4000, data);
     } else if (InRange<word>(0x4004, address, 0x4007)) {
         pulse_2.WriteRegister(address - 0x4004, data);
+    } else if (address == 0x4015) {
+        enabled_channels = data;
     } else if (address == 0x4017) {
         // TODO: If the write occurs during an APU cycle, the effects occur 3 CPU cycles after
         //       the $4017 write cycle, and if the write occurs between APU cycles,
@@ -79,6 +80,15 @@ void Apu::CpuWrite(const word address, const byte data) {
 }
 
 void Apu::UpdateFrameCounter(const byte data) {
-    step_mode = (data & 0x80) != 0x00 ? FrameCounterStepMode::FiveStep : FrameCounterStepMode::FourStep;
+    step_mode =
+        (data & 0x80) != 0x00 ? FrameCounterStepMode::FiveStep : FrameCounterStepMode::FourStep;
     raise_irq = (data & 0x40) == 0x00;
+}
+
+double Apu::Mix(const byte pulse1_sample, const byte pulse2_sample) {
+    double pulse_out = 0.0;
+    if (pulse1_sample != 0x00 || pulse2_sample != 0x00) {
+        pulse_out = 95.88 / ((8128 / (pulse1_sample + pulse2_sample)) + 100);
+    }
+    return pulse_out;
 }

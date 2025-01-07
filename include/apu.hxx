@@ -9,10 +9,10 @@
 #include "constants.hxx"
 
 constexpr byte DUTY_CYCLES[4] = {
-    0b01000000,
-    0b01100000,
-    0b01111000,
-    0b10011111,
+    0b10000000,
+    0b11000000,
+    0b11110000,
+    0b00111111,
 };
 
 constexpr byte LENGTH_COUNTER_LOADS[] = {
@@ -27,7 +27,17 @@ enum class FrameCounterStepMode {
 
 class ApuPulse {
 public:
-    byte GetSample() { return 0x00; }
+    byte GetSample() {
+        timer--;
+        if (timer < 8) {
+            return 0x00;
+        }
+
+        const auto duty = (duty_cycle & (1 << sequencer_dc_index)) >> sequencer_dc_index;
+        sequencer_dc_index = (sequencer_dc_index - 1) & 0x07;
+
+        return duty * volume_envelope;
+    }
 
     void WriteRegister(const byte offset, const byte data) {
         switch (offset) {
@@ -40,13 +50,16 @@ public:
     }
 
 private:
+    word timer{};
+    byte length_counter_load{};
+
+    byte sequencer_dc_index{0x00};
+
     byte duty_cycle{};
     bool length_counter_halt{false};
     bool constant_volume{false};
     byte volume_envelope{};
 
-    word timer{};
-    byte length_counter_load{};
 
     void UpdateVolume(const byte volume) {
         volume_envelope = volume & 0x0F;
@@ -69,9 +82,12 @@ private:
     }
 };
 
-class ApuMixer {
-public:
-    byte Mix(const byte pulse1_sample, const byte pulse2_sample) { return 0x00; }
+enum class ApuChannel: byte {
+    Pulse1 = (1 << 0),
+    Pulse2 = (1 << 1),
+    Triangle = (1 << 2),
+    Noise = (1 << 3),
+    Dmc = (1 << 4),
 };
 
 class Apu {
@@ -80,12 +96,14 @@ public:
 
     void Tick(uint64_t cpu_cycles);
 
+    [[maybe_unused]] static void Reset() { spdlog::error("Reset not implemented for APU"); }
+
     [[nodiscard]] static byte CpuRead(word address);
     void CpuWrite(word address, byte data);
 
 private:
+    std::vector<double> samples{};
     ApuPulse pulse_1{}, pulse_2{};
-    ApuMixer mixer{};
 
     InterruptRequestFlag irq_requested{};
 
@@ -93,5 +111,8 @@ private:
     FrameCounterStepMode step_mode{FrameCounterStepMode::FourStep};
     bool raise_irq{false};
 
+    byte enabled_channels{0x00};
+
     void UpdateFrameCounter(byte data);
+    double Mix(const byte pulse1_sample, const byte pulse2_sample);
 };
