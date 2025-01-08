@@ -339,7 +339,7 @@ class Ui {
    public:
     Ui();
 
-    void RunForSamples(uint32_t cycles);
+    void RunForSamples(uint32_t samples, void *);
     void MainLoop();
 
     ~Ui() {

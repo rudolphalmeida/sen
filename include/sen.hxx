@@ -41,6 +41,7 @@ class Sen {
     void StepOpcode();
     void RunForOneScanline();
     void RunForOneFrame();
+    void CopySamplesIntoOutput(int, float *) const;
 
     void ControllerPress(ControllerPort port, ControllerKey key) const;
     void ControllerRelease(ControllerPort port, ControllerKey key) const;

@@ -130,7 +130,7 @@ class Debugger {
     [[nodiscard]] PpuState GetPpuState() const { return GetPpuState(this->emulator_context->ppu); }
 
     [[nodiscard]] PatternTablesState GetPatternTableState() const {
-        auto chr_mem = emulator_context->bus->cartridge->chr_rom;
+        auto& chr_mem = emulator_context->bus->cartridge->chr_rom;
         return {.left = std::span<byte, 4096>{&chr_mem[0x0000], 0x1000},
                 .right = std::span<byte, 4096>{&chr_mem[0x1000], 0x1000},
                 .palettes = std::span<byte, 32>{&emulator_context->ppu->palette_table[0], 32}};

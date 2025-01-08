@@ -7,6 +7,7 @@
 #include <spdlog/spdlog.h>
 
 #include "constants.hxx"
+#include "cqueue.hpp"
 
 constexpr byte DUTY_CYCLES[4] = {
     0b10000000,
@@ -28,7 +29,10 @@ enum class FrameCounterStepMode {
 class ApuPulse {
 public:
     byte GetSample() {
-        timer--;
+        if (timer == 0x7FF) {
+            // TODO: Clock the waveform generator
+        }
+        timer = timer != 0x00 ? (timer - 1) & 0x7FF : timer;
         if (timer < 8) {
             return 0x00;
         }
@@ -90,8 +94,16 @@ enum class ApuChannel: byte {
     Dmc = (1 << 4),
 };
 
+struct OutputSamples {
+    std::mutex samples_mutex{};
+    gto::cqueue<float> samples;
+    std::atomic_int num_samples{};
+};
+
 class Apu {
 public:
+    OutputSamples samples;
+
     explicit Apu(InterruptRequestFlag irq_requested): irq_requested(std::move(irq_requested)) {}
 
     void Tick(uint64_t cpu_cycles);
@@ -101,8 +113,9 @@ public:
     [[nodiscard]] static byte CpuRead(word address);
     void CpuWrite(word address, byte data);
 
+    friend class Debugger;
+
 private:
-    std::vector<double> samples{};
     ApuPulse pulse_1{}, pulse_2{};
 
     InterruptRequestFlag irq_requested{};
@@ -114,5 +127,5 @@ private:
     byte enabled_channels{0x00};
 
     void UpdateFrameCounter(byte data);
-    double Mix(const byte pulse1_sample, const byte pulse2_sample);
+    static float Mix(const byte pulse1_sample, const byte pulse2_sample);
 };

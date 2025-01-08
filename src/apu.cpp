@@ -57,10 +57,16 @@ void Apu::Tick(const uint64_t cpu_cycles) {
 
     const auto pulse1_sample = (enabled_channels & static_cast<byte>(ApuChannel::Pulse1)) ? pulse_1.GetSample() : 0x00;
     const auto pulse2_sample = (enabled_channels & static_cast<byte>(ApuChannel::Pulse2)) ? pulse_2.GetSample() : 0x00;
-    samples.push_back(Mix(pulse1_sample, pulse2_sample));
+
+    samples.num_samples += 1;
+    std::lock_guard<std::mutex> lock_guard{samples.samples_mutex};
+    samples.samples.push_back(Mix(pulse1_sample, pulse2_sample));
 }
 
 byte Apu::CpuRead(const word address) {
+    if (address == 0x4015) {
+        return 0xFF;
+    }
     return 0xFF;
 }
 
@@ -85,10 +91,10 @@ void Apu::UpdateFrameCounter(const byte data) {
     raise_irq = (data & 0x40) == 0x00;
 }
 
-double Apu::Mix(const byte pulse1_sample, const byte pulse2_sample) {
-    double pulse_out = 0.0;
+float Apu::Mix(const byte pulse1_sample, const byte pulse2_sample) {
+    float pulse_out = 0.0f;
     if (pulse1_sample != 0x00 || pulse2_sample != 0x00) {
-        pulse_out = 95.88 / ((8128 / (pulse1_sample + pulse2_sample)) + 100);
+        pulse_out = 95.88f / ((8128.0f / (pulse1_sample + pulse2_sample)) + 100.0f);
     }
     return pulse_out;
 }

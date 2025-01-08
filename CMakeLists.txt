@@ -25,14 +25,16 @@ add_library(libsen
     include/bus.hxx src/bus.cpp
     include/ppu.hxx src/ppu.cpp
     include/controller.hxx
-    src/apu.cpp include/apu.hxx)
+    src/apu.cpp include/apu.hxx
+    lib/cqueue.hpp
+)
 target_link_libraries(libsen PRIVATE
     spdlog::spdlog
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     fmt::fmt
 )
-target_include_directories(libsen PUBLIC include)
+target_include_directories(libsen PUBLIC include lib)
 
 add_executable(sen
         src/main.cpp

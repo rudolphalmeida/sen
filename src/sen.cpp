@@ -60,6 +60,16 @@ void Sen::RunForOneFrame() {
     carry_over_cycles = bus->cycles - target_cycles;
 }
 
+void Sen::CopySamplesIntoOutput(const int N, float * samples_ptr) const {
+    while (apu->samples.num_samples < N) {}
+
+    std::lock_guard<std::mutex> guard{apu->samples.samples_mutex};
+    std::ranges::copy_n(apu->samples.samples.begin(), N, samples_ptr);
+    for (int i = 0; i < N; i++) {
+        apu->samples.samples.pop_front();
+    }
+}
+
 void Sen::ControllerPress(const ControllerPort port, const ControllerKey key) const {
     controller->ControllerPress(port, key);
 }
