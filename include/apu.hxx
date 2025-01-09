@@ -8,6 +8,7 @@
 
 #include "constants.hxx"
 #include "cqueue.hpp"
+#include "util.hxx"
 
 constexpr byte DUTY_CYCLES[4] = {
     0b10000000,
@@ -31,13 +32,14 @@ public:
     byte length_counter{0x00};
     bool enabled{false};
 
+    explicit ApuPulse(const bool use_twos_complement): use_twos_complement{use_twos_complement} {}
+
     byte GetSample() const {
-        if (timer < 8 || length_counter == 0x00) {
+        if (timer < 8 || length_counter == 0x00 || target_period > 0x7FF) {
             return 0x00;
         }
 
         const auto duty = (duty_cycle & (1 << duty_counter_bit)) >> duty_counter_bit;
-        spdlog::debug(duty);
         return duty * (constant_volume ? volume_reload : envelope_decay_level);
     }
 
@@ -83,6 +85,25 @@ public:
         }
     }
 
+    void ClockSweep() {
+        UpdateTargetPeriod();
+
+        if (sweep_counter == 0x00 && sweep_enabled && !(timer < 8 || target_period > 0x7FF)) {
+            timer_reload = target_period;
+        }
+
+        if (sweep_counter == 0x00 || sweep_reload) {
+            sweep_counter = sweep_divider_load;
+            sweep_reload = false;
+
+            if (sweep_enabled) {
+                timer_reload = target_period;
+            }
+        } else {
+            sweep_counter--;
+        }
+    }
+
     void LoadLengthCounter(const byte value) {
         length_counter = value;
     }
@@ -92,7 +113,7 @@ public:
     }
 
 private:
-    word timer{}, timer_reload{};
+    word timer{}, timer_reload{}, target_period{};
     byte length_counter_load{};
 
     byte duty_counter_bit{0x00};
@@ -106,6 +127,15 @@ private:
     byte envelope_decay_level{};
     byte envelope_divider{};
 
+    byte sweep_divider_load{};
+    bool sweep_enabled{};
+    bool sweep_negate{};
+    bool sweep_reload{false};
+    byte sweep_shift_count{};
+    byte sweep_counter{};
+
+    bool use_twos_complement;
+
     byte volume{};
 
     void UpdateVolume(const byte volume) {
@@ -115,12 +145,17 @@ private:
         duty_cycle = DUTY_CYCLES[(volume & 0xC0) >> 6];
     }
 
-    void UpdateSweep(const byte sweep) const {
-        spdlog::debug("TODO: APU Pulse Sweep");
+    void UpdateSweep(const byte sweep) {
+        sweep_enabled = (sweep & 0x80) != 0x00;
+        sweep_divider_load = (sweep & 0x70) >> 4;
+        sweep_negate = (sweep & 0x08) != 0x00;
+        sweep_shift_count = sweep & 0x07;
+        sweep_reload = true;
     }
 
     void UpdateTimerLow(const byte timer_low) {
         timer_reload = (timer_reload & 0xFF00) | timer_low;
+        UpdateTargetPeriod();
     }
 
     void UpdateTimerHigh(const byte timer_high) {
@@ -129,8 +164,21 @@ private:
             LoadLengthCounter();
         }
         timer_reload = (timer_reload & ~0x0700) | (static_cast<word>(timer_high & 0x07) << 8);
+        UpdateTargetPeriod();
         envelope_start = true;
         duty_counter_bit = 0x00;
+    }
+
+    void UpdateTargetPeriod() {
+        const word change = timer_reload >> sweep_shift_count;
+        if (sweep_negate) {
+            target_period = (change > timer) ? 0 : (timer_reload - change);
+            if (!use_twos_complement && target_period > 0) {
+                target_period--;
+            }
+        } else {
+            target_period = timer_reload + change;
+        }
     }
 };
 
@@ -164,7 +212,7 @@ public:
     friend class Debugger;
 
 private:
-    ApuPulse pulse_1{}, pulse_2{};
+    ApuPulse pulse_1{false}, pulse_2{true};
 
     InterruptRequestFlag irq_requested{};
 

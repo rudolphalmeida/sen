@@ -21,7 +21,11 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         //       Clock envelopes and triangle linear counter
         //       Clock length counters and sweep units
         pulse_1.ClockEnvelope();
+        pulse_1.ClockLengthCounter();
+        pulse_1.ClockSweep();
         pulse_2.ClockEnvelope();
+        pulse_2.ClockLengthCounter();
+        pulse_2.ClockSweep();
     }
 
     if (cpu_cycles_into_frame == 22371) {
@@ -40,7 +44,11 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         //       Clock envelopes and triangle linear counter if 4 step
         //       Clock length counters and sweep units if 4 step
         pulse_1.ClockEnvelope();
+        pulse_1.ClockLengthCounter();
+        pulse_1.ClockSweep();
         pulse_2.ClockEnvelope();
+        pulse_2.ClockLengthCounter();
+        pulse_2.ClockSweep();
 
         *irq_requested = raise_irq;
     }
@@ -56,7 +64,11 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         //       Clock envelopes and triangle linear counter
         //       Clock length counters and sweep units
         pulse_1.ClockEnvelope();
+        pulse_1.ClockLengthCounter();
+        pulse_1.ClockSweep();
         pulse_2.ClockEnvelope();
+        pulse_2.ClockLengthCounter();
+        pulse_2.ClockSweep();
     }
 
     if (step_mode == FrameCounterStepMode::FiveStep && cpu_cycles_into_frame == 37282) {
@@ -87,7 +99,7 @@ byte Apu::CpuRead(const word address) {
             res |= 0x02;
         }
 
-        if (*irq_requested) {
+        if (raise_irq) {
             res |= 0x40;
         }
 
@@ -124,6 +136,14 @@ void Apu::CpuWrite(const word address, const byte data) {
         //       the $4017 write cycle, and if the write occurs between APU cycles,
         //       the effects occurs 4 CPU cycles after the write cycle.
         UpdateFrameCounter(data);
+        if (step_mode == FrameCounterStepMode::FiveStep) {
+            pulse_1.ClockEnvelope();
+            pulse_1.ClockSweep();
+            pulse_1.ClockLengthCounter();
+            pulse_2.ClockEnvelope();
+            pulse_2.ClockSweep();
+            pulse_2.ClockLengthCounter();
+        }
     }
 }
 
@@ -138,5 +158,5 @@ float Apu::Mix(const byte pulse1_sample, const byte pulse2_sample) {
     if (pulse1_sample != 0x00 || pulse2_sample != 0x00) {
         pulse_out = 95.88f / ((8128.0f / (pulse1_sample + pulse2_sample)) + 100.0f);
     }
-    return pulse_out * 100.0f;
+    return pulse_out;
 }

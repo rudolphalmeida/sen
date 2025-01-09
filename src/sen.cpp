@@ -64,9 +64,9 @@ void Sen::CopySamplesIntoOutput(const int N, float * samples_ptr) const {
     while (apu->samples.num_samples < N) {}
 
     std::lock_guard<std::mutex> guard{apu->samples.samples_mutex};
-    std::ranges::copy_n(apu->samples.samples.begin(), N, samples_ptr);
+    auto dest_ptr = samples_ptr;
     for (int i = 0; i < N; i++) {
-        apu->samples.samples.pop_front();
+        *dest_ptr++ = apu->samples.samples.pop_front();
     }
 }
 
