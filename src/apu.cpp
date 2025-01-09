@@ -69,8 +69,8 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         pulse_2.ClockTimer();
     };
 
-    const auto pulse1_sample = (enabled_channels & static_cast<byte>(ApuChannel::Pulse1)) ? pulse_1.GetSample() : 0x00;
-    const auto pulse2_sample = (enabled_channels & static_cast<byte>(ApuChannel::Pulse2)) ? pulse_2.GetSample() : 0x00;
+    const auto pulse1_sample = pulse_1.GetSample();
+    const auto pulse2_sample = pulse_2.GetSample();
 
     samples.num_samples += 1;
     std::lock_guard<std::mutex> lock_guard{samples.samples_mutex};
@@ -79,7 +79,21 @@ void Apu::Tick(const uint64_t cpu_cycles) {
 
 byte Apu::CpuRead(const word address) {
     if (address == 0x4015) {
-        return 0xFF;
+        byte res = 0x00;
+        if (pulse_1.length_counter > 0x00) {
+            res |= 0x01;
+        }
+        if (pulse_2.length_counter > 0x00) {
+            res |= 0x02;
+        }
+
+        if (*irq_requested) {
+            res |= 0x40;
+        }
+
+        raise_irq = false;
+
+        return res;
     }
     return 0xFF;
 }
@@ -90,7 +104,21 @@ void Apu::CpuWrite(const word address, const byte data) {
     } else if (InRange<word>(0x4004, address, 0x4007)) {
         pulse_2.WriteRegister(address - 0x4004, data);
     } else if (address == 0x4015) {
-        enabled_channels = data;
+        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1) && !ChannelEnabled(data, ApuChannel::Pulse1)) {
+            pulse_1.LoadLengthCounter(0);
+            pulse_1.enabled = false;
+        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1) && ChannelEnabled(data, ApuChannel::Pulse1)) {
+            pulse_1.enabled = true;
+        }
+
+        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2) && !ChannelEnabled(data, ApuChannel::Pulse2)) {
+            pulse_2.LoadLengthCounter(0);
+            pulse_2.enabled = false;
+        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2) && ChannelEnabled(data, ApuChannel::Pulse2)) {
+            pulse_2.enabled = true;
+        }
+
+        prev_enabled_channels = data;
     } else if (address == 0x4017) {
         // TODO: If the write occurs during an APU cycle, the effects occur 3 CPU cycles after
         //       the $4017 write cycle, and if the write occurs between APU cycles,

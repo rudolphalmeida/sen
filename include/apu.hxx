@@ -28,12 +28,16 @@ enum class FrameCounterStepMode {
 
 class ApuPulse {
 public:
+    byte length_counter{0x00};
+    bool enabled{false};
+
     byte GetSample() const {
-        if (timer < 8) {
+        if (timer < 8 || length_counter == 0x00) {
             return 0x00;
         }
 
         const auto duty = (duty_cycle & (1 << duty_counter_bit)) >> duty_counter_bit;
+        spdlog::debug(duty);
         return duty * (constant_volume ? volume_reload : envelope_decay_level);
     }
 
@@ -73,6 +77,20 @@ public:
         }
     }
 
+    void ClockLengthCounter() {
+        if (!length_counter_halt && length_counter != 0x00) {
+            length_counter--;
+        }
+    }
+
+    void LoadLengthCounter(const byte value) {
+        length_counter = value;
+    }
+
+    void LoadLengthCounter() {
+        LoadLengthCounter(LENGTH_COUNTER_LOADS[length_counter_load]);
+    }
+
 private:
     word timer{}, timer_reload{};
     byte length_counter_load{};
@@ -106,10 +124,13 @@ private:
     }
 
     void UpdateTimerHigh(const byte timer_high) {
+        length_counter_load = timer_high >> 3;
+        if (enabled) {
+            LoadLengthCounter();
+        }
         timer_reload = (timer_reload & ~0x0700) | (static_cast<word>(timer_high & 0x07) << 8);
         envelope_start = true;
         duty_counter_bit = 0x00;
-        // TODO: Writing to $4003/$4007 reloads the length counter, restarts the envelope, and resets the phase of the pulse generator.
     }
 };
 
@@ -137,7 +158,7 @@ public:
 
     [[maybe_unused]] static void Reset() { spdlog::error("Reset not implemented for APU"); }
 
-    [[nodiscard]] static byte CpuRead(word address);
+    [[nodiscard]] byte CpuRead(word address);
     void CpuWrite(word address, byte data);
 
     friend class Debugger;
@@ -151,8 +172,12 @@ private:
     FrameCounterStepMode step_mode{FrameCounterStepMode::FourStep};
     bool raise_irq{false};
 
-    byte enabled_channels{0x00};
+    byte prev_enabled_channels{0x00};
 
     void UpdateFrameCounter(byte data);
     static float Mix(const byte pulse1_sample, const byte pulse2_sample);
+
+    static bool ChannelEnabled(const byte reg, ApuChannel channel) {
+        return (reg & static_cast<byte>(channel)) != 0x00;
+    }
 };
