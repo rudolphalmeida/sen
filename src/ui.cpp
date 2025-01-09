@@ -205,7 +205,7 @@ Ui::Ui() {
     deviceConfig.dataCallback = [](ma_device* device, void* output, const void*,
                                    const ma_uint32 frame_count) {
         const auto ui = static_cast<Ui*>(device->pUserData);
-        ui->RunForSamples(frame_count, output);
+        ui->CopySamplesIntoOutput(frame_count, output);
     };
     deviceConfig.pUserData = this;
 
@@ -221,7 +221,7 @@ Ui::Ui() {
     }
 }
 
-void Ui::RunForSamples(const uint32_t samples, void * output_ptr) {
+void Ui::CopySamplesIntoOutput(const uint32_t samples, void * output_ptr) {
     if (!emulator_context || !emulation_running) {
         std::memset(output_ptr, 0x00, samples * sizeof(float));
         return;
