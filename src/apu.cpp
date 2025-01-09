@@ -12,17 +12,23 @@ void Apu::Tick(const uint64_t cpu_cycles) {
     if (cpu_cycles_into_frame == 7457) {
         // TODO: Step 1
         //       Clock envelopes and triangle linear counter
+        pulse_1.ClockEnvelope();
+        pulse_2.ClockEnvelope();
     }
 
     if (cpu_cycles_into_frame == 14913) {
         // TODO: Step 2
         //       Clock envelopes and triangle linear counter
         //       Clock length counters and sweep units
+        pulse_1.ClockEnvelope();
+        pulse_2.ClockEnvelope();
     }
 
     if (cpu_cycles_into_frame == 22371) {
         // TODO: Step 3
         //       Clock envelopes and triangle linear counter
+        pulse_1.ClockEnvelope();
+        pulse_2.ClockEnvelope();
     }
 
     if (step_mode == FrameCounterStepMode::FourStep && cpu_cycles_into_frame == 29828 && raise_irq) {
@@ -33,6 +39,8 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         // TODO: Step 4
         //       Clock envelopes and triangle linear counter if 4 step
         //       Clock length counters and sweep units if 4 step
+        pulse_1.ClockEnvelope();
+        pulse_2.ClockEnvelope();
 
         *irq_requested = raise_irq;
     }
@@ -47,13 +55,19 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         // TODO: Step 5
         //       Clock envelopes and triangle linear counter
         //       Clock length counters and sweep units
+        pulse_1.ClockEnvelope();
+        pulse_2.ClockEnvelope();
     }
 
     if (step_mode == FrameCounterStepMode::FiveStep && cpu_cycles_into_frame == 37282) {
         frame_begin_cpu_cycle = cpu_cycles;
     }
 
-    if ((cpu_cycles & 0b1) == 0x00) return;
+    if ((cpu_cycles & 0b1) == 0x00) {
+        // Pulse timers are updated every APU cycle
+        pulse_1.ClockTimer();
+        pulse_2.ClockTimer();
+    };
 
     const auto pulse1_sample = (enabled_channels & static_cast<byte>(ApuChannel::Pulse1)) ? pulse_1.GetSample() : 0x00;
     const auto pulse2_sample = (enabled_channels & static_cast<byte>(ApuChannel::Pulse2)) ? pulse_2.GetSample() : 0x00;
@@ -96,5 +110,5 @@ float Apu::Mix(const byte pulse1_sample, const byte pulse2_sample) {
     if (pulse1_sample != 0x00 || pulse2_sample != 0x00) {
         pulse_out = 95.88f / ((8128.0f / (pulse1_sample + pulse2_sample)) + 100.0f);
     }
-    return pulse_out;
+    return pulse_out * 100.0f;
 }

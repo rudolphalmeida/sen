@@ -28,19 +28,13 @@ enum class FrameCounterStepMode {
 
 class ApuPulse {
 public:
-    byte GetSample() {
-        if (timer == 0x7FF) {
-            // TODO: Clock the waveform generator
-        }
-        timer = timer != 0x00 ? (timer - 1) & 0x7FF : timer;
+    byte GetSample() const {
         if (timer < 8) {
             return 0x00;
         }
 
-        const auto duty = (duty_cycle & (1 << sequencer_dc_index)) >> sequencer_dc_index;
-        sequencer_dc_index = (sequencer_dc_index - 1) & 0x07;
-
-        return duty * volume_envelope;
+        const auto duty = (duty_cycle & (1 << duty_counter_bit)) >> duty_counter_bit;
+        return duty * (constant_volume ? volume_reload : envelope_decay_level);
     }
 
     void WriteRegister(const byte offset, const byte data) {
@@ -53,20 +47,51 @@ public:
         }
     }
 
+    void ClockTimer() {
+        if (timer == 0x00) {
+            timer = timer_reload;
+            duty_counter_bit = (duty_counter_bit - 1) & 0x07;
+        } else {
+            timer--;
+        }
+    }
+
+    void ClockEnvelope() {
+        if (!envelope_start) {
+            if (envelope_divider == 0x00) {
+                envelope_divider = volume_reload;
+                if (envelope_decay_level == 0x00 && length_counter_halt) {
+                    envelope_decay_level = 15;
+                } else if (envelope_decay_level != 0x00) {
+                    envelope_decay_level--;
+                }
+            }
+        } else {
+            envelope_start = false;
+            envelope_decay_level = 15;
+            envelope_divider = volume_reload;
+        }
+    }
+
 private:
-    word timer{};
+    word timer{}, timer_reload{};
     byte length_counter_load{};
 
-    byte sequencer_dc_index{0x00};
+    byte duty_counter_bit{0x00};
 
     byte duty_cycle{};
     bool length_counter_halt{false};
     bool constant_volume{false};
-    byte volume_envelope{};
+    byte volume_reload{};
 
+    bool envelope_start{false};
+    byte envelope_decay_level{};
+    byte envelope_divider{};
+
+    byte volume{};
 
     void UpdateVolume(const byte volume) {
-        volume_envelope = volume & 0x0F;
+        volume_reload = volume & 0x0F;
         constant_volume = (volume & 0x10) != 0x00;
         length_counter_halt = (volume & 0x20) != 0x00;
         duty_cycle = DUTY_CYCLES[(volume & 0xC0) >> 6];
@@ -77,11 +102,13 @@ private:
     }
 
     void UpdateTimerLow(const byte timer_low) {
-        timer = (timer & 0xFF00) | timer_low;
+        timer_reload = (timer_reload & 0xFF00) | timer_low;
     }
 
     void UpdateTimerHigh(const byte timer_high) {
-        timer = (timer & ~0x0700) | (static_cast<word>(timer_high & 0x07) << 8);
+        timer_reload = (timer_reload & ~0x0700) | (static_cast<word>(timer_high & 0x07) << 8);
+        envelope_start = true;
+        duty_counter_bit = 0x00;
         // TODO: Writing to $4003/$4007 reloads the length counter, restarts the envelope, and resets the phase of the pulse generator.
     }
 };
