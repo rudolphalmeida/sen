@@ -34,6 +34,7 @@ void InitTexture(const GLuint id) {
 Ui::Ui() {
     InitSDL();
     InitImGui();
+    InitSDLAudio();
 
     // Setup OpenGL textures for drawing
     glGenTextures(1, &pattern_table_left_texture);
@@ -71,9 +72,11 @@ void Ui::InitSDL() {
 
     const auto width = settings.Width();
     const auto height = settings.Height();
-    constexpr auto window_flags = SDL_WindowFlags::SDL_WINDOW_RESIZABLE | SDL_WindowFlags::SDL_WINDOW_OPENGL;
+    constexpr auto window_flags =
+        SDL_WindowFlags::SDL_WINDOW_RESIZABLE | SDL_WindowFlags::SDL_WINDOW_OPENGL;
 
-    window = SDL_CreateWindow("sen - NES Emulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, window_flags);
+    window = SDL_CreateWindow("sen - NES Emulator", SDL_WINDOWPOS_UNDEFINED,
+                              SDL_WINDOWPOS_UNDEFINED, width, height, window_flags);
     if (window == nullptr) {
         spdlog::error("Failed to create SDL2 window: {}", SDL_GetError());
         std::exit(-1);
@@ -85,9 +88,28 @@ void Ui::InitSDL() {
         std::exit(-1);
     }
     SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1); // Enable vsync
+    SDL_GL_SetSwapInterval(1);  // Enable vsync
 
     spdlog::info("Initialized SDL2 window and OpenGL context");
+}
+
+void Ui::InitSDLAudio() {
+    SDL_AudioSpec spec = {
+        .freq = DEVICE_SAMPLE_RATE,
+        .format = AUDIO_F32,
+        .channels = 1,
+        .samples = 4096,
+        .callback = [](void * userData, Uint8 * stream, int length) {
+            spdlog::debug("Audio callback len = {}", length);
+            std::memset(static_cast<void*>(stream), 0x00, length);
+        },
+        .userdata = static_cast<void*>(this),
+    };
+
+    if (SDL_OpenAudio(&spec, nullptr) < 0) {
+        spdlog::error("Failed to initialize audio device: {}", SDL_GetError());
+        std::exit(-1);
+    }
 }
 
 void Ui::InitImGui() const {

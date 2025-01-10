@@ -8,7 +8,6 @@
 
 #include "constants.hxx"
 #include "cqueue.hpp"
-#include "util.hxx"
 
 constexpr byte DUTY_CYCLES[4] = {
     0b10000000,

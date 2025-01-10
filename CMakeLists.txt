@@ -11,6 +11,7 @@ find_package(fmt CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(nfd CONFIG REQUIRED)
 find_package(libconfig CONFIG REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
 
 add_library(sen
     include/constants.hxx
@@ -60,10 +61,12 @@ target_link_libraries(sen_sdl2 PRIVATE
     nfd::nfd
     imgui::imgui
     libconfig::config libconfig::config++
+    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
+    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)
-target_link_libraries(cpu_tests PRIVATE libsen Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
+target_link_libraries(cpu_tests PRIVATE sen Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
 
 include(CTest)
 include(Catch)

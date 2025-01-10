@@ -28,6 +28,7 @@ class Ui {
 
     SDL_Window* window{};
     SDL_GLContext gl_context{};
+    SDL_AudioStream * audio_stream{};
 
     std::optional<std::filesystem::path> loaded_rom_file_path = std::nullopt;
     std::shared_ptr<Sen> emulator_context{};
@@ -45,6 +46,7 @@ class Ui {
     bool open{true};
 
     void InitSDL();
+    void InitSDLAudio();
     void InitImGui() const;
 
     void LoadRomFile(const char* path);
