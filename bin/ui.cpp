@@ -21,8 +21,39 @@
 #define DEVICE_SAMPLE_RATE 44100
 
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
+constexpr auto GLSL_VERSION = "#version 130";
+
+void InitTexture(const GLuint id) {
+    glBindTexture(GL_TEXTURE_2D, id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+}
 
 Ui::Ui() {
+    InitSDL();
+    InitImGui();
+
+    // Setup OpenGL textures for drawing
+    glGenTextures(1, &pattern_table_left_texture);
+    InitTexture(pattern_table_left_texture);
+
+    glGenTextures(1, &pattern_table_right_texture);
+    InitTexture(pattern_table_right_texture);
+
+    glGenTextures(1, &display_texture);
+    InitTexture(display_texture);
+
+    glGenTextures(64, sprite_textures.data());
+    for (int i = 0; i < 64; i++) {
+        InitTexture(sprite_textures[i]);
+    }
+
+    SetFilter(settings.GetFilterType());
+}
+
+void Ui::InitSDL() {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
         spdlog::error("Failed to initialize SDL2: {}", SDL_GetError());
         std::exit(-1);
@@ -30,7 +61,6 @@ Ui::Ui() {
     spdlog::info("Initialized SDL2");
 
     // GL 3.0 + GLSL 130
-    const auto glsl_version = "#version 130";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -58,7 +88,9 @@ Ui::Ui() {
     SDL_GL_SetSwapInterval(1); // Enable vsync
 
     spdlog::info("Initialized SDL2 window and OpenGL context");
+}
 
+void Ui::InitImGui() const {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -77,7 +109,7 @@ Ui::Ui() {
     constexpr float baseFontSize = 24.0f;
     constexpr float iconFontSize =
         baseFontSize * 2.0f / 3.0f;  // FontAwesome fonts need to have their sizes reduced
-                                     // by 2.0f/3.0f in order to align correctly
+    // by 2.0f/3.0f in order to align correctly
 
     // merge in icons from Font Awesome
     static constexpr ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
@@ -93,54 +125,21 @@ Ui::Ui() {
     switch (settings.GetUiStyle()) {
         case UiStyle::Classic:
             ImGui::StyleColorsClassic();
-            break;
+        break;
         case UiStyle::Light:
             ImGui::StyleColorsLight();
-            break;
+        break;
         case UiStyle::Dark:
             ImGui::StyleColorsDark();
-            break;
+        break;
         case UiStyle::SuperDark:
             EmbraceTheDarkness();
-            break;
+        break;
     }
 
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
-    ImGui_ImplOpenGL3_Init(glsl_version);
-
-    // Setup OpenGL textures for drawing
-    glGenTextures(1, &pattern_table_left_texture);
-    glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glGenTextures(1, &pattern_table_right_texture);
-    glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glGenTextures(1, &display_texture);
-    glBindTexture(GL_TEXTURE_2D, display_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glGenTextures(64, sprite_textures.data());
-    for (int i = 0; i < 64; i++) {
-        glBindTexture(GL_TEXTURE_2D, sprite_textures[i]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    }
-
-    SetFilter(settings.GetFilterType());
+    ImGui_ImplOpenGL3_Init(GLSL_VERSION);
 }
 
 void Ui::HandleInput() {

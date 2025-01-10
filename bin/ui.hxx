@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <SDL2/SDL.h>
+#include <SDL_opengl.h>
 
 #include "constants.hxx"
 #include "debugger.hxx"
@@ -34,14 +35,17 @@ class Ui {
 
     Debugger debugger{};
 
-    unsigned int pattern_table_left_texture{};
-    unsigned int pattern_table_right_texture{};
-    unsigned int display_texture{};
-    std::array<unsigned int, 64> sprite_textures{};
+    GLuint pattern_table_left_texture{};
+    GLuint pattern_table_right_texture{};
+    GLuint display_texture{};
+    std::array<GLuint , 64> sprite_textures{};
 
     std::unique_ptr<Filter> filter{};
 
     bool open{true};
+
+    void InitSDL();
+    void InitImGui() const;
 
     void LoadRomFile(const char* path);
 
