@@ -55,7 +55,7 @@ Ui::Ui() {
 }
 
 void Ui::InitSDL() {
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
         spdlog::error("Failed to initialize SDL2: {}", SDL_GetError());
         std::exit(-1);
     }
