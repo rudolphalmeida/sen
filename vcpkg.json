@@ -2,7 +2,7 @@
   "dependencies": [
     "fmt",
     {
-      "name": "glfw3",
+      "name": "sdl2",
       "features": ["wayland"]
     },
     "nlohmann-json",
@@ -10,10 +10,9 @@
     "catch2",
     "libconfig",
     "nativefiledialog-extended",
-    "miniaudio",
     {
       "name": "imgui",
-      "features": ["opengl3-binding", "glfw-binding", "docking-experimental"]
+      "features": ["opengl3-binding", "sdl2-binding", "docking-experimental"]
     }
   ],
   "name": "sen",

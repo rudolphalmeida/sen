@@ -2,7 +2,10 @@
 // Created by rudolph on 19/12/24.
 //
 
-#include "ui.hxx"
+#include <ranges>
+#include <algorithm>
+
+#include "filters.hxx"
 
 PostProcessedData NoFilter::PostProcess(const std::span<unsigned short, 61440> nes_pixels, int) {
     if (pixels.size() != NES_WIDTH * NES_HEIGHT) {

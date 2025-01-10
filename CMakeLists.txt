@@ -7,15 +7,12 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
-find_package(glfw3 CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(nfd CONFIG REQUIRED)
 find_package(libconfig CONFIG REQUIRED)
 
-find_path(MINIAUDIO_INCLUDE_DIRS "miniaudio.h")
-
-add_library(libsen
+add_library(sen
     include/constants.hxx
     include/sen.hxx src/sen.cpp
     include/util.hxx src/util.cpp
@@ -28,42 +25,41 @@ add_library(libsen
     src/apu.cpp include/apu.hxx
     lib/cqueue.hpp
 )
-target_link_libraries(libsen PRIVATE
+target_link_libraries(sen PRIVATE
     spdlog::spdlog
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     fmt::fmt
 )
-target_include_directories(libsen PUBLIC include lib)
+target_include_directories(sen PUBLIC include lib)
 
-add_executable(sen
-        src/main.cpp
-        include/ui.hxx
-        src/ui.cpp
+add_executable(sen_sdl2
+        bin/main.cpp
+        bin/ui.hxx
+        bin/ui.cpp
         lib/imgui_memory_editor.h
         lib/stb_image_write.h
         lib/stb_image_write.cpp
-        lib/miniaudio.cpp
         lib/crt_core.h
         lib/crt_core.c
         lib/crt_nes.h
         lib/crt_nes.c
-        src/filters.cpp
+        bin/filters.cpp
         lib/IconsFontAwesome6.h
         lib/ImGuiNotify.hpp
+        bin/settings.hxx
+        bin/filters.hxx
 )
-target_include_directories(sen PRIVATE include lib ${MINIAUDIO_INCLUDE_DIRS})
-target_link_libraries(sen PRIVATE
-    libsen
+target_include_directories(sen_sdl2 PRIVATE include lib bin)
+target_link_libraries(sen_sdl2 PRIVATE
+    sen
     spdlog::spdlog
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
-    glfw
     OpenGL::GL
     nfd::nfd
     imgui::imgui
     libconfig::config libconfig::config++
-    dl pthread m
 )
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)

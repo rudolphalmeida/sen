@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 #define NES_WIDTH 256
 #define NES_HEIGHT 240

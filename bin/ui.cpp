@@ -1,20 +1,20 @@
 #include <span>
 
-#include <GLFW/glfw3.h>
-#include <fmt/core.h>
-#include <imgui.h>
+#include "ui.hxx"
+
 #include <nfd.h>
+#include <SDL2/SDL_opengl.h>
+#include <imgui.h>
+#include <imgui_impl_sdl2.h>
+#include <imgui_impl_opengl3.h>
+#include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
-#include <libconfig.h++>
 
 #include "IconsFontAwesome6.h"
-#include "imgui_memory_editor.h"
-
 #include "ImGuiNotify.hpp"
+#include "imgui_memory_editor.h"
+#include "util.hxx"
 
-#include "constants.hxx"
-#include "cpu.hxx"
-#include "ui.hxx"
 
 #define DEVICE_FORMAT ma_format_f32
 #define DEVICE_CHANNELS 1
@@ -22,94 +22,42 @@
 
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 
-static void glfw_error_callback(int error, const char* description) {
-    spdlog::error("GLFW error ({}): {}", error, description);
-}
-
 Ui::Ui() {
-    try {
-        // TODO: Change this path to be the standard config directory for each OS
-        settings.cfg.readFile("test.cfg");
-    } catch (const libconfig::FileIOException&) {
-        spdlog::info("Failed to find settings. Using default");
-    } catch (const libconfig::ParseException& e) {
-        spdlog::error("Failed to parse settings in file {} with {}. Using default", e.getFile(),
-                      e.getLine());
-    }
-
-    libconfig::Setting& root = settings.cfg.getRoot();
-    if (!root.exists("ui")) {
-        root.add("ui", libconfig::Setting::TypeGroup);
-    }
-    libconfig::Setting& ui_settings = root["ui"];
-    int scale_factor = DEFAULT_SCALE_FACTOR;
-    if (!ui_settings.exists("scale")) {
-        ui_settings.add("scale", libconfig::Setting::TypeInt) = DEFAULT_SCALE_FACTOR;
-    } else {
-        scale_factor = settings.ScaleFactor();
-    }
-    if (!ui_settings.exists("recents")) {
-        ui_settings.add("recents", libconfig::Setting::TypeArray);
-    }
-    if (!ui_settings.exists("style")) {
-        ui_settings.add("style", libconfig::Setting::TypeInt) = static_cast<int>(UiStyle::Dark);
-    }
-    if (!ui_settings.exists("filter")) {
-        ui_settings.add("filter", libconfig::Setting::TypeInt) = static_cast<int>(FilterType::NoFilter);
-    }
-    if (!ui_settings.exists("open_panels")) {
-        ui_settings.add("open_panels", libconfig::Setting::TypeInt) = 0;
-    } else {
-        const auto saved_open_panels = settings.GetOpenPanels();
-        for (int i = 0; i < NUM_PANELS; i++) {
-            open_panels[i] = (saved_open_panels & (1 << i)) != 0;
-        }
-    }
-    int width = NES_WIDTH * DEFAULT_SCALE_FACTOR + 15;
-    int height = NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55;
-    if (!ui_settings.exists("width")) {
-        ui_settings.add("width", libconfig::Setting::TypeInt) = width;
-    } else {
-        width = settings.Width();
-    }
-    if (!ui_settings.exists("height")) {
-        ui_settings.add("height", libconfig::Setting::TypeInt) = height;
-    } else {
-        height = settings.Height();
-    }
-
-    glfwSetErrorCallback(glfw_error_callback);
-    if (!glfwInit()) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
+        spdlog::error("Failed to initialize SDL2: {}", SDL_GetError());
         std::exit(-1);
     }
-    spdlog::info("Initialized GLFW");
+    spdlog::info("Initialized SDL2");
 
-    // GL 3.2 + GLSL 150
-    const auto glsl_version = "#version 150";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-#if defined(__APPLE__)
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);  // Required on Mac
-#endif
+    // GL 3.0 + GLSL 130
+    const auto glsl_version = "#version 130";
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-    window = glfwCreateWindow(width, height, "sen - NES Emulator", nullptr, nullptr);
+    const auto width = settings.Width();
+    const auto height = settings.Height();
+    constexpr auto window_flags = SDL_WindowFlags::SDL_WINDOW_RESIZABLE | SDL_WindowFlags::SDL_WINDOW_OPENGL;
+
+    window = SDL_CreateWindow("sen - NES Emulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, window_flags);
     if (window == nullptr) {
-        spdlog::error("Failed to create GLFW3 window");
+        spdlog::error("Failed to create SDL2 window: {}", SDL_GetError());
         std::exit(-1);
     }
-    glfwMakeContextCurrent(window);
-    // glfwSwapInterval(1);  // Enable vsync
 
-    glfwSetWindowUserPointer(window, static_cast<void*>(this));
-    glfwSetWindowSizeCallback(window, [](GLFWwindow* _window, const int _width, const int _height) {
-        const auto self = static_cast<Ui*>(glfwGetWindowUserPointer(_window));
-        self->settings.Width(_width);
-        self->settings.Height(_height);
-        glViewport(0, 0, _width, _height);
-    });
+    gl_context = SDL_GL_CreateContext(window);
+    if (gl_context == nullptr) {
+        spdlog::error("Failed to create SDL2 OpenGL context: {}", SDL_GetError());
+        std::exit(-1);
+    }
+    SDL_GL_MakeCurrent(window, gl_context);
+    SDL_GL_SetSwapInterval(1); // Enable vsync
 
-    spdlog::info("Initialized GLFW window and OpenGL context");
+    spdlog::info("Initialized SDL2 window and OpenGL context");
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -120,8 +68,7 @@ Ui::Ui() {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
 #ifdef WIN32
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Multi-Viewport /
-                                                         // Platform Windows
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Multi-Viewport
 #endif
     spdlog::info("Initialized ImGui context");
 
@@ -142,7 +89,6 @@ Ui::Ui() {
                                  icons_ranges);
 
     SetImGuiStyle();
-
     // Setup Dear ImGui style
     switch (settings.GetUiStyle()) {
         case UiStyle::Classic:
@@ -160,7 +106,7 @@ Ui::Ui() {
     }
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Setup OpenGL textures for drawing
@@ -195,56 +141,118 @@ Ui::Ui() {
     }
 
     SetFilter(settings.GetFilterType());
+}
 
-    ma_device_config deviceConfig;
-
-    deviceConfig = ma_device_config_init(ma_device_type_playback);
-    deviceConfig.playback.format = DEVICE_FORMAT;
-    deviceConfig.playback.channels = DEVICE_CHANNELS;
-    deviceConfig.sampleRate = DEVICE_SAMPLE_RATE;
-    deviceConfig.dataCallback = [](ma_device* device, void* output, const void*,
-                                   const ma_uint32 frame_count) {
-        const auto ui = static_cast<Ui*>(device->pUserData);
-        ui->CopySamplesIntoOutput(frame_count, output);
-    };
-    deviceConfig.pUserData = this;
-
-    if (ma_device_init(nullptr, &deviceConfig, &device) != MA_SUCCESS) {
-        spdlog::error("Failed to open playback device.\n");
-        std::exit(-4);
-    }
-
-    if (ma_device_start(&device) != MA_SUCCESS) {
-        spdlog::error("Failed to start playback device.\n");
-        ma_device_uninit(&device);
-        std::exit(-5);
+void Ui::HandleInput() {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        ImGui_ImplSDL2_ProcessEvent(&event);
+        if (event.type == SDL_QUIT)
+            open = false;
+        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
+            event.window.windowID == SDL_GetWindowID(window))
+            open = false;
     }
 }
 
-void Ui::CopySamplesIntoOutput(const uint32_t samples, void * output_ptr) {
-    if (!emulator_context || !emulation_running) {
-        std::memset(output_ptr, 0x00, samples * sizeof(float));
-        return;
+void Ui::SetFilter(const FilterType filter) {
+    switch (filter) {
+        case FilterType::NoFilter:
+            this->filter = std::make_unique<NoFilter>();
+            break;
+        case FilterType::Ntsc:
+            this->filter = std::make_unique<NtscFilter>(settings.ScaleFactor());
+            break;
     }
-
-    emulator_context->CopySamplesIntoOutput(samples, static_cast<float*>(output_ptr));
 }
 
-void Ui::HandleInput() const {
-    if (!emulator_context || !emulation_running) {
-        return;
-    }
+void Ui::EmbraceTheDarkness() {
+    ImVec4* colors = ImGui::GetStyle().Colors;
+    colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+    colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+    colors[ImGuiCol_WindowBg] = ImVec4(0.10f, 0.10f, 0.10f, 1.00f);
+    colors[ImGuiCol_ChildBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_PopupBg] = ImVec4(0.19f, 0.19f, 0.19f, 0.92f);
+    colors[ImGuiCol_Border] = ImVec4(0.19f, 0.19f, 0.19f, 0.29f);
+    colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.24f);
+    colors[ImGuiCol_FrameBg] = ImVec4(0.05f, 0.05f, 0.05f, 0.54f);
+    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.19f, 0.19f, 0.19f, 0.54f);
+    colors[ImGuiCol_FrameBgActive] = ImVec4(0.20f, 0.22f, 0.23f, 1.00f);
+    colors[ImGuiCol_TitleBg] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+    colors[ImGuiCol_MenuBarBg] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+    colors[ImGuiCol_ScrollbarBg] = ImVec4(0.05f, 0.05f, 0.05f, 0.54f);
+    colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.34f, 0.34f, 0.34f, 0.54f);
+    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.40f, 0.40f, 0.40f, 0.54f);
+    colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.56f, 0.56f, 0.56f, 0.54f);
+    colors[ImGuiCol_CheckMark] = ImVec4(0.33f, 0.67f, 0.86f, 1.00f);
+    colors[ImGuiCol_SliderGrab] = ImVec4(0.34f, 0.34f, 0.34f, 0.54f);
+    colors[ImGuiCol_SliderGrabActive] = ImVec4(0.56f, 0.56f, 0.56f, 0.54f);
+    colors[ImGuiCol_Button] = ImVec4(0.05f, 0.05f, 0.05f, 0.54f);
+    colors[ImGuiCol_ButtonHovered] = ImVec4(0.19f, 0.19f, 0.19f, 0.54f);
+    colors[ImGuiCol_ButtonActive] = ImVec4(0.20f, 0.22f, 0.23f, 1.00f);
+    colors[ImGuiCol_Header] = ImVec4(0.00f, 0.00f, 0.00f, 0.52f);
+    colors[ImGuiCol_HeaderHovered] = ImVec4(0.00f, 0.00f, 0.00f, 0.36f);
+    colors[ImGuiCol_HeaderActive] = ImVec4(0.20f, 0.22f, 0.23f, 0.33f);
+    colors[ImGuiCol_Separator] = ImVec4(0.28f, 0.28f, 0.28f, 0.29f);
+    colors[ImGuiCol_SeparatorHovered] = ImVec4(0.44f, 0.44f, 0.44f, 0.29f);
+    colors[ImGuiCol_SeparatorActive] = ImVec4(0.40f, 0.44f, 0.47f, 1.00f);
+    colors[ImGuiCol_ResizeGrip] = ImVec4(0.28f, 0.28f, 0.28f, 0.29f);
+    colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.44f, 0.44f, 0.44f, 0.29f);
+    colors[ImGuiCol_ResizeGripActive] = ImVec4(0.40f, 0.44f, 0.47f, 1.00f);
+    colors[ImGuiCol_Tab] = ImVec4(0.00f, 0.00f, 0.00f, 0.52f);
+    colors[ImGuiCol_TabHovered] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+    colors[ImGuiCol_TabActive] = ImVec4(0.20f, 0.20f, 0.20f, 0.36f);
+    colors[ImGuiCol_TabUnfocused] = ImVec4(0.00f, 0.00f, 0.00f, 0.52f);
+    colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+    colors[ImGuiCol_DockingPreview] = ImVec4(0.33f, 0.67f, 0.86f, 1.00f);
+    colors[ImGuiCol_DockingEmptyBg] = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
+    colors[ImGuiCol_PlotLines] = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
+    colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
+    colors[ImGuiCol_PlotHistogram] = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
+    colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
+    colors[ImGuiCol_TableHeaderBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.52f);
+    colors[ImGuiCol_TableBorderStrong] = ImVec4(0.00f, 0.00f, 0.00f, 0.52f);
+    colors[ImGuiCol_TableBorderLight] = ImVec4(0.28f, 0.28f, 0.28f, 0.29f);
+    colors[ImGuiCol_TableRowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.00f, 1.00f, 1.00f, 0.06f);
+    colors[ImGuiCol_TextSelectedBg] = ImVec4(0.20f, 0.22f, 0.23f, 1.00f);
+    colors[ImGuiCol_DragDropTarget] = ImVec4(0.33f, 0.67f, 0.86f, 1.00f);
+    colors[ImGuiCol_NavHighlight] = ImVec4(1.00f, 0.00f, 0.00f, 1.00f);
+    colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 0.00f, 0.00f, 0.70f);
+    colors[ImGuiCol_NavWindowingDimBg] = ImVec4(1.00f, 0.00f, 0.00f, 0.20f);
+    colors[ImGuiCol_ModalWindowDimBg] = ImVec4(1.00f, 0.00f, 0.00f, 0.35f);
+}
 
-    for (auto [key, controller_key] : KEYMAP) {
-        if (glfwGetKey(window, key) == GLFW_PRESS) {
-            emulator_context->ControllerPress(ControllerPort::Port1, controller_key);
-        }
-    }
+void Ui::SetImGuiStyle() {
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowPadding = ImVec2(8.00f, 8.00f);
+    style.FramePadding = ImVec2(5.00f, 4.00f);
+    style.CellPadding = ImVec2(6.00f, 6.00f);
+    style.ItemSpacing = ImVec2(6.00f, 6.00f);
+    style.ItemInnerSpacing = ImVec2(6.00f, 6.00f);
+    style.TouchExtraPadding = ImVec2(0.00f, 0.00f);
+    style.IndentSpacing = 25;
+    style.ScrollbarSize = 15;
+    style.GrabMinSize = 10;
+    style.WindowBorderSize = 1;
+    style.ChildBorderSize = 1;
+    style.PopupBorderSize = 1;
+    style.FrameBorderSize = 1;
+    style.TabBorderSize = 1;
+    style.WindowRounding = 7;
+    style.ChildRounding = 4;
+    style.FrameRounding = 3;
+    style.PopupRounding = 4;
+    style.ScrollbarRounding = 9;
+    style.GrabRounding = 3;
+    style.LogSliderDeadzone = 4;
+    style.TabRounding = 4;
 }
 
 void Ui::MainLoop() {
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
+    while (open) {
         HandleInput();
 
         if (emulation_running) {
@@ -253,14 +261,31 @@ void Ui::MainLoop() {
 
         RenderUi();
 
-        glfwSwapBuffers(window);
+        SDL_GL_SwapWindow(window);
     }
+}
+
+Ui::~Ui() {
+    try {
+        settings.cfg.writeFile("test.cfg");
+    } catch (const libconfig::FileIOException& e) {
+        spdlog::error("Failed to save settings: {}", e.what());
+    }
+
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+
+    SDL_GL_DeleteContext(gl_context);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 }
 
 void Ui::RenderUi() {
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
 #ifdef IMGUI_HAS_VIEWPORT
@@ -310,22 +335,10 @@ void Ui::RenderUi() {
 
     ImGui::PopStyleVar();
 
-
-    // Notifications style setup
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f); // Disable round borders
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f); // Disable borders
-
-    // Notifications color setup
-    // ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.10f, 0.10f, 0.10f, 1.00f)); // Background color
-
-    // Main rendering function
     ImGui::RenderNotifications();
-
-    //——————————————————————————————— WARNING ———————————————————————————————
-    // Argument MUST match the amount of ImGui::PushStyleVar() calls
     ImGui::PopStyleVar(2);
-    // Argument MUST match the amount of ImGui::PushStyleColor() calls
-    // ImGui::PopStyleColor(1);
 
     ImGui::EndFrame();
 
@@ -378,7 +391,7 @@ void Ui::ShowMenuBar() {
                 ImGui::EndMenu();
             }
             if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
-                glfwSetWindowShouldClose(window, true);
+                open = false;
             }
             ImGui::EndMenu();
         }
@@ -445,39 +458,34 @@ void Ui::ShowMenuBar() {
                 ImGui::EndMenu();
             }
 
+            auto open_panels = settings.GetOpenPanels();
             if (ImGui::MenuItem("Debugger", nullptr,
                                 open_panels[static_cast<int>(UiPanel::Debugger)],
                                 emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::Debugger)] =
-                    !open_panels[static_cast<int>(UiPanel::Debugger)];
+                settings.TogglePanel(UiPanel::Debugger);
             }
             if (ImGui::MenuItem("Registers", nullptr,
                                 open_panels[static_cast<int>(UiPanel::Registers)],
                                 emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::Registers)] =
-                    !open_panels[static_cast<int>(UiPanel::Registers)];
+                settings.TogglePanel(UiPanel::Registers);
             }
             if (ImGui::MenuItem("Opcodes", nullptr, open_panels[static_cast<int>(UiPanel::Opcodes)],
                                 emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::Opcodes)] =
-                    !open_panels[static_cast<int>(UiPanel::Opcodes)];
+                settings.TogglePanel(UiPanel::Opcodes);
             }
             if (ImGui::MenuItem("Pattern Tables", nullptr,
                                 open_panels[static_cast<int>(UiPanel::PatternTables)],
                                 emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::PatternTables)] =
-                    !open_panels[static_cast<int>(UiPanel::PatternTables)];
+                settings.TogglePanel(UiPanel::PatternTables);
             }
             if (ImGui::MenuItem("PPU Memory", nullptr,
                                 open_panels[static_cast<int>(UiPanel::PpuMemory)],
                                 emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::PpuMemory)] =
-                    !open_panels[static_cast<int>(UiPanel::PpuMemory)];
+                settings.TogglePanel(UiPanel::PpuMemory);
             }
             if (ImGui::MenuItem("Sprites", nullptr, open_panels[static_cast<int>(UiPanel::Sprites)],
                                 emulation_running)) {
-                open_panels[static_cast<int>(UiPanel::Sprites)] =
-                    !open_panels[static_cast<int>(UiPanel::Sprites)];
+                settings.TogglePanel(UiPanel::Sprites);
             }
             ImGui::EndMenu();
         }
@@ -487,6 +495,7 @@ void Ui::ShowMenuBar() {
 }
 
 void Ui::ShowRegisters() {
+    auto open_panels = settings.GetOpenPanels();
     if (!open_panels[static_cast<int>(UiPanel::Registers)]) {
         return;
     }
@@ -673,6 +682,7 @@ void Ui::DrawSprite(const size_t index,
 }
 
 void Ui::ShowOam() {
+    auto open_panels = settings.GetOpenPanels();
     if (!open_panels[static_cast<int>(UiPanel::Sprites)]) {
         return;
     }
@@ -768,6 +778,7 @@ void Ui::ShowOam() {
 }
 
 void Ui::ShowPpuMemory() {
+    auto open_panels = settings.GetOpenPanels();
     if (!open_panels[static_cast<int>(UiPanel::PpuMemory)]) {
         return;
     }
@@ -784,6 +795,7 @@ void Ui::ShowPpuMemory() {
 }
 
 void Ui::ShowOpcodes() {
+    auto open_panels = settings.GetOpenPanels();
     if (!open_panels[static_cast<int>(UiPanel::Opcodes)]) {
         return;
     }
@@ -884,6 +896,7 @@ void Ui::ShowOpcodes() {
 }
 
 void Ui::ShowDebugger() {
+    auto open_panels = settings.GetOpenPanels();
     if (!open_panels[static_cast<int>(UiPanel::Debugger)]) {
         return;
     }
@@ -927,6 +940,8 @@ void Ui::ShowDebugger() {
 }
 
 void Ui::ShowPatternTables() {
+    auto open_panels = settings.GetOpenPanels();
+
     if (!open_panels[static_cast<int>(UiPanel::PatternTables)]) {
         return;
     }
@@ -962,6 +977,19 @@ void Ui::ShowPatternTables() {
         glBindTexture(GL_TEXTURE_2D, 0);
     }
     ImGui::End();
+}
+
+void Ui::LoadRomFile(const char* path) {
+    loaded_rom_file_path = std::make_optional<std::filesystem::path>(path);
+    spdlog::info("Loading file {}", loaded_rom_file_path->string());
+
+    const auto rom = ReadBinaryFile(loaded_rom_file_path.value());
+    auto rom_args = RomArgs{rom};
+    emulator_context = std::make_shared<Sen>(rom_args);
+    debugger = Debugger(emulator_context);
+
+    const auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
+    SDL_SetWindowTitle(window, title.c_str());
 }
 
 std::vector<Pixel> Ui::RenderPixelsForPatternTable(const std::span<byte, 4096> pattern_table,
