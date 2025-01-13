@@ -16,10 +16,6 @@
 #include "util.hxx"
 
 
-#define DEVICE_FORMAT ma_format_f32
-#define DEVICE_CHANNELS 1
-#define DEVICE_SAMPLE_RATE 44100
-
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 constexpr auto GLSL_VERSION = "#version 130";
 
@@ -94,14 +90,16 @@ void Ui::InitSDL() {
 }
 
 void Ui::InitSDLAudio() {
+    audio_queue = std::make_shared<AudioStreamQueue>();
     SDL_AudioSpec spec = {
         .freq = DEVICE_SAMPLE_RATE,
-        .format = AUDIO_F32,
-        .channels = 1,
-        .samples = 4096,
+        .format = DEVICE_FORMAT,
+        .channels = DEVICE_CHANNELS,
+        .samples = 2048,
         .callback = [](void * userData, Uint8 * stream, int length) {
             spdlog::debug("Audio callback len = {}", length);
-            std::memset(static_cast<void*>(stream), 0x00, length);
+            auto ui = static_cast<Ui*>(userData);
+            ui->audio_queue->GetSamples(stream, length / sizeof(float));
         },
         .userdata = static_cast<void*>(this),
     };
@@ -277,6 +275,12 @@ void Ui::MainLoop() {
         HandleInput();
 
         if (emulation_running) {
+            if (audio_frame_delay != 0) {
+                audio_frame_delay--;
+                if (audio_frame_delay == 0) {
+                    SDL_PauseAudio(0);
+                }
+            }
             emulator_context->RunForOneFrame();
         }
 
@@ -925,6 +929,13 @@ void Ui::ShowDebugger() {
     if (ImGui::Begin("Debugger", &open_panels[static_cast<int>(UiPanel::Debugger)])) {
         if (ImGui::Button(emulation_running ? ICON_FA_PAUSE : ICON_FA_PLAY, ImVec2(30, 30))) {
             emulation_running = !emulation_running;
+            if (emulation_running) {
+                audio_frame_delay = MAX_AUDIO_FRAME_LAG;
+                audio_queue->Clear();
+                SDL_PauseAudio(0);
+            } else {
+                SDL_PauseAudio(1);
+            }
         }
         ImGui::SetItemTooltip("Play/Pause");
         ImGui::SameLine();
@@ -1006,11 +1017,12 @@ void Ui::LoadRomFile(const char* path) {
 
     const auto rom = ReadBinaryFile(loaded_rom_file_path.value());
     auto rom_args = RomArgs{rom};
-    emulator_context = std::make_shared<Sen>(rom_args);
+    emulator_context = std::make_shared<Sen>(rom_args, audio_queue);
     debugger = Debugger(emulator_context);
 
     const auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
     SDL_SetWindowTitle(window, title.c_str());
+    audio_frame_delay = MAX_AUDIO_FRAME_LAG;
 }
 
 std::vector<Pixel> Ui::RenderPixelsForPatternTable(const std::span<byte, 4096> pattern_table,

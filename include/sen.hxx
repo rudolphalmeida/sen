@@ -36,12 +36,11 @@ class Sen {
     static constexpr uint64_t CYCLES_PER_FRAME{29780};
 
    public:
-    explicit Sen(const RomArgs& rom_args);
+    explicit Sen(const RomArgs& rom_args, const std::shared_ptr<AudioQueue>& sink);
 
     void StepOpcode();
     void RunForOneScanline();
     void RunForOneFrame();
-    void CopySamplesIntoOutput(int, float *) const;
 
     void ControllerPress(ControllerPort port, ControllerKey key) const;
     void ControllerRelease(ControllerPort port, ControllerKey key) const;

@@ -8,13 +8,13 @@
 #include "mapper.hxx"
 #include "sen.hxx"
 
-Sen::Sen(const RomArgs& rom_args) {
+Sen::Sen(const RomArgs& rom_args, const std::shared_ptr<AudioQueue>& sink) {
     nmi_requested = std::make_shared<bool>(false);
     irq_requested = std::make_shared<bool>(false);
 
     auto cartridge = ParseRomFile(rom_args);
     ppu = std::make_shared<Ppu>(cartridge, nmi_requested);
-    apu = std::make_shared<Apu>(irq_requested);
+    apu = std::make_shared<Apu>(sink, irq_requested);
     controller = std::make_shared<Controller>();
 
     bus = std::make_shared<Bus>(std::move(cartridge), ppu, apu, controller);
@@ -58,16 +58,6 @@ void Sen::RunForOneFrame() {
     }
 
     carry_over_cycles = bus->cycles - target_cycles;
-}
-
-void Sen::CopySamplesIntoOutput(const int N, float * samples_ptr) const {
-    while (apu->samples.num_samples < N) {}
-
-    std::lock_guard<std::mutex> guard{apu->samples.samples_mutex};
-    auto dest_ptr = samples_ptr;
-    for (int i = 0; i < N; i++) {
-        *dest_ptr++ = apu->samples.samples.pop_front();
-    }
 }
 
 void Sen::ControllerPress(const ControllerPort port, const ControllerKey key) const {

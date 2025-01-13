@@ -84,9 +84,7 @@ void Apu::Tick(const uint64_t cpu_cycles) {
     const auto pulse1_sample = pulse_1.GetSample();
     const auto pulse2_sample = pulse_2.GetSample();
 
-    samples.num_samples += 1;
-    std::lock_guard<std::mutex> lock_guard{samples.samples_mutex};
-    samples.samples.push_back(Mix(pulse1_sample, pulse2_sample));
+    sink->PushSample(Mix(pulse1_sample, pulse2_sample));
 }
 
 byte Apu::CpuRead(const word address) {

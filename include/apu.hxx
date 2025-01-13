@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <SDL2/SDL_audio.h>
 #include <spdlog/spdlog.h>
 
 #include "constants.hxx"
@@ -24,6 +25,15 @@ constexpr byte LENGTH_COUNTER_LOADS[] = {
 enum class FrameCounterStepMode {
     FourStep,
     FiveStep,
+};
+
+class AudioQueue {
+   public:
+    virtual ~AudioQueue() = default;
+
+    virtual void PushSample(float sample) = 0;
+    virtual void GetSamples(uint8_t * output, size_t samples) = 0;
+    virtual void Clear() = 0;
 };
 
 class ApuPulse {
@@ -189,17 +199,9 @@ enum class ApuChannel: byte {
     Dmc = (1 << 4),
 };
 
-struct OutputSamples {
-    std::mutex samples_mutex{};
-    gto::cqueue<float> samples;
-    std::atomic_int num_samples{};
-};
-
 class Apu {
 public:
-    OutputSamples samples;
-
-    explicit Apu(InterruptRequestFlag irq_requested): irq_requested(std::move(irq_requested)) {}
+    explicit Apu(std::shared_ptr<AudioQueue> sink, InterruptRequestFlag irq_requested): sink{std::move(sink)}, irq_requested(std::move(irq_requested)) {}
 
     void Tick(uint64_t cpu_cycles);
 
@@ -211,6 +213,8 @@ public:
     friend class Debugger;
 
 private:
+    std::shared_ptr<AudioQueue> sink{};
+
     ApuPulse pulse_1{false}, pulse_2{true};
 
     InterruptRequestFlag irq_requested{};
@@ -222,7 +226,7 @@ private:
     byte prev_enabled_channels{0x00};
 
     void UpdateFrameCounter(byte data);
-    static float Mix(const byte pulse1_sample, const byte pulse2_sample);
+    static float Mix(byte pulse1_sample, byte pulse2_sample);
 
     static bool ChannelEnabled(const byte reg, ApuChannel channel) {
         return (reg & static_cast<byte>(channel)) != 0x00;

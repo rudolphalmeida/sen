@@ -22,6 +22,50 @@
 //     {GLFW_KEY_A, ControllerKey::Left},       {GLFW_KEY_D, ControllerKey::Right},
 // };
 
+#define DEVICE_FORMAT AUDIO_F32
+#define DEVICE_CHANNELS 1
+#define DEVICE_SAMPLE_RATE 44100
+
+#define MAX_AUDIO_FRAME_LAG 3
+
+class AudioStreamQueue final : public AudioQueue {
+   public:
+    SDL_AudioStream * stream{};
+
+    AudioStreamQueue() {
+        stream = SDL_NewAudioStream(DEVICE_FORMAT, DEVICE_CHANNELS, NTSC_NES_CLOCK_FREQ,
+                                    DEVICE_FORMAT, DEVICE_CHANNELS, DEVICE_SAMPLE_RATE);
+        if (stream == nullptr) {
+            spdlog::error("Failed to initialize SDL_AudioStream: {}", SDL_GetError());
+            std::exit(-1);
+        }
+    }
+
+    AudioStreamQueue(const AudioStreamQueue& other) = delete;
+    AudioStreamQueue(AudioStreamQueue&& other) noexcept = default;
+    AudioStreamQueue& operator=(const AudioStreamQueue& other) = delete;
+    AudioStreamQueue& operator=(AudioStreamQueue&& other) noexcept = default;
+
+    void PushSample(const float sample) override {
+        if (SDL_AudioStreamPut(stream, &sample, sizeof(float)) == -1) {
+            spdlog::error("Failed to push sample into audio queue");
+        }
+    }
+
+    void GetSamples(uint8_t* output, size_t samples) override {
+        if (SDL_AudioStreamGet(stream, output, samples * sizeof(float)) == -1) {
+            spdlog::error("Failed to get {} samples from audio stream", samples);
+        }
+    }
+
+    void Clear() override {
+        SDL_AudioStreamClear(stream);
+    }
+
+    ~AudioStreamQueue() override { SDL_FreeAudioStream(stream); }
+
+};
+
 class Ui {
    private:
     SenSettings settings{};
@@ -42,7 +86,9 @@ class Ui {
     std::array<GLuint , 64> sprite_textures{};
 
     std::unique_ptr<Filter> filter{};
+    std::shared_ptr<AudioQueue> audio_queue{};
 
+    int audio_frame_delay{MAX_AUDIO_FRAME_LAG};
     bool open{true};
 
     void InitSDL();
@@ -77,7 +123,7 @@ class Ui {
 
     void HandleInput();
 
-    void SetFilter(const FilterType filter);
+    void SetFilter(FilterType filter);
 
     static void EmbraceTheDarkness();
     static void SetImGuiStyle();
