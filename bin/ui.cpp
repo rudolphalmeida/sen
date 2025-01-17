@@ -84,7 +84,7 @@ void Ui::InitSDL() {
         std::exit(-1);
     }
     SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1);  // Enable vsync
+    SDL_GL_SetSwapInterval(0);  // Enable vsync
 
     spdlog::info("Initialized SDL2 window and OpenGL context");
 }
@@ -96,9 +96,8 @@ void Ui::InitSDLAudio() {
         .format = DEVICE_FORMAT,
         .channels = DEVICE_CHANNELS,
         .samples = 2048,
-        .callback = [](void * userData, Uint8 * stream, int length) {
-            spdlog::debug("Audio callback len = {}", length);
-            auto ui = static_cast<Ui*>(userData);
+        .callback = [](void * userData, Uint8 * stream, const int length) {
+            const auto ui = static_cast<Ui*>(userData);
             ui->audio_queue->GetSamples(stream, length / sizeof(float));
         },
         .userdata = static_cast<void*>(this),
@@ -726,10 +725,10 @@ void Ui::ShowOam() {
                 ImGui::Text("0x%.2X", sprite.oam_entry.tile_index);
                 {
                     const auto attribs = sprite.oam_entry.attribs;
-                    const auto palette_index = attribs & 0b11;
-                    const bool bg_over_sprite = (attribs & 0x20) != 0x00;
-                    const bool flip_horizontal = (attribs & 0x40) != 0x00;
                     const bool flip_vertical = (attribs & 0x80) != 0x00;
+                    const bool flip_horizontal = (attribs & 0x40) != 0x00;
+                    const bool bg_over_sprite = (attribs & 0x20) != 0x00;
+                    const auto palette_index = attribs & 0b11;
 
                     if (flip_vertical) {
                         ImGui::Text("V");
@@ -764,10 +763,10 @@ void Ui::ShowOam() {
                 ImGui::Text("0x%.2X", sprite.oam_entry.tile_index);
                 {
                     const auto attribs = sprite.oam_entry.attribs;
-                    const auto palette_index = attribs & 0b11;
-                    const bool bg_over_sprite = (attribs & 0x20) != 0x00;
-                    const bool flip_horizontal = (attribs & 0x40) != 0x00;
                     const bool flip_vertical = (attribs & 0x80) != 0x00;
+                    const bool flip_horizontal = (attribs & 0x40) != 0x00;
+                    const bool bg_over_sprite = (attribs & 0x20) != 0x00;
+                    const auto palette_index = attribs & 0b11;
 
                     if (flip_vertical) {
                         ImGui::Text("V");
@@ -1023,6 +1022,7 @@ void Ui::LoadRomFile(const char* path) {
     const auto title = fmt::format("Sen - {}", loaded_rom_file_path->filename().string());
     SDL_SetWindowTitle(window, title.c_str());
     audio_frame_delay = MAX_AUDIO_FRAME_LAG;
+    audio_queue->Clear();
 }
 
 std::vector<Pixel> Ui::RenderPixelsForPatternTable(const std::span<byte, 4096> pattern_table,

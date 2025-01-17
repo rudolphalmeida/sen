@@ -24,7 +24,6 @@ add_library(sen
     include/ppu.hxx src/ppu.cpp
     include/controller.hxx
     src/apu.cpp include/apu.hxx
-    lib/cqueue.hpp
 )
 target_link_libraries(sen PRIVATE
     spdlog::spdlog

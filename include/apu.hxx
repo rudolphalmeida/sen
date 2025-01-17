@@ -4,11 +4,9 @@
 
 #pragma once
 
-#include <SDL2/SDL_audio.h>
 #include <spdlog/spdlog.h>
 
 #include "constants.hxx"
-#include "cqueue.hpp"
 
 constexpr byte DUTY_CYCLES[4] = {
     0b10000000,

@@ -65,7 +65,7 @@ class NtscFilter final : public Filter {
         crt_init(&crt, NES_WIDTH * initial_scale_factor, NES_HEIGHT * initial_scale_factor,
                  CRT_PIX_FORMAT_RGB, reinterpret_cast<unsigned char*>(pixels.data()));
         crt.blend = 1;
-        crt.scanlines = 1;
+        crt.scanlines = 0;
     }
 
     PostProcessedData PostProcess(std::span<unsigned short, 61440> nes_pixels,
