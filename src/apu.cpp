@@ -14,6 +14,7 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         //       Clock envelopes and triangle linear counter
         pulse_1.ClockEnvelope();
         pulse_2.ClockEnvelope();
+        triangle.ClockLinearCounter();
     }
 
     if (cpu_cycles_into_frame == 14913) {
@@ -26,6 +27,8 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         pulse_2.ClockEnvelope();
         pulse_2.ClockLengthCounter();
         pulse_2.ClockSweep();
+        triangle.ClockLinearCounter();
+        triangle.ClockLengthCounter();
     }
 
     if (cpu_cycles_into_frame == 22371) {
@@ -33,6 +36,7 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         //       Clock envelopes and triangle linear counter
         pulse_1.ClockEnvelope();
         pulse_2.ClockEnvelope();
+        triangle.ClockLinearCounter();
     }
 
     if (step_mode == FrameCounterStepMode::FourStep && cpu_cycles_into_frame == 29828 && raise_irq) {
@@ -49,6 +53,8 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         pulse_2.ClockEnvelope();
         pulse_2.ClockLengthCounter();
         pulse_2.ClockSweep();
+        triangle.ClockLinearCounter();
+        triangle.ClockLengthCounter();
 
         *irq_requested = raise_irq;
     }
@@ -69,6 +75,8 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         pulse_2.ClockEnvelope();
         pulse_2.ClockLengthCounter();
         pulse_2.ClockSweep();
+        triangle.ClockLinearCounter();
+        triangle.ClockLengthCounter();
     }
 
     if (step_mode == FrameCounterStepMode::FiveStep && cpu_cycles_into_frame == 37282) {
@@ -81,10 +89,14 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         pulse_2.ClockTimer();
     };
 
+    // Triangle timers are updated every CPU cycle
+    triangle.ClockTimer();
+
     const auto pulse1_sample = pulse_1.GetSample();
     const auto pulse2_sample = pulse_2.GetSample();
+    const auto triangle_sample = triangle.GetSample();
 
-    sink->PushSample(Mix(pulse1_sample, pulse2_sample));
+    sink->PushSample(Mix(pulse1_sample, pulse2_sample, triangle_sample));
 }
 
 byte Apu::CpuRead(const word address) {
@@ -95,6 +107,9 @@ byte Apu::CpuRead(const word address) {
         }
         if (pulse_2.length_counter > 0x00) {
             res |= 0x02;
+        }
+        if (triangle.length_counter > 0x00) {
+            res |= 0x04;
         }
 
         if (raise_irq) {
@@ -113,7 +128,10 @@ void Apu::CpuWrite(const word address, const byte data) {
         pulse_1.WriteRegister(address - 0x4000, data);
     } else if (InRange<word>(0x4004, address, 0x4007)) {
         pulse_2.WriteRegister(address - 0x4004, data);
-    } else if (address == 0x4015) {
+    } else if (InRange<word>(0x4008, address, 0x400B)) {
+        triangle.WriteRegister(address - 0x4008, data);
+    }
+    else if (address == 0x4015) {
         if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1) && !ChannelEnabled(data, ApuChannel::Pulse1)) {
             pulse_1.LoadLengthCounter(0);
             pulse_1.enabled = false;
@@ -126,6 +144,13 @@ void Apu::CpuWrite(const word address, const byte data) {
             pulse_2.enabled = false;
         } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2) && ChannelEnabled(data, ApuChannel::Pulse2)) {
             pulse_2.enabled = true;
+        }
+
+        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle) && !ChannelEnabled(data, ApuChannel::Triangle)) {
+            triangle.LoadLengthCounter(0);
+            triangle.enabled = false;
+        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle) && ChannelEnabled(data, ApuChannel::Triangle)) {
+            triangle.enabled = true;
         }
 
         prev_enabled_channels = data;
@@ -151,10 +176,13 @@ void Apu::UpdateFrameCounter(const byte data) {
     raise_irq = (data & 0x40) == 0x00;
 }
 
-float Apu::Mix(const byte pulse1_sample, const byte pulse2_sample) {
+float Apu::Mix(const byte pulse1_sample, const byte pulse2_sample, const byte triangle_sample) {
     float pulse_out = 0.0f;
     if (pulse1_sample != 0x00 || pulse2_sample != 0x00) {
-        pulse_out = 95.88f / ((8128.0f / (pulse1_sample + pulse2_sample)) + 100.0f);
+        pulse_out = 95.88f / ((8128.0f / static_cast<float>(pulse1_sample + pulse2_sample)) + 100.0f);
     }
-    return pulse_out;
+
+    const float tnd_out = 0.00851f * static_cast<float>(triangle_sample);
+
+    return pulse_out + tnd_out;
 }

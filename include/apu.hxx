@@ -189,6 +189,95 @@ private:
     }
 };
 
+class ApuTriangle {
+public:
+    byte length_counter{};
+    bool enabled{false};
+
+    [[nodiscard]] byte GetSample() const {
+        if (length_counter == 0x00 || linear_counter == 0x00) { return 0x00; }
+        return sequence;
+    }
+
+    void WriteRegister(const byte offset, const byte data) {
+        switch (offset) {
+            case 0: UpdateCounter(data); break;
+            case 1: break;
+            case 2: UpdateTimerLow(data); break;
+            case 3: UpdateTimerHigh(data); break;
+            default: break;
+        }
+    }
+
+    void ClockTimer() {
+        if (timer == 0x00) {
+            timer = timer_reload;
+            sequence = (sequence + static_cast<byte>(direction)) & 0xF;
+            if (sequence == 15) {
+                direction = -1;
+            } else if (sequence == 0) {
+                direction = +1;
+            }
+        } else {
+            timer--;
+        }
+    }
+
+    void ClockLengthCounter() {
+        if (!length_counter_halt && length_counter != 0x00) {
+            length_counter--;
+        }
+    }
+
+    void ClockLinearCounter() {
+        if (linear_counter_reload) {
+            linear_counter = linear_counter_load;
+        } else if (linear_counter != 0x00) {
+            linear_counter--;
+        }
+
+        if (!length_counter_halt) {
+            linear_counter_reload = false;
+        }
+    }
+
+    void LoadLengthCounter(const byte value) {
+        length_counter = value;
+    }
+
+    void LoadLengthCounter() {
+        LoadLengthCounter(LENGTH_COUNTER_LOADS[length_counter_load]);
+    }
+
+private:
+    word timer{}, timer_reload{};
+    byte linear_counter_load{}, linear_counter{};
+    byte length_counter_load{};
+
+    byte sequence{15};
+    int direction{-1};
+
+    bool linear_counter_reload{false}, length_counter_halt{false};
+
+    void UpdateCounter(const byte data) {
+        length_counter_halt = (data & 0x80) != 0x00;
+        linear_counter_load = data & 0x7F;
+    }
+
+    void UpdateTimerLow(const byte data) {
+        timer_reload = (timer_reload & 0xFF00) | static_cast<word>(data);
+    }
+
+    void UpdateTimerHigh(const byte data) {
+        length_counter_load = (data & 0xF8) >> 3;
+        if (enabled) {
+            LoadLengthCounter();
+        }
+        timer_reload = (timer_reload & ~0x0700) | (static_cast<word>(data & 0x7) << 8);
+        linear_counter_reload = true;
+    }
+};
+
 enum class ApuChannel: byte {
     Pulse1 = (1 << 0),
     Pulse2 = (1 << 1),
@@ -214,6 +303,7 @@ private:
     std::shared_ptr<AudioQueue> sink{};
 
     ApuPulse pulse_1{false}, pulse_2{true};
+    ApuTriangle triangle{};
 
     InterruptRequestFlag irq_requested{};
 
@@ -224,7 +314,7 @@ private:
     byte prev_enabled_channels{0x00};
 
     void UpdateFrameCounter(byte data);
-    static float Mix(byte pulse1_sample, byte pulse2_sample);
+    static float Mix(byte pulse1_sample, byte pulse2_sample, byte triangle_sample);
 
     static bool ChannelEnabled(const byte reg, ApuChannel channel) {
         return (reg & static_cast<byte>(channel)) != 0x00;
