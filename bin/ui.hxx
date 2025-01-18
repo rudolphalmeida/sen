@@ -110,6 +110,7 @@ class Ui {
     void ShowPpuMemory();
     void ShowOpcodes();
     void ShowDebugger();
+    void ShowVolumeControl();
 
     void DrawSprite(size_t index,
                     const SpriteData& sprite,
@@ -121,7 +122,7 @@ class Ui {
     void ResetEmulation();
     void StopEmulation();
 
-    void HandleInput();
+    void HandleEvents();
 
     void SetFilter(FilterType filter);
 

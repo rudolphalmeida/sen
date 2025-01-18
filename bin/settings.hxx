@@ -17,7 +17,7 @@ enum class UiStyle {
     SuperDark = 3,
 };
 
-constexpr int NUM_PANELS = 8;
+constexpr int NUM_PANELS = 9;
 enum class UiPanel {
     Registers = 0,
     PatternTables = 1,
@@ -27,6 +27,7 @@ enum class UiPanel {
     Opcodes = 5,
     Debugger = 6,
     Logs = 7,
+    VolumeControl = 8,
 };
 
 enum class FilterType {
@@ -111,13 +112,21 @@ struct SenSettings {
         cfg.getRoot()["ui"]["style"] = static_cast<int>(style);
     }
 
-    [[nodiscard]] const std::array<bool, NUM_PANELS>& GetOpenPanels() const { return open_panels; }
+    [[nodiscard]] std::array<bool, NUM_PANELS>& GetOpenPanels() { return open_panels; }
 
     void TogglePanel(UiPanel panel) {
         const auto panel_id = static_cast<int>(panel);
         const auto open_panels_config = static_cast<int>(cfg.getRoot()["ui"]["open_panels"]);
         cfg.getRoot()["ui"]["open_panels"] = open_panels_config ^ (1 << panel_id);
         open_panels[panel_id] = !open_panels[panel_id];
+    }
+
+    void SyncPanelStates() const {
+        int panel_config = 0;
+        for (int i = 0; i < NUM_PANELS; i++) {
+            panel_config |= static_cast<int>(open_panels[i]) << i;
+        }
+        cfg.getRoot()["ui"]["open_panels"] = panel_config;
     }
 
     void RecentRoms(std::vector<const char*>& paths) const {

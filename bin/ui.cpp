@@ -84,7 +84,7 @@ void Ui::InitSDL() {
         std::exit(-1);
     }
     SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(0);  // Enable vsync
+    SDL_GL_SetSwapInterval(1);  // Enable vsync. TODO: Disable vsync
 
     spdlog::info("Initialized SDL2 window and OpenGL context");
 }
@@ -161,15 +161,21 @@ void Ui::InitImGui() const {
     ImGui_ImplOpenGL3_Init(GLSL_VERSION);
 }
 
-void Ui::HandleInput() {
+void Ui::HandleEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL2_ProcessEvent(&event);
         if (event.type == SDL_QUIT)
             open = false;
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-            event.window.windowID == SDL_GetWindowID(window))
-            open = false;
+        if (event.type == SDL_WINDOWEVENT) {
+            if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window)) {
+                open = false;
+            }
+            if (event.window.event == SDL_WINDOWEVENT_RESIZED && event.window.windowID == SDL_GetWindowID(window)) {
+                settings.Width(event.window.data1);
+                settings.Height(event.window.data2);
+            }
+        }
     }
 }
 
@@ -270,8 +276,9 @@ void Ui::SetImGuiStyle() {
 }
 
 void Ui::MainLoop() {
+    // TODO: UI independent game loop
     while (open) {
-        HandleInput();
+        HandleEvents();
 
         if (emulation_running) {
             if (audio_frame_delay != 0) {
@@ -291,6 +298,7 @@ void Ui::MainLoop() {
 
 Ui::~Ui() {
     try {
+        settings.SyncPanelStates();
         settings.cfg.writeFile("test.cfg");
     } catch (const libconfig::FileIOException& e) {
         spdlog::error("Failed to save settings: {}", e.what());
@@ -511,6 +519,10 @@ void Ui::ShowMenuBar() {
                                 emulation_running)) {
                 settings.TogglePanel(UiPanel::Sprites);
             }
+            if (ImGui::MenuItem("Volume", nullptr, open_panels[static_cast<int>(UiPanel::VolumeControl)],
+                                emulation_running)) {
+                settings.TogglePanel(UiPanel::VolumeControl);
+                                }
             ImGui::EndMenu();
         }
 
@@ -519,7 +531,7 @@ void Ui::ShowMenuBar() {
 }
 
 void Ui::ShowRegisters() {
-    auto open_panels = settings.GetOpenPanels();
+    auto& open_panels = settings.GetOpenPanels();
     if (!open_panels[static_cast<int>(UiPanel::Registers)]) {
         return;
     }
@@ -706,7 +718,7 @@ void Ui::DrawSprite(const size_t index,
 }
 
 void Ui::ShowOam() {
-    auto open_panels = settings.GetOpenPanels();
+    auto& open_panels = settings.GetOpenPanels();
     if (!open_panels[static_cast<int>(UiPanel::Sprites)]) {
         return;
     }
@@ -802,7 +814,7 @@ void Ui::ShowOam() {
 }
 
 void Ui::ShowPpuMemory() {
-    auto open_panels = settings.GetOpenPanels();
+    auto& open_panels = settings.GetOpenPanels();
     if (!open_panels[static_cast<int>(UiPanel::PpuMemory)]) {
         return;
     }
@@ -819,7 +831,7 @@ void Ui::ShowPpuMemory() {
 }
 
 void Ui::ShowOpcodes() {
-    auto open_panels = settings.GetOpenPanels();
+    auto& open_panels = settings.GetOpenPanels();
     if (!open_panels[static_cast<int>(UiPanel::Opcodes)]) {
         return;
     }
@@ -920,7 +932,7 @@ void Ui::ShowOpcodes() {
 }
 
 void Ui::ShowDebugger() {
-    auto open_panels = settings.GetOpenPanels();
+    auto& open_panels = settings.GetOpenPanels();
     if (!open_panels[static_cast<int>(UiPanel::Debugger)]) {
         return;
     }
@@ -969,9 +981,12 @@ void Ui::ShowDebugger() {
 
     ImGui::End();
 }
+void Ui::ShowVolumeControl() {
+    auto& open_panels = settings.GetOpenPanels();
+}
 
 void Ui::ShowPatternTables() {
-    auto open_panels = settings.GetOpenPanels();
+    auto& open_panels = settings.GetOpenPanels();
 
     if (!open_panels[static_cast<int>(UiPanel::PatternTables)]) {
         return;
