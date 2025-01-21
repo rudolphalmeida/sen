@@ -34,14 +34,78 @@ class AudioQueue {
     virtual void Clear() = 0;
 };
 
+struct LengthCounter {
+    byte length_counter{0x00};
+};
+
+struct SweepUnit {
+    word& timer_reload;
+
+    word target_period{};
+
+    byte sweep_divider_load{};
+    byte sweep_shift_count{};
+    byte sweep_counter{};
+
+    bool sweep_enabled{};
+    bool sweep_negate{};
+    bool sweep_reload{false};
+    bool use_twos_complement{};
+
+    explicit SweepUnit(word& timer_reload, const bool use_twos_complement): timer_reload{timer_reload}, use_twos_complement{use_twos_complement} {}
+
+    void Update(const byte sweep) {
+        sweep_enabled = (sweep & 0x80) != 0x00;
+        sweep_divider_load = (sweep & 0x70) >> 4;
+        sweep_negate = (sweep & 0x08) != 0x00;
+        sweep_shift_count = sweep & 0x07;
+        sweep_reload = true;
+    }
+
+    void Clock(const word timer) {
+        UpdateTargetPeriod(timer);
+
+        if (sweep_counter == 0x00 && sweep_enabled && !(timer < 8 || target_period > 0x7FF)) {
+            timer_reload = target_period;
+        }
+
+        if (sweep_counter == 0x00 || sweep_reload) {
+            sweep_counter = sweep_divider_load;
+            sweep_reload = false;
+
+            if (sweep_enabled) {
+                timer_reload = target_period;
+            }
+        } else {
+            sweep_counter--;
+        }
+    }
+
+    void UpdateTargetPeriod(const word timer) {
+        const word change = timer_reload >> sweep_shift_count;
+        if (sweep_negate) {
+            target_period = (change > timer) ? 0 : (timer_reload - change);
+            if (!use_twos_complement && target_period > 0) {
+                target_period--;
+            }
+        } else {
+            target_period = timer_reload + change;
+        }
+    }
+};
+
+struct EnvelopeGenerator{};
+
 class ApuPulse {
 public:
+    SweepUnit sweep_unit;
+
     byte length_counter{0x00};
     bool enabled{false};
 
-    explicit ApuPulse(const bool use_twos_complement): use_twos_complement{use_twos_complement} {}
+    explicit ApuPulse(const bool use_twos_complement): sweep_unit(timer_reload, use_twos_complement) {}
 
-    byte GetSample() const {
+    [[nodiscard]] byte GetSample() const {
         if (timer < 8 || length_counter == 0x00 || target_period > 0x7FF) {
             return 0x00;
         }
@@ -53,7 +117,7 @@ public:
     void WriteRegister(const byte offset, const byte data) {
         switch (offset) {
             case 0: UpdateVolume(data); break;
-            case 1: UpdateSweep(data); break;
+            case 1: sweep_unit.Clock(data); break;
             case 2: UpdateTimerLow(data); break;
             case 3: UpdateTimerHigh(data); break;
             default: break;
@@ -93,22 +157,7 @@ public:
     }
 
     void ClockSweep() {
-        UpdateTargetPeriod();
-
-        if (sweep_counter == 0x00 && sweep_enabled && !(timer < 8 || target_period > 0x7FF)) {
-            timer_reload = target_period;
-        }
-
-        if (sweep_counter == 0x00 || sweep_reload) {
-            sweep_counter = sweep_divider_load;
-            sweep_reload = false;
-
-            if (sweep_enabled) {
-                timer_reload = target_period;
-            }
-        } else {
-            sweep_counter--;
-        }
+        sweep_unit.Clock(timer);
     }
 
     void LoadLengthCounter(const byte value) {
@@ -134,15 +183,6 @@ private:
     byte envelope_decay_level{};
     byte envelope_divider{};
 
-    byte sweep_divider_load{};
-    bool sweep_enabled{};
-    bool sweep_negate{};
-    bool sweep_reload{false};
-    byte sweep_shift_count{};
-    byte sweep_counter{};
-
-    bool use_twos_complement;
-
     byte volume{};
 
     void UpdateVolume(const byte volume) {
@@ -152,17 +192,9 @@ private:
         duty_cycle = DUTY_CYCLES[(volume & 0xC0) >> 6];
     }
 
-    void UpdateSweep(const byte sweep) {
-        sweep_enabled = (sweep & 0x80) != 0x00;
-        sweep_divider_load = (sweep & 0x70) >> 4;
-        sweep_negate = (sweep & 0x08) != 0x00;
-        sweep_shift_count = sweep & 0x07;
-        sweep_reload = true;
-    }
-
     void UpdateTimerLow(const byte timer_low) {
         timer_reload = (timer_reload & 0xFF00) | timer_low;
-        UpdateTargetPeriod();
+        sweep_unit.UpdateTargetPeriod(timer);
     }
 
     void UpdateTimerHigh(const byte timer_high) {
@@ -171,21 +203,9 @@ private:
             LoadLengthCounter();
         }
         timer_reload = (timer_reload & ~0x0700) | (static_cast<word>(timer_high & 0x07) << 8);
-        UpdateTargetPeriod();
+        sweep_unit.UpdateTargetPeriod(timer);
         envelope_start = true;
         duty_counter_bit = 0x00;
-    }
-
-    void UpdateTargetPeriod() {
-        const word change = timer_reload >> sweep_shift_count;
-        if (sweep_negate) {
-            target_period = (change > timer) ? 0 : (timer_reload - change);
-            if (!use_twos_complement && target_period > 0) {
-                target_period--;
-            }
-        } else {
-            target_period = timer_reload + change;
-        }
     }
 };
 
