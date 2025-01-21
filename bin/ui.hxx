@@ -15,12 +15,12 @@
 #include "filters.hxx"
 #include "settings.hxx"
 
-// static const std::tuple<int, ControllerKey> KEYMAP[0x8] = {
-//     {GLFW_KEY_M, ControllerKey::A},          {GLFW_KEY_N, ControllerKey::B},
-//     {GLFW_KEY_SPACE, ControllerKey::Select}, {GLFW_KEY_ENTER, ControllerKey::Start},
-//     {GLFW_KEY_W, ControllerKey::Up},         {GLFW_KEY_S, ControllerKey::Down},
-//     {GLFW_KEY_A, ControllerKey::Left},       {GLFW_KEY_D, ControllerKey::Right},
-// };
+static const std::unordered_map<SDL_GameControllerButton, ControllerKey> KEYMAP = {
+    {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_A, ControllerKey::A},          {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_B, ControllerKey::B},
+    {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_GUIDE, ControllerKey::Select}, {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_START, ControllerKey::Start},
+    {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_UP, ControllerKey::Up},         {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_DOWN, ControllerKey::Down},
+    {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_LEFT, ControllerKey::Left},       {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_RIGHT, ControllerKey::Right},
+};
 
 #define DEVICE_FORMAT AUDIO_F32
 #define DEVICE_CHANNELS 1
@@ -72,7 +72,8 @@ class Ui {
 
     SDL_Window* window{};
     SDL_GLContext gl_context{};
-    SDL_AudioStream * audio_stream{};
+    SDL_AudioStream* audio_stream{};
+    SDL_GameController * controller{};
 
     std::optional<std::filesystem::path> loaded_rom_file_path = std::nullopt;
     std::shared_ptr<Sen> emulator_context{};
@@ -83,7 +84,7 @@ class Ui {
     GLuint pattern_table_left_texture{};
     GLuint pattern_table_right_texture{};
     GLuint display_texture{};
-    std::array<GLuint , 64> sprite_textures{};
+    std::array<GLuint, 64> sprite_textures{};
 
     std::unique_ptr<Filter> filter{};
     std::shared_ptr<AudioQueue> audio_queue{};
@@ -96,6 +97,7 @@ class Ui {
     void InitImGui() const;
 
     void LoadRomFile(const char* path);
+    static SDL_GameController* FindController();
 
     [[nodiscard]] static std::vector<Pixel> RenderPixelsForPatternTable(
         std::span<byte, 4096> pattern_table,
@@ -134,5 +136,4 @@ class Ui {
     ~Ui();
 
     void MainLoop();
-
 };

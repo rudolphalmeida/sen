@@ -51,7 +51,7 @@ Ui::Ui() {
 }
 
 void Ui::InitSDL() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
         spdlog::error("Failed to initialize SDL2: {}", SDL_GetError());
         std::exit(-1);
     }
@@ -85,6 +85,8 @@ void Ui::InitSDL() {
     }
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1);  // Enable vsync. TODO: Disable vsync
+
+    controller = FindController();
 
     spdlog::info("Initialized SDL2 window and OpenGL context");
 }
@@ -161,10 +163,66 @@ void Ui::InitImGui() const {
     ImGui_ImplOpenGL3_Init(GLSL_VERSION);
 }
 
+SDL_GameController* Ui::FindController() {
+    for (int i = 0; i < SDL_NumJoysticks(); i++) {
+        if (SDL_IsGameController(i)) {
+            spdlog::debug("Found controller with ID: {}", i);
+            return SDL_GameControllerOpen(i);
+        }
+    }
+
+    return nullptr;
+}
+
 void Ui::HandleEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL2_ProcessEvent(&event);
+
+        switch (event.type) {
+            case SDL_QUIT:
+                open = false;
+                break;
+
+            case SDL_WINDOWEVENT:
+                if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window)) {
+                    open = false;
+                }
+                if (event.window.event == SDL_WINDOWEVENT_RESIZED && event.window.windowID == SDL_GetWindowID(window)) {
+                    settings.Width(event.window.data1);
+                    settings.Height(event.window.data2);
+                }
+                break;
+
+            case SDL_CONTROLLERDEVICEADDED:
+                if (!controller) {
+                    spdlog::info("Controller connected");
+                    controller = SDL_GameControllerOpen(event.cdevice.which);
+                }
+                break;
+
+            case SDL_CONTROLLERDEVICEREMOVED:
+                if (controller && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
+                    spdlog::info("Controller disconnected");
+                    SDL_GameControllerClose(controller);
+                    controller = FindController();
+                }
+                break;
+
+            case SDL_CONTROLLERBUTTONUP:
+                if (emulator_context && emulation_running && controller && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
+                    emulator_context->ControllerRelease(ControllerPort::Port1, KEYMAP.at(static_cast<SDL_GameControllerButton>(event.cbutton.button)));
+                }
+                break;
+            case SDL_CONTROLLERBUTTONDOWN:
+                if (emulator_context && emulation_running && controller && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
+                    emulator_context->ControllerPress(ControllerPort::Port1, KEYMAP.at(static_cast<SDL_GameControllerButton>(event.cbutton.button)));
+                }
+                break;
+
+            default: break;
+        }
+
         if (event.type == SDL_QUIT)
             open = false;
         if (event.type == SDL_WINDOWEVENT) {
