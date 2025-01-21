@@ -16,7 +16,10 @@
 #include "settings.hxx"
 
 static const std::unordered_map<SDL_GameControllerButton, ControllerKey> KEYMAP = {
+    // Assuming Nintendo style controllers. Only face buttons are used
     {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_A, ControllerKey::A},          {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_B, ControllerKey::B},
+    // Allow using alternate buttons
+    {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_Y, ControllerKey::A},          {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_X, ControllerKey::B},
     {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_GUIDE, ControllerKey::Select}, {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_START, ControllerKey::Start},
     {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_UP, ControllerKey::Up},         {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_DOWN, ControllerKey::Down},
     {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_LEFT, ControllerKey::Left},       {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_RIGHT, ControllerKey::Right},
