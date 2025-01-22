@@ -118,7 +118,6 @@ void Ui::InitImGui() const {
     auto& io = ImGui::GetIO();
     (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
 #ifdef WIN32
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Multi-Viewport
@@ -211,13 +210,16 @@ void Ui::HandleEvents() {
 
             case SDL_CONTROLLERBUTTONUP:
                 if (emulator_context && emulation_running && controller && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
-                    emulator_context->ControllerRelease(ControllerPort::Port1, KEYMAP.at(static_cast<SDL_GameControllerButton>(event.cbutton.button)));
+                    if (const auto button = static_cast<SDL_GameControllerButton>(event.cbutton.button); KEYMAP.contains(button)) {
+                        emulator_context->ControllerRelease(ControllerPort::Port1, KEYMAP.at(button));
+                    }
                 }
                 break;
             case SDL_CONTROLLERBUTTONDOWN:
                 if (emulator_context && emulation_running && controller && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
-                    emulator_context->ControllerPress(ControllerPort::Port1, KEYMAP.at(static_cast<SDL_GameControllerButton>(event.cbutton.button)));
-                }
+                    if (const auto button = static_cast<SDL_GameControllerButton>(event.cbutton.button); KEYMAP.contains(button)) {
+                        emulator_context->ControllerPress(ControllerPort::Port1, KEYMAP.at(button));
+                    }                }
                 break;
 
             default: break;
