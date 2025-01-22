@@ -439,10 +439,11 @@ void Ui::RenderUi() {
 
 #ifdef WIN32
     if (const auto& io = ImGui::GetIO(); io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-        GLFWwindow* backup_current_context = glfwGetCurrentContext();
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-        glfwMakeContextCurrent(backup_current_context);
+         SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+            SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+            SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
     }
 #endif
 }
@@ -1041,6 +1042,16 @@ void Ui::ShowDebugger() {
 }
 void Ui::ShowVolumeControl() {
     auto& open_panels = settings.GetOpenPanels();
+
+    if (!open_panels[static_cast<int>(UiPanel::VolumeControl)]) {
+        return;
+    }
+
+    if (ImGui::Begin("Volume Control", &open_panels[static_cast<int>(UiPanel::VolumeControl)])) {
+
+    }
+
+    ImGui::End();
 }
 
 void Ui::ShowPatternTables() {

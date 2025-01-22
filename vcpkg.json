@@ -3,7 +3,13 @@
     "fmt",
     {
       "name": "sdl2",
-      "features": ["wayland", "alsa"]
+      "features": ["wayland", "alsa"],
+      "platform": "linux"
+    },
+    {
+      "name": "sdl2",
+      "platform": "windows",
+      "features": []
     },
     "nlohmann-json",
     "spdlog",

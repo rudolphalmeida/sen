@@ -34,21 +34,21 @@ target_link_libraries(sen PRIVATE
 target_include_directories(sen PUBLIC include lib)
 
 add_executable(sen_sdl2
-        bin/main.cpp
-        bin/ui.hxx
-        bin/ui.cpp
-        lib/imgui_memory_editor.h
-        lib/stb_image_write.h
-        lib/stb_image_write.cpp
-        lib/crt_core.h
-        lib/crt_core.c
-        lib/crt_nes.h
-        lib/crt_nes.c
-        bin/filters.cpp
-        lib/IconsFontAwesome6.h
-        lib/ImGuiNotify.hpp
-        bin/settings.hxx
-        bin/filters.hxx
+    bin/main.cpp
+    bin/ui.hxx
+    bin/ui.cpp
+    lib/imgui_memory_editor.h
+    lib/stb_image_write.h
+    lib/stb_image_write.cpp
+    lib/crt_core.h
+    lib/crt_core.c
+    lib/crt_nes.h
+    lib/crt_nes.c
+    bin/filters.cpp
+    lib/IconsFontAwesome6.h
+    lib/ImGuiNotify.hpp
+    bin/settings.hxx
+    bin/filters.hxx
 )
 target_include_directories(sen_sdl2 PRIVATE include lib bin)
 target_link_libraries(sen_sdl2 PRIVATE
@@ -59,13 +59,20 @@ target_link_libraries(sen_sdl2 PRIVATE
     OpenGL::GL
     nfd::nfd
     imgui::imgui
-    libconfig::config libconfig::config++
+
+    $<$<PLATFORM_ID:Linux>:libconfig::config libconfig::config++>
+    $<$<PLATFORM_ID:Windows>:libconfig::libconfig libconfig::libconfig++>
+
     $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)
 target_link_libraries(cpu_tests PRIVATE sen Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(cpu_tests PRIVATE "/utf-8")
+endif()
 
 include(CTest)
 include(Catch)

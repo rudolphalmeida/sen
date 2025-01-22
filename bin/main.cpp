@@ -1,5 +1,5 @@
-#include <../cmake-build-debug/vcpkg_installed/x64-linux/include/nfd.h>
-#include <../cmake-build-debug/vcpkg_installed/x64-linux/include/spdlog/cfg/env.h>
+#include <nfd.h>
+#include <spdlog/cfg/env.h>
 
 #include "ui.hxx"
 
