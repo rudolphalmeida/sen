@@ -35,7 +35,35 @@ class AudioQueue {
 };
 
 struct LengthCounter {
-    byte length_counter{0x00};
+    bool * channel_enabled;
+    byte counter{0x00};
+    byte counter_load{};
+
+    bool halt{false};
+
+    explicit LengthCounter(bool * channel_enabled_ptr): channel_enabled{channel_enabled_ptr} {}
+
+    void Load(const byte value) {
+        counter = value;
+    }
+
+    void Load() {
+        Load(LENGTH_COUNTER_LOADS[counter_load]);
+    }
+
+
+    void Clock() {
+        if (!halt && counter != 0x00) {
+            counter--;
+        }
+    }
+
+    void UpdateLengthCounterLoad(const byte value) {
+        counter_load = value;
+        if (*channel_enabled) {
+            Load();
+        }
+    }
 };
 
 struct SweepUnit {
@@ -99,14 +127,14 @@ struct EnvelopeGenerator{};
 class ApuPulse {
 public:
     SweepUnit sweep_unit;
+    LengthCounter length_counter;
 
-    byte length_counter{0x00};
     bool enabled{false};
 
-    explicit ApuPulse(const bool use_twos_complement): sweep_unit(timer_reload, use_twos_complement) {}
+    explicit ApuPulse(const bool use_twos_complement): sweep_unit(timer_reload, use_twos_complement) , length_counter(&enabled){}
 
     [[nodiscard]] byte GetSample() const {
-        if (timer < 8 || length_counter == 0x00 || target_period > 0x7FF) {
+        if (timer < 8 || length_counter.counter == 0x00 || target_period > 0x7FF) {
             return 0x00;
         }
 
@@ -137,7 +165,7 @@ public:
         if (!envelope_start) {
             if (envelope_divider == 0x00) {
                 envelope_divider = volume_reload;
-                if (envelope_decay_level == 0x00 && length_counter_halt) {
+                if (envelope_decay_level == 0x00 && length_counter.halt) {
                     envelope_decay_level = 15;
                 } else if (envelope_decay_level != 0x00) {
                     envelope_decay_level--;
@@ -151,31 +179,19 @@ public:
     }
 
     void ClockLengthCounter() {
-        if (!length_counter_halt && length_counter != 0x00) {
-            length_counter--;
-        }
+        length_counter.Clock();
     }
 
     void ClockSweep() {
         sweep_unit.Clock(timer);
     }
 
-    void LoadLengthCounter(const byte value) {
-        length_counter = value;
-    }
-
-    void LoadLengthCounter() {
-        LoadLengthCounter(LENGTH_COUNTER_LOADS[length_counter_load]);
-    }
-
 private:
     word timer{}, timer_reload{}, target_period{};
-    byte length_counter_load{};
 
     byte duty_counter_bit{0x00};
 
     byte duty_cycle{};
-    bool length_counter_halt{false};
     bool constant_volume{false};
     byte volume_reload{};
 
@@ -188,7 +204,7 @@ private:
     void UpdateVolume(const byte volume) {
         volume_reload = volume & 0x0F;
         constant_volume = (volume & 0x10) != 0x00;
-        length_counter_halt = (volume & 0x20) != 0x00;
+        length_counter.halt = (volume & 0x20) != 0x00;
         duty_cycle = DUTY_CYCLES[(volume & 0xC0) >> 6];
     }
 
@@ -198,10 +214,7 @@ private:
     }
 
     void UpdateTimerHigh(const byte timer_high) {
-        length_counter_load = timer_high >> 3;
-        if (enabled) {
-            LoadLengthCounter();
-        }
+        length_counter.UpdateLengthCounterLoad(timer_high >> 3);
         timer_reload = (timer_reload & ~0x0700) | (static_cast<word>(timer_high & 0x07) << 8);
         sweep_unit.UpdateTargetPeriod(timer);
         envelope_start = true;
@@ -211,11 +224,14 @@ private:
 
 class ApuTriangle {
 public:
-    byte length_counter{};
+    LengthCounter length_counter;
+
     bool enabled{false};
 
+    ApuTriangle(): length_counter{&enabled} {}
+
     [[nodiscard]] byte GetSample() const {
-        if (length_counter == 0x00 || linear_counter == 0x00) { return 0x00; }
+        if (length_counter.counter == 0x00 || linear_counter == 0x00) { return 0x00; }
         return sequence;
     }
 
@@ -244,9 +260,7 @@ public:
     }
 
     void ClockLengthCounter() {
-        if (!length_counter_halt && length_counter != 0x00) {
-            length_counter--;
-        }
+        length_counter.Clock();
     }
 
     void ClockLinearCounter() {
@@ -256,31 +270,20 @@ public:
             linear_counter--;
         }
 
-        if (!length_counter_halt) {
+        if (!length_counter.halt) {
             linear_counter_reload = false;
         }
     }
 
-    void LoadLengthCounter(const byte value) {
-        length_counter = value;
-    }
-
-    void LoadLengthCounter() {
-        LoadLengthCounter(LENGTH_COUNTER_LOADS[length_counter_load]);
-    }
-
 private:
-    word timer{}, timer_reload{};
-    byte linear_counter_load{}, linear_counter{};
-    byte length_counter_load{};
-
-    byte sequence{15};
     int direction{-1};
-
-    bool linear_counter_reload{false}, length_counter_halt{false};
+    word timer{}, timer_reload{};
+    byte linear_counter{}, linear_counter_load{};
+    byte sequence{15};
+    bool linear_counter_reload{false};
 
     void UpdateCounter(const byte data) {
-        length_counter_halt = (data & 0x80) != 0x00;
+        length_counter.halt = (data & 0x80) != 0x00;
         linear_counter_load = data & 0x7F;
     }
 
@@ -289,13 +292,20 @@ private:
     }
 
     void UpdateTimerHigh(const byte data) {
-        length_counter_load = (data & 0xF8) >> 3;
-        if (enabled) {
-            LoadLengthCounter();
-        }
+        length_counter.UpdateLengthCounterLoad((data & 0xF8) >> 3);
         timer_reload = (timer_reload & ~0x0700) | (static_cast<word>(data & 0x7) << 8);
         linear_counter_reload = true;
     }
+};
+
+class ApuNoise {
+public:
+    bool enabled{};
+
+    byte GetSample() { return 0x00; }
+
+private:
+
 };
 
 enum class ApuChannel: byte {

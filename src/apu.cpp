@@ -102,13 +102,13 @@ void Apu::Tick(const uint64_t cpu_cycles) {
 byte Apu::CpuRead(const word address) {
     if (address == 0x4015) {
         byte res = 0x00;
-        if (pulse_1.length_counter > 0x00) {
+        if (pulse_1.length_counter.counter > 0x00) {
             res |= 0x01;
         }
-        if (pulse_2.length_counter > 0x00) {
+        if (pulse_2.length_counter.counter > 0x00) {
             res |= 0x02;
         }
-        if (triangle.length_counter > 0x00) {
+        if (triangle.length_counter.counter > 0x00) {
             res |= 0x04;
         }
 
@@ -133,21 +133,21 @@ void Apu::CpuWrite(const word address, const byte data) {
     }
     else if (address == 0x4015) {
         if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1) && !ChannelEnabled(data, ApuChannel::Pulse1)) {
-            pulse_1.LoadLengthCounter(0);
+            pulse_1.length_counter.Load(0);
             pulse_1.enabled = false;
         } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1) && ChannelEnabled(data, ApuChannel::Pulse1)) {
             pulse_1.enabled = true;
         }
 
         if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2) && !ChannelEnabled(data, ApuChannel::Pulse2)) {
-            pulse_2.LoadLengthCounter(0);
+            pulse_2.length_counter.Load(0);
             pulse_2.enabled = false;
         } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2) && ChannelEnabled(data, ApuChannel::Pulse2)) {
             pulse_2.enabled = true;
         }
 
         if (ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle) && !ChannelEnabled(data, ApuChannel::Triangle)) {
-            triangle.LoadLengthCounter(0);
+            triangle.length_counter.Load(0);
             triangle.enabled = false;
         } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle) && ChannelEnabled(data, ApuChannel::Triangle)) {
             triangle.enabled = true;
