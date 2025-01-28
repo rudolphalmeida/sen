@@ -122,12 +122,34 @@ struct SweepUnit {
     }
 };
 
-struct EnvelopeGenerator{};
+struct EnvelopeGenerator {
+    byte decay_level{};
+    byte divider{};
+    bool start{false};
+
+    void Clock(const byte volume_reload, const LengthCounter& length_counter) {
+        if (!start) {
+            if (divider == 0x00) {
+                divider = volume_reload;
+                if (decay_level == 0x00 && length_counter.halt) {
+                    decay_level = 15;
+                } else if (decay_level != 0x00) {
+                    decay_level--;
+                }
+            }
+        } else {
+            start = false;
+            decay_level = 15;
+            divider = volume_reload;
+        }
+    }
+};
 
 class ApuPulse {
 public:
     SweepUnit sweep_unit;
     LengthCounter length_counter;
+    EnvelopeGenerator envelope_generator;
 
     bool enabled{false};
 
@@ -139,7 +161,7 @@ public:
         }
 
         const auto duty = (duty_cycle & (1 << duty_counter_bit)) >> duty_counter_bit;
-        return duty * (constant_volume ? volume_reload : envelope_decay_level);
+        return duty * (constant_volume ? volume_reload : envelope_generator.decay_level);
     }
 
     void WriteRegister(const byte offset, const byte data) {
@@ -162,20 +184,7 @@ public:
     }
 
     void ClockEnvelope() {
-        if (!envelope_start) {
-            if (envelope_divider == 0x00) {
-                envelope_divider = volume_reload;
-                if (envelope_decay_level == 0x00 && length_counter.halt) {
-                    envelope_decay_level = 15;
-                } else if (envelope_decay_level != 0x00) {
-                    envelope_decay_level--;
-                }
-            }
-        } else {
-            envelope_start = false;
-            envelope_decay_level = 15;
-            envelope_divider = volume_reload;
-        }
+        envelope_generator.Clock(volume_reload, length_counter);
     }
 
     void ClockLengthCounter() {
@@ -195,10 +204,6 @@ private:
     bool constant_volume{false};
     byte volume_reload{};
 
-    bool envelope_start{false};
-    byte envelope_decay_level{};
-    byte envelope_divider{};
-
     byte volume{};
 
     void UpdateVolume(const byte volume) {
@@ -217,7 +222,7 @@ private:
         length_counter.UpdateLengthCounterLoad(timer_high >> 3);
         timer_reload = (timer_reload & ~0x0700) | (static_cast<word>(timer_high & 0x07) << 8);
         sweep_unit.UpdateTargetPeriod(timer);
-        envelope_start = true;
+        envelope_generator.start = true;
         duty_counter_bit = 0x00;
     }
 };
