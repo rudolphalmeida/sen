@@ -20,6 +20,10 @@ constexpr byte LENGTH_COUNTER_LOADS[] = {
     12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30
 };
 
+constexpr word NOISE_TIMER_CPU_CYCLES[] = {
+    4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
+};
+
 enum class FrameCounterStepMode {
     FourStep,
     FiveStep,
@@ -50,7 +54,6 @@ struct LengthCounter {
     void Load() {
         Load(LENGTH_COUNTER_LOADS[counter_load]);
     }
-
 
     void Clock() {
         if (!halt && counter != 0x00) {
@@ -305,12 +308,68 @@ private:
 
 class ApuNoise {
 public:
-    bool enabled{};
+    EnvelopeGenerator envelope_generator;
+    LengthCounter length_counter;
 
-    byte GetSample() { return 0x00; }
+    word shift_register{1}, timer_reload{0x00}, timer{};
 
-private:
+    byte volume_reload{};
+    bool enabled{}, constant_volume{false}, mode_1{false};
 
+    ApuNoise(): length_counter{&enabled} {}
+
+    byte GetSample() const {
+        if ((shift_register & 0b1) != 0 || length_counter.counter == 0) {
+            return 0x00;
+        }
+
+        return constant_volume ? volume_reload : envelope_generator.decay_level;
+    }
+
+    void WriteRegister(const byte offset, const byte data) {
+        switch (offset) {
+            case 0: UpdateCounter(data); break;
+            case 1: break;
+            case 2: UpdateModeAndPeriod(data); break;
+            case 3: UpdateLengthCounterLoad(data); break;
+            default: break;
+        }
+    }
+
+    void ClockEnvelope() {
+        envelope_generator.Clock(volume_reload, length_counter);
+    }
+
+    void ClockLengthCounter() { length_counter.Clock(); }
+
+    void ClockTimer() {
+        if (timer == 0x00) {
+            timer = timer_reload;
+
+            const word feedback_bit = shift_register ^ (mode_1 ? 1 : 0);
+            shift_register >>= 1;
+            shift_register |= (feedback_bit << 14);
+        } else {
+            timer--;
+        }
+    }
+
+   private:
+    void UpdateCounter(const byte value) {
+        length_counter.halt = (value & 0x20) != 0x00;
+        constant_volume = (value & 0x10) != 0x00;
+        volume_reload = value & 0x0F;
+    }
+
+    void UpdateModeAndPeriod(const byte value) {
+        mode_1 = (value & 0x80) != 0x00;
+        timer_reload = NOISE_TIMER_CPU_CYCLES[value & 0x0F];
+    }
+
+    void UpdateLengthCounterLoad(const byte value) {
+        length_counter.UpdateLengthCounterLoad((value & 0xF8) >> 3);
+        envelope_generator.start = true;
+    }
 };
 
 enum class ApuChannel: byte {
@@ -339,6 +398,7 @@ private:
 
     ApuPulse pulse_1{false}, pulse_2{true};
     ApuTriangle triangle{};
+    ApuNoise noise{};
 
     InterruptRequestFlag irq_requested{};
 
@@ -349,7 +409,10 @@ private:
     byte prev_enabled_channels{0x00};
 
     void UpdateFrameCounter(byte data);
-    static float Mix(byte pulse1_sample, byte pulse2_sample, byte triangle_sample);
+    static float Mix(byte pulse1_sample,
+                     byte pulse2_sample,
+                     byte triangle_sample,
+                     byte noise_sample);
 
     static bool ChannelEnabled(const byte reg, ApuChannel channel) {
         return (reg & static_cast<byte>(channel)) != 0x00;

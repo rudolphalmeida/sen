@@ -29,7 +29,7 @@ Run using:
 ./build/sen
 ```
 
-Note that the currently app files (for remembering open windows and layout) are stored in the working directory.
+Note that the app files (for remembering open windows and layout) are stored in the working directory.
 
 ## Libraries
 
