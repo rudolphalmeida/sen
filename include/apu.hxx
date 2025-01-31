@@ -170,7 +170,7 @@ public:
     void WriteRegister(const byte offset, const byte data) {
         switch (offset) {
             case 0: UpdateVolume(data); break;
-            case 1: sweep_unit.Clock(data); break;
+            case 1: sweep_unit.Update(data); break;
             case 2: UpdateTimerLow(data); break;
             case 3: UpdateTimerHigh(data); break;
             default: break;

@@ -9,7 +9,7 @@
 
 ## Building and Running
 
-Dependencies can be managed using VCPKG. Additional dependencies are required on Linux. Run the `install_deps.sh` script to install them on Ubuntu/Mint/PopOS (TODO: Fedora/`dnf`).
+Dependencies can be managed using VCPKG. Additional dependencies are required on Linux. Run the `install_deps_ubuntu.sh` script to install them on Ubuntu/Mint/PopOS (TODO: Fedora/`dnf`).
 
 Then configure the CMake project using:
 
@@ -26,7 +26,7 @@ cmake --build build
 Run using:
 
 ```shell
-./build/sen
+./build/sen_sdl2
 ```
 
 Note that the app files (for remembering open windows and layout) are stored in the working directory.

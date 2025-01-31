@@ -208,20 +208,6 @@ void Ui::HandleEvents() {
                 }
                 break;
 
-            case SDL_CONTROLLERBUTTONUP:
-                if (emulator_context && emulation_running && controller && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
-                    if (const auto button = static_cast<SDL_GameControllerButton>(event.cbutton.button); KEYMAP.contains(button)) {
-                        emulator_context->ControllerRelease(ControllerPort::Port1, KEYMAP.at(button));
-                    }
-                }
-                break;
-            case SDL_CONTROLLERBUTTONDOWN:
-                if (emulator_context && emulation_running && controller && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
-                    if (const auto button = static_cast<SDL_GameControllerButton>(event.cbutton.button); KEYMAP.contains(button)) {
-                        emulator_context->ControllerPress(ControllerPort::Port1, KEYMAP.at(button));
-                    }                }
-                break;
-
             default: break;
         }
 
@@ -235,6 +221,13 @@ void Ui::HandleEvents() {
                 settings.Width(event.window.data1);
                 settings.Height(event.window.data2);
             }
+        }
+    }
+
+    for (auto [controller_key, key] : KEYMAP) {
+        if (controller && emulator_context && emulation_running &&
+            SDL_GameControllerGetButton(controller, controller_key)) {
+            emulator_context->ControllerPress(ControllerPort::Port1, key);
         }
     }
 }
