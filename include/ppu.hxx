@@ -100,8 +100,6 @@ class Ppu {
      */
     byte bg_attrib_msb_shift_reg{}, bg_attrib_lsb_shift_reg{};
 
-    uint64_t frame_count{};  // Also used to determine if even or odd frame
-
     // The first `Tick()` will put us at the start of pre-render line (261)
     unsigned int scanline{260};
     unsigned int line_cycles{340};
@@ -168,6 +166,8 @@ class Ppu {
     const unsigned int POST_RENDER_SCANLINE = 240;
     const unsigned int VBLANK_START_SCANLINE = 241;
     const unsigned int VBLANK_SET_RESET_CYCLE = 1;
+
+    uint64_t frame_count{};  // Also used to determine if even or odd frame
 
     Ppu() = default;
 

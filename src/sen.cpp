@@ -21,6 +21,22 @@ Sen::Sen(const RomArgs& rom_args, const std::shared_ptr<AudioQueue>& sink) {
     cpu = Cpu<Bus>(bus, nmi_requested, irq_requested);
 }
 
+void Sen::RunForCycles(const uint64_t cycles) {
+    if (!running) {
+        running = true;
+        cpu.Start();
+    }
+
+    const auto cpu_cycles = bus->cycles;
+    const auto target_cycles = cpu_cycles + cycles - carry_over_cycles;
+
+    while (bus->cycles < target_cycles) {
+        cpu.Execute();
+    }
+
+    carry_over_cycles = bus->cycles - target_cycles;
+}
+
 void Sen::StepOpcode() {
     if (!running) {
         running = true;

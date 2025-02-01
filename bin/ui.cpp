@@ -84,7 +84,7 @@ void Ui::InitSDL() {
         std::exit(-1);
     }
     SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1);  // Enable vsync. TODO: Disable vsync
+    SDL_GL_SetSwapInterval(0);
 
     controller = FindController();
 
@@ -329,18 +329,27 @@ void Ui::SetImGuiStyle() {
 }
 
 void Ui::MainLoop() {
-    // TODO: UI independent game loop
+    Uint64 current_time = SDL_GetTicks64();
+
     while (open) {
+        const auto new_time = SDL_GetTicks64();
+        const auto dt = new_time - current_time;
+        current_time = new_time;
+
+        const auto cpu_cycles_to_run = dt * CYCLES_PER_FRAME / 16;
+
         HandleEvents();
 
         if (emulation_running) {
-            if (audio_frame_delay != 0) {
+            // Run emulator for `dt` equivalent cycles and check if frame passed
+            const auto initial_frame_count = emulator_context->FrameCount();
+            emulator_context->RunForCycles(cpu_cycles_to_run);
+            if (emulator_context->FrameCount() != initial_frame_count && audio_frame_delay != 0) {
                 audio_frame_delay--;
                 if (audio_frame_delay == 0) {
                     SDL_PauseAudio(0);
                 }
             }
-            emulator_context->RunForOneFrame();
         }
 
         RenderUi();

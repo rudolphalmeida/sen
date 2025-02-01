@@ -33,11 +33,12 @@ class Sen {
 
     InterruptRequestFlag nmi_requested{}, irq_requested{};
 
-    static constexpr uint64_t CYCLES_PER_FRAME{29780};
-
    public:
     explicit Sen(const RomArgs& rom_args, const std::shared_ptr<AudioQueue>& sink);
 
+    uint64_t FrameCount() const { return ppu->frame_count; }
+
+    void RunForCycles(uint64_t cycles);
     void StepOpcode();
     void RunForOneScanline();
     void RunForOneFrame();
