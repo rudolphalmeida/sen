@@ -318,7 +318,7 @@ public:
 
     ApuNoise(): length_counter{&enabled} {}
 
-    byte GetSample() const {
+    [[nodiscard]] byte GetSample() const {
         if ((shift_register & 0b1) != 0 || length_counter.counter == 0) {
             return 0x00;
         }
@@ -372,6 +372,11 @@ public:
     }
 };
 
+class ApuDmc {
+public:
+    bool enabled{false};
+};
+
 enum class ApuChannel: byte {
     Pulse1 = (1 << 0),
     Pulse2 = (1 << 1),
@@ -399,6 +404,7 @@ private:
     ApuPulse pulse_1{false}, pulse_2{true};
     ApuTriangle triangle{};
     ApuNoise noise{};
+    ApuDmc dmc{};
 
     InterruptRequestFlag irq_requested{};
 

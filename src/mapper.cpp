@@ -5,7 +5,7 @@
 #include "util.hxx"
 #include "mapper.hxx"
 
-std::shared_ptr<Cartridge> init_mapper(RomHeader header, std::vector<byte> prg_rom, std::vector<byte> chr_rom) {
+std::shared_ptr<Cartridge> init_mapper(RomHeader header, const std::vector<byte>& prg_rom, const std::vector<byte>& chr_rom) {
     switch (header.mapper_number) {  // TODO: Handle differences in iNES and NES2.0 headers
         case 0x00:
             spdlog::info("Loading NROM mapper for cartridge");

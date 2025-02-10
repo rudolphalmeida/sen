@@ -29,7 +29,7 @@ class Cartridge {
 public:
     RomHeader header;
 
-    explicit Cartridge(RomHeader header): header{std::move(header)} {}
+    explicit Cartridge(const RomHeader& header): header{header} {}
 
     virtual byte cpu_read(word address) = 0;
     virtual void cpu_write(word address, byte data) = 0;
@@ -37,11 +37,11 @@ public:
     virtual byte ppu_read(word address) = 0;
     virtual void ppu_write(word address, byte data) = 0;
 
-    virtual Mirroring mirroring() const {
+    [[nodiscard]] virtual Mirroring mirroring() const {
         return header.hardware_mirroring;
     }
 
-    virtual std::span<const unsigned char> chr_rom_ref() const = 0;
+    [[nodiscard]] virtual std::span<const unsigned char> chr_rom_ref() const = 0;
 
     virtual ~Cartridge() = default;
 

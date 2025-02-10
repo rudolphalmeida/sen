@@ -17,7 +17,7 @@ add_library(sen
     include/constants.hxx
     include/sen.hxx src/sen.cpp
     include/util.hxx src/util.cpp
-    include/cartridge.hxx src/cartridge.cpp
+    include/cartridge.hxx
     include/mapper.hxx src/mapper.cpp
     include/cpu.hxx include/debugger.hxx
     include/bus.hxx src/bus.cpp
