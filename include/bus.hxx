@@ -27,7 +27,7 @@ class Bus {
         spdlog::debug("Initialized system bus");
     }
 
-    byte UntickedCpuRead(word address);
+    byte UntickedCpuRead(word address) const;
     void UntickedCpuWrite(word address, byte data);
 
     byte CpuRead(const word address) {

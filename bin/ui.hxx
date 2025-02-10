@@ -103,7 +103,7 @@ class Ui {
     static SDL_GameController* FindController();
 
     [[nodiscard]] static std::vector<Pixel> RenderPixelsForPatternTable(
-        std::span<byte, 4096> pattern_table,
+        std::span<const byte, 4096> pattern_table,
         std::span<byte, 32> nes_palette,
         int palette_id);
 

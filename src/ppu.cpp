@@ -421,7 +421,7 @@ void Ppu::CpuWrite(word address, byte data) {
 byte Ppu::PpuRead(word address) const {
     address &= 0x3FFF;
     if (InRange<word>(0x0000, address, 0x1FFF)) {
-        return cartridge->PpuRead(address);
+        return cartridge->ppu_read(address);
     } else if (InRange<word>(0x2000, address, 0x2FFF)) {
         return vram[VramIndex(address)];
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
@@ -435,7 +435,7 @@ byte Ppu::PpuRead(word address) const {
 void Ppu::PpuWrite(word address, const byte data) {
     address &= 0x3FFF;
     if (InRange<word>(0x0000, address, 0x1FFF)) {
-        cartridge->PpuWrite(address, data);
+        cartridge->ppu_write(address, data);
     } else if (InRange<word>(0x2000, address, 0x2FFF)) {
         vram[VramIndex(address)] = data;
     } else if (InRange<word>(0x3000, address, 0x3EFF)) {
@@ -449,7 +449,7 @@ void Ppu::PpuWrite(word address, const byte data) {
 }
 
 size_t Ppu::VramIndex(const word address) const {
-    switch (cartridge->NametableMirroring()) {
+    switch (cartridge->mirroring()) {
         case Horizontal:
             return ((address >> 1) & 0x400) | (address & 0x3FF);
         case Vertical:

@@ -1113,7 +1113,7 @@ void Ui::LoadRomFile(const char* path) {
     audio_queue->Clear();
 }
 
-std::vector<Pixel> Ui::RenderPixelsForPatternTable(const std::span<byte, 4096> pattern_table,
+std::vector<Pixel> Ui::RenderPixelsForPatternTable(const std::span<const byte, 4096> pattern_table,
                                                    const std::span<byte, 32> nes_palette,
                                                    const int palette_id) {
     static std::vector<Pixel> pixels(128 * 128);

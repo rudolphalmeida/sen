@@ -154,7 +154,7 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     spdlog::debug("PRG ROM size (Bytes): {}", prg_rom_size);
     spdlog::debug("CHR ROM size (Bytes): {}", chr_rom_size);
 
-    RomHeader header{ prg_rom_size, chr_rom_size, mirroring, mapper_number, battery_backed_ram};
+    const RomHeader header{ prg_rom_size, prg_rom_banks, chr_rom_size, chr_rom_banks, mirroring, mapper_number, battery_backed_ram};
 
     // Check if a 512-byte trainer is present and is so, ignore it
     if (flag_6 & 0b100) {
@@ -173,7 +173,5 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     std::copy_n(rom_iter, chr_rom_size, std::back_inserter(chr_rom));
     std::advance(rom_iter, chr_rom_size);
 
-    auto mapper = MapperFromInesNumber(mapper_number, prg_rom_banks, chr_rom_banks);
-
-    return std::make_shared<Cartridge>(header, prg_rom, chr_rom, std::move(mapper));
+    return init_mapper(header, prg_rom, chr_rom);
 }

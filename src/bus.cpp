@@ -1,7 +1,7 @@
 #include "bus.hxx"
 #include "util.hxx"
 
-byte Bus::UntickedCpuRead(const word address) {
+byte Bus::UntickedCpuRead(const word address) const {
     if (InRange<word>(0x0000, address, 0x1FFF)) {
         return internal_ram[address % 0x800];
     } else if (InRange<word>(0x2000, address, 0x3FFF)) {
@@ -17,7 +17,7 @@ byte Bus::UntickedCpuRead(const word address) {
     } else if (InRange<word>(0x4018, address, 0x401F)) {
         return 0xFF;
     } else {
-        return cartridge->CpuRead(address);
+        return cartridge->cpu_read(address);
     }
 }
 
@@ -34,7 +34,7 @@ void Bus::UntickedCpuWrite(const word address, const byte data) {
         controller->CpuWrite(address, data);
     } else if (InRange<word>(0x4018, address, 0x401F)) {
     } else {
-        cartridge->CpuWrite(address, data);
+        cartridge->cpu_write(address, data);
     }
 }
 

@@ -45,8 +45,8 @@ struct PpuState {
 };
 
 struct PatternTablesState {
-    std::span<byte, 4096> left;
-    std::span<byte, 4096> right;
+    std::span<const byte, 4096> left;
+    std::span<const byte, 4096> right;
 
     std::span<byte, 0x20> palettes;
 };
@@ -94,7 +94,7 @@ class Debugger {
 
     static Sprites GetSprites(const std::shared_ptr<Ppu>& ppu) {
         Sprites sprites{.sprites_data = {}, .palettes = std::span<byte, 0x20>{&ppu->palette_table[0], 0x20}};
-        auto chr_mem = ppu->cartridge->chr_rom;
+        auto chr_mem = ppu->cartridge->chr_rom_ref();
         word sprite_pattern_table_address = ppu->SpritePatternTableAddress();
         std::ranges::transform(ppu->oam, sprites.sprites_data.begin(), [&](Sprite sprite) -> SpriteData {
             std::array<byte, 16> tile_data{};
@@ -112,7 +112,7 @@ class Debugger {
 
 
     static PpuState GetPpuState(const std::shared_ptr<Ppu>& ppu) {
-        auto chr_mem = ppu->cartridge->chr_rom;
+        auto chr_mem = ppu->cartridge->chr_rom_ref();
         return PpuState{
             .palettes = std::span<byte, 0x20>{&ppu->palette_table[0], 0x20},
             .frame_count = ppu->frame_count,
@@ -130,9 +130,9 @@ class Debugger {
     [[nodiscard]] PpuState GetPpuState() const { return GetPpuState(this->emulator_context->ppu); }
 
     [[nodiscard]] PatternTablesState GetPatternTableState() const {
-        auto& chr_mem = emulator_context->bus->cartridge->chr_rom;
-        return {.left = std::span<byte, 4096>{&chr_mem[0x0000], 0x1000},
-                .right = std::span<byte, 4096>{&chr_mem[0x1000], 0x1000},
+        const auto chr_mem = emulator_context->bus->cartridge->chr_rom_ref();
+        return {.left = std::span(chr_mem.first<0x1000>()),
+                .right = std::span(chr_mem.subspan(0x1000).first<0x1000>()),
                 .palettes = std::span<byte, 32>{&emulator_context->ppu->palette_table[0], 32}};
     }
 

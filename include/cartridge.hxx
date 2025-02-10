@@ -1,14 +1,10 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
-#include <optional>
-#include <vector>
 
 #include <spdlog/spdlog.h>
 
 #include "constants.hxx"
-#include "mapper.hxx"
 
 enum Mirroring {
     Horizontal,
@@ -18,43 +14,36 @@ enum Mirroring {
 
 struct RomHeader {
     size_t prg_rom_size;
+    size_t prg_rom_banks;
+
     size_t chr_rom_size;
-    Mirroring mirroring;
+    size_t chr_rom_banks;
+
+
+    Mirroring hardware_mirroring;
     word mapper_number;
     bool battery_backed_ram = false;
 };
 
-struct Cartridge {
-   private:
+class Cartridge {
+public:
     RomHeader header;
-    std::vector<byte> prg_rom;
-    std::vector<byte> chr_rom;
 
-    std::unique_ptr<Mapper> mapper{};
+    explicit Cartridge(RomHeader header): header{std::move(header)} {}
 
-    std::optional<std::vector<byte>> chr_ram = std::nullopt;
+    virtual byte cpu_read(word address) = 0;
+    virtual void cpu_write(word address, byte data) = 0;
 
-   public:
-    Cartridge(const RomHeader& header,
-              std::vector<byte> prg_rom,
-              std::vector<byte> chr_rom,
-              std::unique_ptr<Mapper> mapper,
-              std::optional<std::vector<byte>> chr_ram = std::nullopt)
-        : header{header},
-          prg_rom{std::move(prg_rom)},
-          chr_rom{std::move(chr_rom)},
-          mapper{std::move(mapper)},
-          chr_ram{std::move(chr_ram)} {}
+    virtual byte ppu_read(word address) = 0;
+    virtual void ppu_write(word address, byte data) = 0;
 
-    [[nodiscard]] byte CpuRead(const word address) const { return prg_rom[mapper->MapCpuAddr(address)]; }
-    void CpuWrite(word address, byte data) {}
-
-    [[nodiscard]] byte PpuRead(const word address) const { return chr_rom[address]; }
-    void PpuWrite(word address, byte data) {}
-
-    [[nodiscard]] Mirroring NametableMirroring() const {
-        return header.mirroring;
+    virtual Mirroring mirroring() const {
+        return header.hardware_mirroring;
     }
+
+    virtual std::span<const unsigned char> chr_rom_ref() const = 0;
+
+    virtual ~Cartridge() = default;
 
     friend class Debugger;
 };

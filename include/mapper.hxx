@@ -1,38 +1,47 @@
 #pragma once
 
-#include <spdlog/spdlog.h>
-#include <cstddef>
 #include <memory>
 
+#include "cartridge.hxx"
 #include "constants.hxx"
+#include "util.hxx"
 
-class Mapper {
-   public:
-    const size_t prg_rom_banks;
-    const size_t chr_rom_banks;
-
-    Mapper(const size_t prg_rom_banks, const size_t chr_rom_banks)
-        : prg_rom_banks{prg_rom_banks}, chr_rom_banks{chr_rom_banks} {}
-
-    // Map an address on the Bus to an index into PRG ROM
-    virtual unsigned int MapCpuAddr(word addr) = 0;
-
-    // Map an address on the Bus to an index into CHR ROM
-    virtual word MapPpuAddr(const word addr) { return addr; };
-
-    virtual ~Mapper() = default;
-};
-
-std::unique_ptr<Mapper> MapperFromInesNumber(byte mapper_number,
-                                             size_t prg_rom_banks,
-                                             size_t chr_rom_banks);
+std::shared_ptr<Cartridge> init_mapper(RomHeader header, std::vector<byte> prg_rom, std::vector<byte> chr_rom);
 
 // Mapper 0
 // Most basic with no switchable PRG ROM with 16KB and 32KB sizes
 // and no CHR ROM banking and 8KB fixed size
-class Nrom final : public Mapper {
+class Nrom final : public Cartridge {
    public:
-    Nrom(const size_t prg_rom_banks, size_t chr_rom_banks) : Mapper{prg_rom_banks, chr_rom_banks} {}
+    explicit Nrom(RomHeader header, std::vector<byte> prg_rom, std::vector<byte> chr_rom)
+        : Cartridge(std::move(header)), prg_rom{std::move(prg_rom)}, chr_rom{std::move(chr_rom)} {}
 
-    unsigned int MapCpuAddr(word address) override;
+    byte cpu_read(const word address) override {
+        return prg_rom[map_cpu_addr(address)];
+    }
+    void cpu_write(word, byte) override {}
+
+    byte ppu_read(const word address) override {
+        return chr_rom[address];
+    }
+
+    void ppu_write(word, byte) override {}
+
+    std::span<const unsigned char> chr_rom_ref() const override {
+        return std::span<const unsigned char, 8192>(chr_rom);
+    }
+
+    friend class Debugger;
+
+private:
+    std::vector<byte> prg_rom, chr_rom;
+
+    word map_cpu_addr(word address) const {
+        if (InRange<word>(0x8000, address, 0xFFFF)) {
+            return address % (16384 * header.prg_rom_banks);
+        }
+
+        spdlog::error("Unknown CPU address {:#06X} to NROM", address);
+        return 0x0000;
+    }
 };
