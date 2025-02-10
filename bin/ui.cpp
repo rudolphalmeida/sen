@@ -2,11 +2,11 @@
 
 #include "ui.hxx"
 
-#include <nfd.h>
 #include <SDL2/SDL_opengl.h>
 #include <imgui.h>
-#include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
+#include <imgui_impl_sdl2.h>
+#include <nfd.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
 
@@ -14,7 +14,6 @@
 #include "ImGuiNotify.hpp"
 #include "imgui_memory_editor.h"
 #include "util.hxx"
-
 
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 constexpr auto GLSL_VERSION = "#version 130";
@@ -98,10 +97,11 @@ void Ui::InitSDLAudio() {
         .format = DEVICE_FORMAT,
         .channels = DEVICE_CHANNELS,
         .samples = 2048,
-        .callback = [](void * userData, Uint8 * stream, const int length) {
-            const auto ui = static_cast<Ui*>(userData);
-            ui->audio_queue->GetSamples(stream, length / sizeof(float));
-        },
+        .callback =
+            [](void* userData, Uint8* stream, const int length) {
+                const auto ui = static_cast<Ui*>(userData);
+                ui->audio_queue->GetSamples(stream, length / sizeof(float));
+            },
         .userdata = static_cast<void*>(this),
     };
 
@@ -145,16 +145,16 @@ void Ui::InitImGui() const {
     switch (settings.GetUiStyle()) {
         case UiStyle::Classic:
             ImGui::StyleColorsClassic();
-        break;
+            break;
         case UiStyle::Light:
             ImGui::StyleColorsLight();
-        break;
+            break;
         case UiStyle::Dark:
             ImGui::StyleColorsDark();
-        break;
+            break;
         case UiStyle::SuperDark:
             EmbraceTheDarkness();
-        break;
+            break;
     }
 
     // Setup Platform/Renderer backends
@@ -184,10 +184,12 @@ void Ui::HandleEvents() {
                 break;
 
             case SDL_WINDOWEVENT:
-                if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window)) {
+                if (event.window.event == SDL_WINDOWEVENT_CLOSE &&
+                    event.window.windowID == SDL_GetWindowID(window)) {
                     open = false;
                 }
-                if (event.window.event == SDL_WINDOWEVENT_RESIZED && event.window.windowID == SDL_GetWindowID(window)) {
+                if (event.window.event == SDL_WINDOWEVENT_RESIZED &&
+                    event.window.windowID == SDL_GetWindowID(window)) {
                     settings.Width(event.window.data1);
                     settings.Height(event.window.data2);
                 }
@@ -201,23 +203,28 @@ void Ui::HandleEvents() {
                 break;
 
             case SDL_CONTROLLERDEVICEREMOVED:
-                if (controller && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
+                if (controller &&
+                    event.cdevice.which ==
+                        SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
                     spdlog::info("Controller disconnected");
                     SDL_GameControllerClose(controller);
                     controller = FindController();
                 }
                 break;
 
-            default: break;
+            default:
+                break;
         }
 
         if (event.type == SDL_QUIT)
             open = false;
         if (event.type == SDL_WINDOWEVENT) {
-            if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window)) {
+            if (event.window.event == SDL_WINDOWEVENT_CLOSE &&
+                event.window.windowID == SDL_GetWindowID(window)) {
                 open = false;
             }
-            if (event.window.event == SDL_WINDOWEVENT_RESIZED && event.window.windowID == SDL_GetWindowID(window)) {
+            if (event.window.event == SDL_WINDOWEVENT_RESIZED &&
+                event.window.windowID == SDL_GetWindowID(window)) {
                 settings.Width(event.window.data1);
                 settings.Height(event.window.data2);
             }
@@ -411,8 +418,7 @@ void Ui::RenderUi() {
         const auto [data, width, height] = filter->PostProcess(framebuffer, settings.ScaleFactor());
 
         glBindTexture(GL_TEXTURE_2D, display_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                     data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         ImGui::Image(display_texture, ImVec2(NES_WIDTH * settings.ScaleFactor(),
                                              NES_HEIGHT * settings.ScaleFactor()));
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -429,8 +435,8 @@ void Ui::RenderUi() {
 
     ImGui::PopStyleVar();
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f); // Disable round borders
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f); // Disable borders
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);    // Disable round borders
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);  // Disable borders
     ImGui::RenderNotifications();
     ImGui::PopStyleVar(2);
 
@@ -443,11 +449,11 @@ void Ui::RenderUi() {
 
 #ifdef WIN32
     if (const auto& io = ImGui::GetIO(); io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-         SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
-            SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault();
-            SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
+        SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+        SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+        SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
     }
 #endif
 }
@@ -479,7 +485,8 @@ void Ui::ShowMenuBar() {
                 for (auto recent : recents) {
                     if (ImGui::MenuItem(recent, nullptr, false, true)) {
                         LoadRomFile(recent);
-                        ImGui::InsertNotification({ImGuiToastType::Success, 3000, "Successfully loaded %s", recent});
+                        ImGui::InsertNotification(
+                            {ImGuiToastType::Success, 3000, "Successfully loaded %s", recent});
                     }
                 }
 
@@ -542,11 +549,13 @@ void Ui::ShowMenuBar() {
             }
 
             if (ImGui::BeginMenu("Filter")) {
-                if (ImGui::MenuItem("None", nullptr, settings.GetFilterType() == FilterType::NoFilter)) {
+                if (ImGui::MenuItem("None", nullptr,
+                                    settings.GetFilterType() == FilterType::NoFilter)) {
                     settings.SetFilterType(FilterType::NoFilter);
                     SetFilter(FilterType::NoFilter);
                 }
-                if (ImGui::MenuItem("NTSC", nullptr, settings.GetFilterType() == FilterType::Ntsc)) {
+                if (ImGui::MenuItem("NTSC", nullptr,
+                                    settings.GetFilterType() == FilterType::Ntsc)) {
                     settings.SetFilterType(FilterType::Ntsc);
                     SetFilter(FilterType::Ntsc);
                 }
@@ -564,9 +573,9 @@ void Ui::ShowMenuBar() {
                                 emulation_running)) {
                 settings.TogglePanel(UiPanel::Registers);
             }
-            if (ImGui::MenuItem("Opcodes", nullptr, open_panels[static_cast<int>(UiPanel::Opcodes)],
+            if (ImGui::MenuItem("Disassembly", nullptr, open_panels[static_cast<int>(UiPanel::Disassembly)],
                                 emulation_running)) {
-                settings.TogglePanel(UiPanel::Opcodes);
+                settings.TogglePanel(UiPanel::Disassembly);
             }
             if (ImGui::MenuItem("Pattern Tables", nullptr,
                                 open_panels[static_cast<int>(UiPanel::PatternTables)],
@@ -582,10 +591,11 @@ void Ui::ShowMenuBar() {
                                 emulation_running)) {
                 settings.TogglePanel(UiPanel::Sprites);
             }
-            if (ImGui::MenuItem("Volume", nullptr, open_panels[static_cast<int>(UiPanel::VolumeControl)],
+            if (ImGui::MenuItem("Volume", nullptr,
+                                open_panels[static_cast<int>(UiPanel::VolumeControl)],
                                 emulation_running)) {
                 settings.TogglePanel(UiPanel::VolumeControl);
-                                }
+            }
             ImGui::EndMenu();
         }
 
@@ -895,100 +905,103 @@ void Ui::ShowPpuMemory() {
 
 void Ui::ShowOpcodes() {
     auto& open_panels = settings.GetOpenPanels();
-    if (!open_panels[static_cast<int>(UiPanel::Opcodes)]) {
+    if (!open_panels[static_cast<int>(UiPanel::Disassembly)]) {
         return;
     }
 
-    if (ImGui::Begin("Opcodes", &open_panels[static_cast<int>(UiPanel::Opcodes)])) {
-        if (ImGui::BeginTable("opcodes", 3)) {
-            ImGui::TableSetupColumn("Start cycle");
-            ImGui::TableSetupColumn("Program Counter");
-            ImGui::TableSetupColumn("Disassembly");
-            ImGui::TableHeadersRow();
+    if (ImGui::Begin("Disassembly", &open_panels[static_cast<int>(UiPanel::Disassembly)])) {
+        for (const auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
+             const auto& executed_opcode : executed_opcodes.values | std::ranges::views::reverse) {
+            auto [opcode_class, opcode, addressing_mode, length, cycles, label] =
+                OPCODES[executed_opcode.opcode];
 
-            for (const auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
-                 const auto& executed_opcode :
-                 executed_opcodes.values | std::ranges::views::reverse) {
-                auto [opcode_class, opcode, addressing_mode, length, cycles, label] =
-                    OPCODES[executed_opcode.opcode];
+            std::string formatted_args;
+            ImVec4 arg_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-                std::string formatted_args;
-                switch (addressing_mode) {
-                    case AddressingMode::Absolute: {
-                        assert(length == 3);
-                        const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                                 static_cast<uint16_t>(executed_opcode.arg1);
-                        if (opcode_class == OpcodeClass::JMP || opcode_class == OpcodeClass::JSR) {
-                            formatted_args = std::format("0x{:04X}", address);
-                        } else {
-                            formatted_args = std::format("(0x{:04X})", address);
-                        }
-
-                        break;
-                    }
-                    case AddressingMode::AbsoluteXIndexed: {
-                        assert(length == 3);
-                        const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                                 static_cast<uint16_t>(executed_opcode.arg1);
-                        formatted_args = std::format("(0x{:04X} + X)", address);
-                        break;
-                    }
-                    case AddressingMode::AbsoluteYIndexed: {
-                        assert(length == 3);
-                        const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                                 static_cast<uint16_t>(executed_opcode.arg1);
-                        formatted_args = std::format("(0x{:04X} + Y)", address);
-                        break;
-                    }
-                    case AddressingMode::Immediate:
-                        assert(length == 2);
-                        formatted_args = std::format("#0x{:02X}", executed_opcode.arg1);
-                        break;
-                    case AddressingMode::Indirect: {
-                        assert(length == 3);
-                        const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                                 static_cast<uint16_t>(executed_opcode.arg1);
+            switch (addressing_mode) {
+                case AddressingMode::Absolute: {
+                    assert(length == 3);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                             static_cast<uint16_t>(executed_opcode.arg1);
+                    if (opcode_class == OpcodeClass::JMP || opcode_class == OpcodeClass::JSR) {
+                        formatted_args = std::format("0x{:04X}", address);
+                    } else {
+                        arg_color = ImVec4(0.2f, 0.6f, 0.3f, 1.0f);
                         formatted_args = std::format("(0x{:04X})", address);
-                        break;
                     }
-                    case AddressingMode::IndirectX:
-                        assert(length == 2);
-                        formatted_args = std::format("(0x{:02X} + X)", executed_opcode.arg1);
-                        break;
-                    case AddressingMode::IndirectY:
-                        assert(length == 2);
-                        formatted_args = std::format("(0x{:02X}) + Y", executed_opcode.arg1);
-                        break;
-                    case AddressingMode::Relative:
-                        assert(length == 2);
-                        formatted_args =
-                            std::format("0x{:02X}", static_cast<int8_t>(executed_opcode.arg1));
-                        break;
-                    case AddressingMode::ZeroPage:
-                        assert(length == 2);
-                        formatted_args = std::format("(0x{:04X})", executed_opcode.arg1);
-                        break;
-                    case AddressingMode::ZeroPageX:
-                        assert(length == 2);
-                        formatted_args = std::format("(0x{:04X} + X) % 256", executed_opcode.arg1);
-                        break;
-                    case AddressingMode::ZeroPageY:
-                        assert(length == 2);
-                        formatted_args = std::format("(0x{:04X} + Y) % 256", executed_opcode.arg1);
-                        break;
-                    default:
-                        break;
-                }
 
-                ImGui::TableNextColumn();
-                ImGui::Text("%lu", executed_opcode.start_cycle);
-                ImGui::TableNextColumn();
-                ImGui::Text("0x%.4X", executed_opcode.pc);
-                ImGui::TableNextColumn();
-                ImGui::Text("%s %s", label, formatted_args.c_str());
+                    break;
+                }
+                case AddressingMode::AbsoluteXIndexed: {
+                    assert(length == 3);
+                    arg_color = ImVec4(0.2f, 0.6f, 0.3f, 1.0f);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                             static_cast<uint16_t>(executed_opcode.arg1);
+                    formatted_args = std::format("(0x{:04X} + X)", address);
+                    break;
+                }
+                case AddressingMode::AbsoluteYIndexed: {
+                    assert(length == 3);
+                    arg_color = ImVec4(0.2f, 0.6f, 0.3f, 1.0f);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                             static_cast<uint16_t>(executed_opcode.arg1);
+                    formatted_args = std::format("(0x{:04X} + Y)", address);
+                    break;
+                }
+                case AddressingMode::Immediate:
+                    assert(length == 2);
+                    arg_color = ImVec4(0.2f, 0.5f, 0.8f, 1.0f);
+                    formatted_args = std::format("#0x{:02X}", executed_opcode.arg1);
+                    break;
+                case AddressingMode::Indirect: {
+                    assert(length == 3);
+                    arg_color = ImVec4(0.2f, 0.6f, 0.3f, 1.0f);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
+                                             static_cast<uint16_t>(executed_opcode.arg1);
+                    formatted_args = std::format("(0x{:04X})", address);
+                    break;
+                }
+                case AddressingMode::IndirectX:
+                    assert(length == 2);
+                    arg_color = ImVec4(0.2f, 0.6f, 0.3f, 1.0f);
+                    formatted_args = std::format("(0x{:02X} + X)", executed_opcode.arg1);
+                    break;
+                case AddressingMode::IndirectY:
+                    assert(length == 2);
+                    formatted_args = std::format("(0x{:02X}) + Y", executed_opcode.arg1);
+                    break;
+                case AddressingMode::Relative:
+                    assert(length == 2);
+                    formatted_args =
+                        std::format("0x{:02X}", static_cast<int8_t>(executed_opcode.arg1));
+                    break;
+                case AddressingMode::ZeroPage:
+                    assert(length == 2);
+                    arg_color = ImVec4(0.2f, 0.6f, 0.3f, 1.0f);
+                    formatted_args = std::format("(0x{:04X})", executed_opcode.arg1);
+                    break;
+                case AddressingMode::ZeroPageX:
+                    assert(length == 2);
+                    arg_color = ImVec4(0.2f, 0.6f, 0.3f, 1.0f);
+                    formatted_args = std::format("(0x{:04X} + X) % 256", executed_opcode.arg1);
+                    break;
+                case AddressingMode::ZeroPageY:
+                    assert(length == 2);
+                    arg_color = ImVec4(0.2f, 0.6f, 0.3f, 1.0f);
+                    formatted_args = std::format("(0x{:04X} + Y) % 256", executed_opcode.arg1);
+                    break;
+                default:
+                    break;
             }
 
-            ImGui::EndTable();
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(%lu)    ",
+                               executed_opcode.start_cycle);
+            ImGui::SameLine();
+            ImGui::Text("0x%.4X    ", executed_opcode.pc);
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "%s", label);
+            ImGui::SameLine();
+            ImGui::TextColored(arg_color, "%s", formatted_args.c_str());
         }
     }
     ImGui::End();
@@ -1052,7 +1065,6 @@ void Ui::ShowVolumeControl() {
     }
 
     if (ImGui::Begin("Volume Control", &open_panels[static_cast<int>(UiPanel::VolumeControl)])) {
-
     }
 
     ImGui::End();

@@ -24,7 +24,7 @@ enum class UiPanel {
     PpuMemory = 2,
     CpuMemory = 3,
     Sprites = 4,
-    Opcodes = 5,
+    Disassembly = 5,
     Debugger = 6,
     Logs = 7,
     VolumeControl = 8,
