@@ -41,7 +41,6 @@ struct PpuState {
     byte ppumask;
     byte ppustatus;
     byte oamaddr;
-
 };
 
 struct PatternTablesState {
@@ -56,20 +55,23 @@ struct PpuMemory {
 };
 
 class Debugger {
-   private:
+  private:
     std::shared_ptr<Sen> emulator_context{};
 
-   public:
+  public:
     Debugger() = default;
-    explicit Debugger(std::shared_ptr<Sen> emulator_context)
-        : emulator_context{std::move(emulator_context)} {}
+
+    explicit Debugger(std::shared_ptr<Sen> emulator_context) :
+        emulator_context{std::move(emulator_context)} {}
 
     [[nodiscard]] std::span<word, NES_WIDTH * NES_HEIGHT> Framebuffer() const {
-        return std::span<word, NES_WIDTH * NES_HEIGHT>{emulator_context->ppu->framebuffer.data(),
-                                                       NES_WIDTH * NES_HEIGHT};
+        return std::span<word, NES_WIDTH * NES_HEIGHT>{
+            emulator_context->ppu->framebuffer.data(),
+            NES_WIDTH * NES_HEIGHT
+        };
     }
 
-    template <typename BusType>
+    template<typename BusType>
     static CpuState GetCpuState(Cpu<BusType>& cpu) {
         return CpuState{
             .a = cpu.a,
@@ -80,10 +82,16 @@ class Debugger {
             .p = cpu.p,
         };
     }
-    CpuState GetCpuState() { return GetCpuState(this->emulator_context->cpu); }
-    [[nodiscard]] CpuState GetCpuState() const { return GetCpuState(this->emulator_context->cpu); }
 
-    template <typename BusType>
+    CpuState GetCpuState() {
+        return GetCpuState(this->emulator_context->cpu);
+    }
+
+    [[nodiscard]] CpuState GetCpuState() const {
+        return GetCpuState(this->emulator_context->cpu);
+    }
+
+    template<typename BusType>
     static const FixedSizeQueue<ExecutedOpcode>& GetCpuExecutedOpcodes(const Cpu<BusType>& cpu) {
         return cpu.executed_opcodes;
     }
@@ -93,23 +101,36 @@ class Debugger {
     }
 
     static Sprites GetSprites(const std::shared_ptr<Ppu>& ppu) {
-        Sprites sprites{.sprites_data = {}, .palettes = std::span<byte, 0x20>{&ppu->palette_table[0], 0x20}};
+        Sprites sprites{
+            .sprites_data = {},
+            .palettes = std::span<byte, 0x20>{&ppu->palette_table[0], 0x20}
+        };
         auto chr_mem = ppu->cartridge->chr_rom_ref();
         word sprite_pattern_table_address = ppu->SpritePatternTableAddress();
-        std::ranges::transform(ppu->oam, sprites.sprites_data.begin(), [&](Sprite sprite) -> SpriteData {
-            std::array<byte, 16> tile_data{};
-            std::ranges::copy(
-                &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4)],
-                &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4) + 16],
-                tile_data.begin());
-            return {.oam_entry = sprite, .tile_data=tile_data};
-        });
+        std::ranges::transform(
+            ppu->oam,
+            sprites.sprites_data.begin(),
+            [&](Sprite sprite) -> SpriteData {
+                std::array<byte, 16> tile_data{};
+                std::ranges::copy(
+                    &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4)],
+                    &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4) + 16],
+                    tile_data.begin()
+                );
+                return {.oam_entry = sprite, .tile_data = tile_data};
+            }
+        );
 
         return sprites;
     }
-    Sprites GetSprites() { return GetSprites(this->emulator_context->ppu); }
-    [[nodiscard]] Sprites GetSprites() const { return GetSprites(this->emulator_context->ppu); }
 
+    Sprites GetSprites() {
+        return GetSprites(this->emulator_context->ppu);
+    }
+
+    [[nodiscard]] Sprites GetSprites() const {
+        return GetSprites(this->emulator_context->ppu);
+    }
 
     static PpuState GetPpuState(const std::shared_ptr<Ppu>& ppu) {
         auto chr_mem = ppu->cartridge->chr_rom_ref();
@@ -126,14 +147,22 @@ class Debugger {
             .oamaddr = ppu->oamaddr,
         };
     }
-    PpuState GetPpuState() { return GetPpuState(this->emulator_context->ppu); }
-    [[nodiscard]] PpuState GetPpuState() const { return GetPpuState(this->emulator_context->ppu); }
+
+    PpuState GetPpuState() {
+        return GetPpuState(this->emulator_context->ppu);
+    }
+
+    [[nodiscard]] PpuState GetPpuState() const {
+        return GetPpuState(this->emulator_context->ppu);
+    }
 
     [[nodiscard]] PatternTablesState GetPatternTableState() const {
         const auto chr_mem = emulator_context->bus->cartridge->chr_rom_ref();
-        return {.left = std::span(chr_mem.first<0x1000>()),
-                .right = std::span(chr_mem.subspan(0x1000).first<0x1000>()),
-                .palettes = std::span<byte, 32>{&emulator_context->ppu->palette_table[0], 32}};
+        return {
+            .left = std::span(chr_mem.first<0x1000>()),
+            .right = std::span(chr_mem.subspan(0x1000).first<0x1000>()),
+            .palettes = std::span<byte, 32>{&emulator_context->ppu->palette_table[0], 32}
+        };
     }
 
     void LoadPpuMemory(std::vector<byte>& buffer) const {

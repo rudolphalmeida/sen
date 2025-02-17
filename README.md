@@ -1,6 +1,6 @@
 # sen - NES Emulator
 
-`sen` is a WIP NES emulator for an NTSC NES system. Currently it passes all CPU tests.
+`sen` is a WIP NES emulator for an NTSC NES system. Currently, it passes all CPU tests.
 
 ## Screenshots
 

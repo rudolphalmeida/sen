@@ -1,11 +1,11 @@
 #pragma once
 
+#include <spdlog/spdlog.h>
+
 #include <array>
 #include <cstdint>
 #include <memory>
 #include <optional>
-
-#include <spdlog/spdlog.h>
 
 #include "cartridge.hxx"
 #include "constants.hxx"
@@ -16,17 +16,25 @@ struct Sprite {
     byte attribs;
     byte x;
 
-    [[nodiscard]] byte PaletteIndex() const { return attribs & 0b11; }
+    [[nodiscard]] byte PaletteIndex() const {
+        return attribs & 0b11;
+    }
 
-    [[nodiscard]] byte BgOverSprite() const { return (attribs & 0x20) >> 5; }
+    [[nodiscard]] byte BgOverSprite() const {
+        return (attribs & 0x20) >> 5;
+    }
 
-    [[nodiscard]] bool FlipHorizontal() const { return (attribs & 0x40) >> 6; }
+    [[nodiscard]] bool FlipHorizontal() const {
+        return (attribs & 0x40) >> 6;
+    }
 
-    [[nodiscard]] bool FlipVertical() const { return (attribs & 0x80) >> 7; }
+    [[nodiscard]] bool FlipVertical() const {
+        return (attribs & 0x80) >> 7;
+    }
 };
 
 class Ppu {
-   private:
+  private:
     struct ActiveSprite {
         byte tile_lsb;
         byte tile_msb;
@@ -48,15 +56,17 @@ class Ppu {
     byte ppumask{};
     byte ppustatus{0x1F};
     byte oamaddr{};
-    std::optional<byte> ppudata_buf = std::nullopt;  // PPUDATA read buffer
+    std::optional<byte> ppudata_buf = std::nullopt; // PPUDATA read buffer
 
     // Rendering registers
     union {
         word value;
+
         struct {
             byte low;
             byte high;
         } as_bytes;
+
         struct {
             byte coarse_x_scroll : 5;
             byte coarse_y_scroll_low : 3;
@@ -68,14 +78,16 @@ class Ppu {
             [[nodiscard]] byte coarse_y_scroll() const {
                 return (coarse_y_scroll_high << 3) | coarse_y_scroll_low;
             }
+
             void coarse_y_scroll(const byte data) {
                 coarse_y_scroll_low = data;
                 coarse_y_scroll_high = (data >> 3);
             }
         } as_scroll;
-    } v{.value = 0x0000}, t{.value = 0x0000};  // Current, Temporary VRAM address (15 bits)
-    byte fine_x{};                             // (x) Fine X (3 bits)
-    bool write_toggle{false};                  // (w) 1 bit
+    } v{.value = 0x0000}, t{.value = 0x0000}; // Current, Temporary VRAM address (15 bits)
+
+    byte fine_x{}; // (x) Fine X (3 bits)
+    bool write_toggle{false}; // (w) 1 bit
 
     // Latch for tile ID of the next tile to be drawn. Updated every 8-cycles
     // Tiles will be fetched from this address and set tp the lower 8-bits
@@ -126,19 +138,45 @@ class Ppu {
         }
     }
 
-    [[nodiscard]] byte VramAddressIncrement() const { return (ppuctrl & 0x04) != 0x00 ? 32 : 1; }
-    [[nodiscard]] word SpritePatternTableAddress() const { return (ppuctrl & 0x08) << 9; }
+    [[nodiscard]] byte VramAddressIncrement() const {
+        return (ppuctrl & 0x04) != 0x00 ? 32 : 1;
+    }
+
+    [[nodiscard]] word SpritePatternTableAddress() const {
+        return (ppuctrl & 0x08) << 9;
+    }
+
     [[nodiscard]] word BgPatternTableAddress() const {
         return (ppuctrl & 0x10) != 0x00 ? 0x1000 : 0x0000;
     }
-    [[nodiscard]] byte SpriteHeight() const { return (ppuctrl & 0x20) != 0x00 ? 16 : 8; }
-    [[nodiscard]] bool NmiAtVBlank() const { return (ppuctrl & 0x80) != 0x00; }
 
-    [[nodiscard]] bool Grayscale() const { return (ppumask & 0x01) != 0x00; }
-    [[nodiscard]] bool ShowBackgroundInLeft() const { return (ppumask & 0x02) != 0x00; }
-    [[nodiscard]] bool ShowSpritesInLeft() const { return (ppumask & 0x04) != 0x00; }
-    [[nodiscard]] bool ShowBackground() const { return (ppumask & 0x08) != 0x00; }
-    [[nodiscard]] bool ShowSprites() const { return (ppumask & 0x10) != 0x00; }
+    [[nodiscard]] byte SpriteHeight() const {
+        return (ppuctrl & 0x20) != 0x00 ? 16 : 8;
+    }
+
+    [[nodiscard]] bool NmiAtVBlank() const {
+        return (ppuctrl & 0x80) != 0x00;
+    }
+
+    [[nodiscard]] bool Grayscale() const {
+        return (ppumask & 0x01) != 0x00;
+    }
+
+    [[nodiscard]] bool ShowBackgroundInLeft() const {
+        return (ppumask & 0x02) != 0x00;
+    }
+
+    [[nodiscard]] bool ShowSpritesInLeft() const {
+        return (ppumask & 0x04) != 0x00;
+    }
+
+    [[nodiscard]] bool ShowBackground() const {
+        return (ppumask & 0x08) != 0x00;
+    }
+
+    [[nodiscard]] bool ShowSprites() const {
+        return (ppumask & 0x10) != 0x00;
+    }
 
     [[nodiscard]] bool InVblank() const {
         // Bit 7 is set during VBlank
@@ -159,7 +197,7 @@ class Ppu {
 
     friend class Debugger;
 
-   public:
+  public:
     const unsigned int SCANLINES_PER_FRAME = 262;
     const unsigned int PPU_CLOCK_CYCLES_PER_SCANLINE = 341;
     const unsigned int PRE_RENDER_SCANLINE = 261;
@@ -167,14 +205,17 @@ class Ppu {
     const unsigned int VBLANK_START_SCANLINE = 241;
     const unsigned int VBLANK_SET_RESET_CYCLE = 1;
 
-    uint64_t frame_count{};  // Also used to determine if even or odd frame
+    uint64_t frame_count{}; // Also used to determine if even or odd frame
 
     Ppu() = default;
 
-    Ppu(std::shared_ptr<Cartridge> cartridge, std::shared_ptr<bool> nmi_requested)
-        : cartridge{std::move(cartridge)}, nmi_requested{std::move(nmi_requested)} {}
+    Ppu(std::shared_ptr<Cartridge> cartridge, std::shared_ptr<bool> nmi_requested) :
+        cartridge{std::move(cartridge)},
+        nmi_requested{std::move(nmi_requested)} {}
 
-    [[nodiscard]] unsigned int Scanline() const { return scanline; }
+    [[nodiscard]] unsigned int Scanline() const {
+        return scanline;
+    }
 
     void Tick();
 

@@ -43,7 +43,8 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         noise.ClockEnvelope();
     }
 
-    if (step_mode == FrameCounterStepMode::FourStep && cpu_cycles_into_frame == 29828 && raise_irq) {
+    if (step_mode == FrameCounterStepMode::FourStep && cpu_cycles_into_frame == 29828
+        && raise_irq) {
         *irq_requested = true;
     }
 
@@ -145,33 +146,40 @@ void Apu::CpuWrite(const word address, const byte data) {
         triangle.WriteRegister(address - 0x4008, data);
     } else if (InRange<word>(0x400C, address, 0x400F)) {
         noise.WriteRegister(address - 0x400C, data);
-    }
-    else if (address == 0x4015) {
-        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1) && !ChannelEnabled(data, ApuChannel::Pulse1)) {
+    } else if (address == 0x4015) {
+        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1)
+            && !ChannelEnabled(data, ApuChannel::Pulse1)) {
             pulse_1.length_counter.Load(0);
             pulse_1.enabled = false;
-        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1) && ChannelEnabled(data, ApuChannel::Pulse1)) {
+        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1)
+                   && ChannelEnabled(data, ApuChannel::Pulse1)) {
             pulse_1.enabled = true;
         }
 
-        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2) && !ChannelEnabled(data, ApuChannel::Pulse2)) {
+        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2)
+            && !ChannelEnabled(data, ApuChannel::Pulse2)) {
             pulse_2.length_counter.Load(0);
             pulse_2.enabled = false;
-        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2) && ChannelEnabled(data, ApuChannel::Pulse2)) {
+        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2)
+                   && ChannelEnabled(data, ApuChannel::Pulse2)) {
             pulse_2.enabled = true;
         }
 
-        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle) && !ChannelEnabled(data, ApuChannel::Triangle)) {
+        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle)
+            && !ChannelEnabled(data, ApuChannel::Triangle)) {
             triangle.length_counter.Load(0);
             triangle.enabled = false;
-        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle) && ChannelEnabled(data, ApuChannel::Triangle)) {
+        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle)
+                   && ChannelEnabled(data, ApuChannel::Triangle)) {
             triangle.enabled = true;
         }
 
-        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Noise) && !ChannelEnabled(data, ApuChannel::Noise)) {
+        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Noise)
+            && !ChannelEnabled(data, ApuChannel::Noise)) {
             noise.length_counter.Load(0);
             noise.enabled = false;
-        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Noise) && ChannelEnabled(data, ApuChannel::Noise)) {
+        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Noise)
+                   && ChannelEnabled(data, ApuChannel::Noise)) {
             noise.enabled = true;
         }
 
@@ -198,10 +206,16 @@ void Apu::UpdateFrameCounter(const byte data) {
     raise_irq = (data & 0x40) == 0x00;
 }
 
-float Apu::Mix(const byte pulse1_sample, const byte pulse2_sample, const byte triangle_sample, const byte noise_sample) {
+float Apu::Mix(
+    const byte pulse1_sample,
+    const byte pulse2_sample,
+    const byte triangle_sample,
+    const byte noise_sample
+) {
     float pulse_out = 0.0f;
     if (pulse1_sample != 0x00 || pulse2_sample != 0x00) {
-        pulse_out = 95.88f / ((8128.0f / static_cast<float>(pulse1_sample + pulse2_sample)) + 100.0f);
+        pulse_out =
+            95.88f / ((8128.0f / static_cast<float>(pulse1_sample + pulse2_sample)) + 100.0f);
     }
 
     const float tnd_out = 0.00851f * static_cast<float>(triangle_sample) + 0.00494 * noise_sample;

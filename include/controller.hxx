@@ -1,8 +1,8 @@
 #pragma once
 
-#include "constants.hxx"
-
 #include <spdlog/spdlog.h>
+
+#include "constants.hxx"
 
 enum class ControllerKey : byte {
     A = 0x01,
@@ -21,7 +21,7 @@ enum class ControllerPort {
 };
 
 class Controller {
-   public:
+  public:
     byte CpuRead(word address) {
         // TODO: Open bus values
         switch (address) {
@@ -30,7 +30,7 @@ class Controller {
                     return key_state_1 & 0b1;
                 } else {
                     byte value = key_shift_reg_1 & 0b1;
-                    key_shift_reg_1 = (key_shift_reg_1 >> 1) | 0x80;  // Ensure all 1s after 8 reads
+                    key_shift_reg_1 = (key_shift_reg_1 >> 1) | 0x80; // Ensure all 1s after 8 reads
                     return value;
                 }
             case 0x4017:
@@ -38,7 +38,7 @@ class Controller {
                     return key_state_1 & 0b1;
                 } else {
                     byte value = key_shift_reg_2 & 0b1;
-                    key_shift_reg_2 = (key_shift_reg_2 >> 1) | 0x80;  // Ensure all 1s after 8 reads
+                    key_shift_reg_2 = (key_shift_reg_2 >> 1) | 0x80; // Ensure all 1s after 8 reads
                     return value;
                 }
             default:
@@ -52,7 +52,7 @@ class Controller {
             auto old_strobe = strobe;
             strobe = (data & 0b1) == 0b1;
 
-            if (old_strobe && !strobe) {  // Stop polling
+            if (old_strobe && !strobe) { // Stop polling
                 key_shift_reg_1 = key_state_1;
                 key_shift_reg_2 = key_state_2;
 
@@ -60,8 +60,11 @@ class Controller {
             }
         } else if (address == 0x4017) {
         } else {
-            spdlog::error("Write to invalid controller address 0x{:#04X} with {:08b}", address,
-                          data);
+            spdlog::error(
+                "Write to invalid controller address 0x{:#04X} with {:08b}",
+                address,
+                data
+            );
         }
     }
 
@@ -87,7 +90,7 @@ class Controller {
         }
     }
 
-   private:
+  private:
     bool strobe{false};
 
     byte key_state_1{0x00};

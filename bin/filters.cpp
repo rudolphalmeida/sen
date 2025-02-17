@@ -2,10 +2,10 @@
 // Created by rudolph on 19/12/24.
 //
 
-#include <ranges>
-#include <algorithm>
-
 #include "filters.hxx"
+
+#include <algorithm>
+#include <ranges>
 
 PostProcessedData NoFilter::PostProcess(const std::span<unsigned short, 61440> nes_pixels, int) {
     if (pixels.size() != NES_WIDTH * NES_HEIGHT) {
@@ -19,17 +19,23 @@ PostProcessedData NoFilter::PostProcess(const std::span<unsigned short, 61440> n
         }
     }
 
-    return { .data = pixels.data(), .width = NES_WIDTH, .height = NES_HEIGHT};
+    return {.data = pixels.data(), .width = NES_WIDTH, .height = NES_HEIGHT};
 }
 
-PostProcessedData NtscFilter::PostProcess(const std::span<unsigned short, 61440> nes_pixels,
-                                          int current_scale_factor) {
+PostProcessedData NtscFilter::PostProcess(
+    const std::span<unsigned short, 61440> nes_pixels,
+    int current_scale_factor
+) {
     if (current_scale_factor != scale_factor) {
         pixels.resize(NES_WIDTH * NES_HEIGHT * current_scale_factor * current_scale_factor);
-        std::ranges::for_each(pixels, [](auto& pixel) {
-            pixel = Pixel();
-        });
-        crt_resize(&crt, NES_WIDTH * current_scale_factor, NES_HEIGHT * current_scale_factor, CRT_PIX_FORMAT_RGB, reinterpret_cast<unsigned char*>(pixels.data()));
+        std::ranges::for_each(pixels, [](auto& pixel) { pixel = Pixel(); });
+        crt_resize(
+            &crt,
+            NES_WIDTH * current_scale_factor,
+            NES_HEIGHT * current_scale_factor,
+            CRT_PIX_FORMAT_RGB,
+            reinterpret_cast<unsigned char*>(pixels.data())
+        );
     }
 
     ntsc.data = nes_pixels.data();
@@ -43,6 +49,9 @@ PostProcessedData NtscFilter::PostProcess(const std::span<unsigned short, 61440>
     crt_modulate(&crt, &ntsc);
     crt_demodulate(&crt, noise);
 
-    return { .data = pixels.data(), .width = NES_WIDTH * scale_factor, .height = NES_HEIGHT * scale_factor};
+    return {
+        .data = pixels.data(),
+        .width = NES_WIDTH * scale_factor,
+        .height = NES_HEIGHT * scale_factor
+    };
 }
-

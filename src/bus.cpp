@@ -1,4 +1,5 @@
 #include "bus.hxx"
+
 #include "util.hxx"
 
 byte Bus::UntickedCpuRead(const word address) const {
@@ -9,16 +10,15 @@ byte Bus::UntickedCpuRead(const word address) const {
     } else if (address == 0x4014) {
         // TODO: CPU Open Bus
         return 0xFF;
-    }
-    else if (InRange<word>(0x4000, address, 0x4015)) {
+    } else if (InRange<word>(0x4000, address, 0x4015)) {
         return apu->CpuRead(address);
     } else if (InRange<word>(0x4016, address, 0x4017)) {
         return controller->CpuRead(address);
     } else if (InRange<word>(0x4018, address, 0x401F)) {
         return 0xFF;
-    } else {
-        return cartridge->cpu_read(address);
     }
+
+    return cartridge->cpu_read(cycles, address);
 }
 
 void Bus::UntickedCpuWrite(const word address, const byte data) {
@@ -30,11 +30,11 @@ void Bus::UntickedCpuWrite(const word address, const byte data) {
         PerformOamDma(data);
     } else if (InRange<word>(0x4000, address, 0x4015) || address == 0x4017) {
         apu->CpuWrite(address, data);
-    } else if (address ==  0x4016) {
+    } else if (address == 0x4016) {
         controller->CpuWrite(address, data);
     } else if (InRange<word>(0x4018, address, 0x401F)) {
     } else {
-        cartridge->cpu_write(address, data);
+        cartridge->cpu_write(cycles, address, data);
     }
 }
 
@@ -45,6 +45,6 @@ void Bus::PerformOamDma(const byte high) { // - 513 ticks (ignoring +1 for put c
     // Wait cycle - 1
     Tick();
     for (; address < end; address++) {
-        CpuWrite(0x2004, CpuRead(address));  // 2 ticks - total 256
+        CpuWrite(0x2004, CpuRead(address)); // 2 ticks - total 256
     }
 }

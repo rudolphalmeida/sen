@@ -1,12 +1,13 @@
-#include <algorithm>
-#include <iostream>
-#include <memory>
+#include "sen.hxx"
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <memory>
+#include <utility>
+
 #include "cartridge.hxx"
 #include "mapper.hxx"
-#include "sen.hxx"
 
 Sen::Sen(const RomArgs& rom_args, const std::shared_ptr<AudioQueue>& sink) {
     nmi_requested = std::make_shared<bool>(false);
@@ -87,8 +88,8 @@ void Sen::ControllerRelease(const ControllerPort port, const ControllerKey key) 
 std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     auto rom_iter = rom_args.rom.cbegin();
 
-    if (*rom_iter++ != '\x4E' || *rom_iter++ != '\x45' || *rom_iter++ != '\x53' ||
-        *rom_iter++ != '\x1A') {
+    if (*rom_iter++ != '\x4E' || *rom_iter++ != '\x45' || *rom_iter++ != '\x53'
+        || *rom_iter++ != '\x1A') {
         // ROM should begin with NES\x1A
         spdlog::error("Provided file is not a valid NES ROM");
         std::exit(-1);
@@ -121,7 +122,8 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     word mapper_number;
 
     const auto flag_7 = *rom_iter++;
-    if (const bool nes2_0_format = (flag_7 & 0x0C) == 0x08) {
+    const bool nes2_0_format = (flag_7 & 0x0C) == 0x08;
+    if (nes2_0_format) {
         spdlog::info("ROM is in NES2.0 format");
 
         const auto flag_8 = *rom_iter++;
@@ -131,8 +133,8 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
         spdlog::debug("ROM has sub mapper: {}", submapper);
 
         const auto flag_9 = *rom_iter++;
-        prg_rom_banks |=((flag_9 & 0x0F) << 8);
-        chr_rom_banks |=((flag_9 & 0xF0) << 8);
+        prg_rom_banks |= ((flag_9 & 0x0F) << 8);
+        chr_rom_banks |= ((flag_9 & 0xF0) << 8);
 
         // TODO: Ignore the rest of the NES2.0 stuff for now
         std::advance(rom_iter, 16 - 10);
@@ -154,10 +156,22 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     spdlog::debug("PRG ROM size (Bytes): {}", prg_rom_size);
     spdlog::debug("CHR ROM size (Bytes): {}", chr_rom_size);
 
-    const RomHeader header{ prg_rom_size, prg_rom_banks, chr_rom_size, chr_rom_banks, mirroring, mapper_number, battery_backed_ram};
+    if (chr_rom_size == 0x00 && !nes2_0_format) {
+        spdlog::debug("Cartridge uses CHR-RAM");
+    }
+
+    const RomHeader header{
+        prg_rom_size,
+        prg_rom_banks,
+        chr_rom_size,
+        chr_rom_banks,
+        mirroring,
+        mapper_number,
+        battery_backed_ram
+    };
 
     // Check if a 512-byte trainer is present and is so, ignore it
-    if (flag_6 & 0b100) {
+    if ((flag_6 & 0b100U) != 0) {
         std::advance(rom_iter, 512);
     }
 
@@ -173,5 +187,5 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     std::copy_n(rom_iter, chr_rom_size, std::back_inserter(chr_rom));
     std::advance(rom_iter, chr_rom_size);
 
-    return init_mapper(header, prg_rom, chr_rom);
+    return init_mapper(header, std::move(prg_rom), std::move(chr_rom));
 }

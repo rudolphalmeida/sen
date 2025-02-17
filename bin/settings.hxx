@@ -1,10 +1,10 @@
 #pragma once
 
-#include <cstring>
-#include <vector>
-
 #include <spdlog/spdlog.h>
+
+#include <cstring>
 #include <libconfig.h++>
+#include <vector>
 
 #include "constants.hxx"
 
@@ -41,68 +41,92 @@ struct SenSettings {
 
     SenSettings() {
         try {
-        // TODO: Change this path to be the standard config directory for each OS
-        cfg.readFile("test.cfg");
-    } catch (const libconfig::FileIOException&) {
-        spdlog::info("Failed to find settings. Using default");
-    } catch (const libconfig::ParseException& e) {
-        spdlog::error("Failed to parse settings in file {} with {}. Using default", e.getFile(),
-                      e.getLine());
-    }
+            // TODO: Change this path to be the standard config directory for each OS
+            cfg.readFile("test.cfg");
+        } catch (const libconfig::FileIOException&) {
+            spdlog::info("Failed to find settings. Using default");
+        } catch (const libconfig::ParseException& e) {
+            spdlog::error(
+                "Failed to parse settings in file {} with {}. Using default",
+                e.getFile(),
+                e.getLine()
+            );
+        }
 
-    libconfig::Setting& root = cfg.getRoot();
-    if (!root.exists("ui")) {
-        root.add("ui", libconfig::Setting::TypeGroup);
-    }
-    libconfig::Setting& ui_settings = root["ui"];
-    int scale_factor = DEFAULT_SCALE_FACTOR;
-    if (!ui_settings.exists("scale")) {
-        ui_settings.add("scale", libconfig::Setting::TypeInt) = DEFAULT_SCALE_FACTOR;
-    } else {
-        scale_factor = ScaleFactor();
-    }
-    if (!ui_settings.exists("recents")) {
-        ui_settings.add("recents", libconfig::Setting::TypeArray);
-    }
-    if (!ui_settings.exists("style")) {
-        ui_settings.add("style", libconfig::Setting::TypeInt) = static_cast<int>(UiStyle::Dark);
-    }
-    if (!ui_settings.exists("filter")) {
-        ui_settings.add("filter", libconfig::Setting::TypeInt) = static_cast<int>(FilterType::NoFilter);
-    }
-    if (!ui_settings.exists("open_panels")) {
-        ui_settings.add("open_panels", libconfig::Setting::TypeInt) = 0;
-    } else {
-        const int saved_open_panels = ui_settings["open_panels"];
-        for (int i = 0; i < NUM_PANELS; i++) {
-            open_panels[i] = (saved_open_panels & (1 << i)) != 0;
+        libconfig::Setting& root = cfg.getRoot();
+        if (!root.exists("ui")) {
+            root.add("ui", libconfig::Setting::TypeGroup);
+        }
+        libconfig::Setting& ui_settings = root["ui"];
+        int scale_factor = DEFAULT_SCALE_FACTOR;
+        if (!ui_settings.exists("scale")) {
+            ui_settings.add("scale", libconfig::Setting::TypeInt) = DEFAULT_SCALE_FACTOR;
+        } else {
+            scale_factor = ScaleFactor();
+        }
+        if (!ui_settings.exists("recents")) {
+            ui_settings.add("recents", libconfig::Setting::TypeArray);
+        }
+        if (!ui_settings.exists("style")) {
+            ui_settings.add("style", libconfig::Setting::TypeInt) = static_cast<int>(UiStyle::Dark);
+        }
+        if (!ui_settings.exists("filter")) {
+            ui_settings.add("filter", libconfig::Setting::TypeInt) =
+                static_cast<int>(FilterType::NoFilter);
+        }
+        if (!ui_settings.exists("open_panels")) {
+            ui_settings.add("open_panels", libconfig::Setting::TypeInt) = 0;
+        } else {
+            const int saved_open_panels = ui_settings["open_panels"];
+            for (int i = 0; i < NUM_PANELS; i++) {
+                open_panels[i] = (saved_open_panels & (1 << i)) != 0;
+            }
+        }
+        int width = NES_WIDTH * DEFAULT_SCALE_FACTOR + 15;
+        int height = NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55;
+        if (!ui_settings.exists("width")) {
+            ui_settings.add("width", libconfig::Setting::TypeInt) = width;
+        } else {
+            width = Width();
+        }
+        if (!ui_settings.exists("height")) {
+            ui_settings.add("height", libconfig::Setting::TypeInt) = height;
+        } else {
+            height = Height();
         }
     }
-    int width = NES_WIDTH * DEFAULT_SCALE_FACTOR + 15;
-    int height = NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55;
-    if (!ui_settings.exists("width")) {
-        ui_settings.add("width", libconfig::Setting::TypeInt) = width;
-    } else {
-        width = Width();
-    }
-    if (!ui_settings.exists("height")) {
-        ui_settings.add("height", libconfig::Setting::TypeInt) = height;
-    } else {
-        height = Height();
-    }
+
+    [[nodiscard]] int Width() const {
+        return cfg.getRoot()["ui"]["width"];
     }
 
-    [[nodiscard]] int Width() const { return cfg.getRoot()["ui"]["width"]; }
-    void Width(const int width) const { cfg.getRoot()["ui"]["width"] = width; }
+    void Width(const int width) const {
+        cfg.getRoot()["ui"]["width"] = width;
+    }
 
-    [[nodiscard]] int Height() const { return cfg.getRoot()["ui"]["height"]; }
-    void Height(const int height) const { cfg.getRoot()["ui"]["height"] = height; }
+    [[nodiscard]] int Height() const {
+        return cfg.getRoot()["ui"]["height"];
+    }
 
-    [[nodiscard]] int ScaleFactor() const { return cfg.getRoot()["ui"]["scale"]; }
-    void SetScale(const int scale) const { cfg.getRoot()["ui"]["scale"] = scale; }
+    void Height(const int height) const {
+        cfg.getRoot()["ui"]["height"] = height;
+    }
 
-    [[nodiscard]] FilterType GetFilterType() const { return static_cast<enum FilterType>(static_cast<int>(cfg.getRoot()["ui"]["filter"])); }
-    void SetFilterType(enum FilterType filter) const { cfg.getRoot()["ui"]["filter"] = static_cast<int>(filter); }
+    [[nodiscard]] int ScaleFactor() const {
+        return cfg.getRoot()["ui"]["scale"];
+    }
+
+    void SetScale(const int scale) const {
+        cfg.getRoot()["ui"]["scale"] = scale;
+    }
+
+    [[nodiscard]] FilterType GetFilterType() const {
+        return static_cast<enum FilterType>(static_cast<int>(cfg.getRoot()["ui"]["filter"]));
+    }
+
+    void SetFilterType(enum FilterType filter) const {
+        cfg.getRoot()["ui"]["filter"] = static_cast<int>(filter);
+    }
 
     [[nodiscard]] UiStyle GetUiStyle() const {
         return static_cast<enum UiStyle>(static_cast<int>(cfg.getRoot()["ui"]["style"]));
@@ -112,7 +136,9 @@ struct SenSettings {
         cfg.getRoot()["ui"]["style"] = static_cast<int>(style);
     }
 
-    [[nodiscard]] std::array<bool, NUM_PANELS>& GetOpenPanels() { return open_panels; }
+    [[nodiscard]] std::array<bool, NUM_PANELS>& GetOpenPanels() {
+        return open_panels;
+    }
 
     void TogglePanel(UiPanel panel) {
         const auto panel_id = static_cast<int>(panel);

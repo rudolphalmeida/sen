@@ -4,9 +4,8 @@
 #include <vector>
 
 #define CRT_SYSTEM CRT_SYSTEM_NES
-#include "crt_core.h"
-
 #include "constants.hxx"
+#include "crt_core.h"
 
 struct Pixel {
     byte r{};
@@ -34,44 +33,49 @@ static constexpr Pixel PALETTE_COLORS[0x40] = {
 };
 
 struct PostProcessedData {
-    Pixel * data{};
+    Pixel* data{};
     int width{};
     int height{};
 };
 
 class Filter {
-   public:
+  public:
     virtual ~Filter() = default;
-    virtual PostProcessedData PostProcess(std::span<unsigned short, 61440> nes_pixels,
-                                          int scale_factor) = 0;
+    virtual PostProcessedData
+    PostProcess(std::span<unsigned short, 61440> nes_pixels, int scale_factor) = 0;
 };
 
-class NoFilter final : public Filter {
-   public:
+class NoFilter final: public Filter {
+  public:
     NoFilter() : pixels(NES_WIDTH * NES_HEIGHT) {}
 
-    PostProcessedData PostProcess(std::span<unsigned short, 61440> nes_pixels,
-                                  int scale_factor) override;
+    PostProcessedData
+    PostProcess(std::span<unsigned short, 61440> nes_pixels, int scale_factor) override;
 
-   private:
+  private:
     std::vector<Pixel> pixels{};
 };
 
-class NtscFilter final : public Filter {
-   public:
-    explicit NtscFilter(const int initial_scale_factor)
-        : pixels(NES_WIDTH * NES_HEIGHT * initial_scale_factor * initial_scale_factor),
-          scale_factor{initial_scale_factor} {
-        crt_init(&crt, NES_WIDTH * initial_scale_factor, NES_HEIGHT * initial_scale_factor,
-                 CRT_PIX_FORMAT_RGB, reinterpret_cast<unsigned char*>(pixels.data()));
+class NtscFilter final: public Filter {
+  public:
+    explicit NtscFilter(const int initial_scale_factor) :
+        pixels(NES_WIDTH * NES_HEIGHT * initial_scale_factor * initial_scale_factor),
+        scale_factor{initial_scale_factor} {
+        crt_init(
+            &crt,
+            NES_WIDTH * initial_scale_factor,
+            NES_HEIGHT * initial_scale_factor,
+            CRT_PIX_FORMAT_RGB,
+            reinterpret_cast<unsigned char*>(pixels.data())
+        );
         crt.blend = 1;
         crt.scanlines = 0;
     }
 
-    PostProcessedData PostProcess(std::span<unsigned short, 61440> nes_pixels,
-                                  int scale_factor) override;
+    PostProcessedData
+    PostProcess(std::span<unsigned short, 61440> nes_pixels, int scale_factor) override;
 
-   private:
+  private:
     std::vector<Pixel> pixels{};
     int scale_factor{};
 

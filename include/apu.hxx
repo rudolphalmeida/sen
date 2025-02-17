@@ -15,14 +15,12 @@ constexpr byte DUTY_CYCLES[4] = {
     0b00111111,
 };
 
-constexpr byte LENGTH_COUNTER_LOADS[] = {
-    10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
-    12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30
-};
+constexpr byte LENGTH_COUNTER_LOADS[] = {10, 254, 20,  2,  40, 4,  80, 6,  160, 8,  60,
+                                         10, 14,  12,  26, 14, 12, 16, 24, 18,  48, 20,
+                                         96, 22,  192, 24, 72, 26, 16, 28, 32,  30};
 
-constexpr word NOISE_TIMER_CPU_CYCLES[] = {
-    4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
-};
+constexpr word NOISE_TIMER_CPU_CYCLES[] =
+    {4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068};
 
 enum class FrameCounterStepMode {
     FourStep,
@@ -30,22 +28,22 @@ enum class FrameCounterStepMode {
 };
 
 class AudioQueue {
-   public:
+  public:
     virtual ~AudioQueue() = default;
 
     virtual void PushSample(float sample) = 0;
-    virtual void GetSamples(uint8_t * output, size_t samples) = 0;
+    virtual void GetSamples(uint8_t* output, size_t samples) = 0;
     virtual void Clear() = 0;
 };
 
 struct LengthCounter {
-    bool * channel_enabled;
+    bool* channel_enabled;
     byte counter{0x00};
     byte counter_load{};
 
     bool halt{false};
 
-    explicit LengthCounter(bool * channel_enabled_ptr): channel_enabled{channel_enabled_ptr} {}
+    explicit LengthCounter(bool* channel_enabled_ptr) : channel_enabled{channel_enabled_ptr} {}
 
     void Load(const byte value) {
         counter = value;
@@ -83,7 +81,9 @@ struct SweepUnit {
     bool sweep_reload{false};
     bool use_twos_complement{};
 
-    explicit SweepUnit(word& timer_reload, const bool use_twos_complement): timer_reload{timer_reload}, use_twos_complement{use_twos_complement} {}
+    explicit SweepUnit(word& timer_reload, const bool use_twos_complement) :
+        timer_reload{timer_reload},
+        use_twos_complement{use_twos_complement} {}
 
     void Update(const byte sweep) {
         sweep_enabled = (sweep & 0x80) != 0x00;
@@ -149,14 +149,16 @@ struct EnvelopeGenerator {
 };
 
 class ApuPulse {
-public:
+  public:
     SweepUnit sweep_unit;
     LengthCounter length_counter;
     EnvelopeGenerator envelope_generator;
 
     bool enabled{false};
 
-    explicit ApuPulse(const bool use_twos_complement): sweep_unit(timer_reload, use_twos_complement) , length_counter(&enabled){}
+    explicit ApuPulse(const bool use_twos_complement) :
+        sweep_unit(timer_reload, use_twos_complement),
+        length_counter(&enabled) {}
 
     [[nodiscard]] byte GetSample() const {
         if (timer < 8 || length_counter.counter == 0x00 || target_period > 0x7FF) {
@@ -169,11 +171,20 @@ public:
 
     void WriteRegister(const byte offset, const byte data) {
         switch (offset) {
-            case 0: UpdateVolume(data); break;
-            case 1: sweep_unit.Update(data); break;
-            case 2: UpdateTimerLow(data); break;
-            case 3: UpdateTimerHigh(data); break;
-            default: break;
+            case 0:
+                UpdateVolume(data);
+                break;
+            case 1:
+                sweep_unit.Update(data);
+                break;
+            case 2:
+                UpdateTimerLow(data);
+                break;
+            case 3:
+                UpdateTimerHigh(data);
+                break;
+            default:
+                break;
         }
     }
 
@@ -198,7 +209,7 @@ public:
         sweep_unit.Clock(timer);
     }
 
-private:
+  private:
     word timer{}, timer_reload{}, target_period{};
 
     byte duty_counter_bit{0x00};
@@ -231,25 +242,35 @@ private:
 };
 
 class ApuTriangle {
-public:
+  public:
     LengthCounter length_counter;
 
     bool enabled{false};
 
-    ApuTriangle(): length_counter{&enabled} {}
+    ApuTriangle() : length_counter{&enabled} {}
 
     [[nodiscard]] byte GetSample() const {
-        if (length_counter.counter == 0x00 || linear_counter == 0x00) { return 0x00; }
+        if (length_counter.counter == 0x00 || linear_counter == 0x00) {
+            return 0x00;
+        }
         return sequence;
     }
 
     void WriteRegister(const byte offset, const byte data) {
         switch (offset) {
-            case 0: UpdateCounter(data); break;
-            case 1: break;
-            case 2: UpdateTimerLow(data); break;
-            case 3: UpdateTimerHigh(data); break;
-            default: break;
+            case 0:
+                UpdateCounter(data);
+                break;
+            case 1:
+                break;
+            case 2:
+                UpdateTimerLow(data);
+                break;
+            case 3:
+                UpdateTimerHigh(data);
+                break;
+            default:
+                break;
         }
     }
 
@@ -283,7 +304,7 @@ public:
         }
     }
 
-private:
+  private:
     int direction{-1};
     word timer{}, timer_reload{};
     byte linear_counter{}, linear_counter_load{};
@@ -307,7 +328,7 @@ private:
 };
 
 class ApuNoise {
-public:
+  public:
     EnvelopeGenerator envelope_generator;
     LengthCounter length_counter;
 
@@ -316,7 +337,7 @@ public:
     byte volume_reload{};
     bool enabled{}, constant_volume{false}, mode_1{false};
 
-    ApuNoise(): length_counter{&enabled} {}
+    ApuNoise() : length_counter{&enabled} {}
 
     [[nodiscard]] byte GetSample() const {
         if ((shift_register & 0b1) != 0 || length_counter.counter == 0) {
@@ -328,11 +349,19 @@ public:
 
     void WriteRegister(const byte offset, const byte data) {
         switch (offset) {
-            case 0: UpdateCounter(data); break;
-            case 1: break;
-            case 2: UpdateModeAndPeriod(data); break;
-            case 3: UpdateLengthCounterLoad(data); break;
-            default: break;
+            case 0:
+                UpdateCounter(data);
+                break;
+            case 1:
+                break;
+            case 2:
+                UpdateModeAndPeriod(data);
+                break;
+            case 3:
+                UpdateLengthCounterLoad(data);
+                break;
+            default:
+                break;
         }
     }
 
@@ -340,7 +369,9 @@ public:
         envelope_generator.Clock(volume_reload, length_counter);
     }
 
-    void ClockLengthCounter() { length_counter.Clock(); }
+    void ClockLengthCounter() {
+        length_counter.Clock();
+    }
 
     void ClockTimer() {
         if (timer == 0x00) {
@@ -354,7 +385,7 @@ public:
         }
     }
 
-   private:
+  private:
     void UpdateCounter(const byte value) {
         length_counter.halt = (value & 0x20) != 0x00;
         constant_volume = (value & 0x10) != 0x00;
@@ -373,11 +404,11 @@ public:
 };
 
 class ApuDmc {
-public:
+  public:
     bool enabled{false};
 };
 
-enum class ApuChannel: byte {
+enum class ApuChannel : byte {
     Pulse1 = (1 << 0),
     Pulse2 = (1 << 1),
     Triangle = (1 << 2),
@@ -386,19 +417,23 @@ enum class ApuChannel: byte {
 };
 
 class Apu {
-public:
-    explicit Apu(std::shared_ptr<AudioQueue> sink, InterruptRequestFlag irq_requested): sink{std::move(sink)}, irq_requested(std::move(irq_requested)) {}
+  public:
+    explicit Apu(std::shared_ptr<AudioQueue> sink, InterruptRequestFlag irq_requested) :
+        sink{std::move(sink)},
+        irq_requested(std::move(irq_requested)) {}
 
     void Tick(uint64_t cpu_cycles);
 
-    [[maybe_unused]] static void Reset() { spdlog::error("Reset not implemented for APU"); }
+    [[maybe_unused]] static void Reset() {
+        spdlog::error("Reset not implemented for APU");
+    }
 
     [[nodiscard]] byte CpuRead(word address);
     void CpuWrite(word address, byte data);
 
     friend class Debugger;
 
-private:
+  private:
     std::shared_ptr<AudioQueue> sink{};
 
     ApuPulse pulse_1{false}, pulse_2{true};
@@ -415,10 +450,8 @@ private:
     byte prev_enabled_channels{0x00};
 
     void UpdateFrameCounter(byte data);
-    static float Mix(byte pulse1_sample,
-                     byte pulse2_sample,
-                     byte triangle_sample,
-                     byte noise_sample);
+    static float
+    Mix(byte pulse1_sample, byte pulse2_sample, byte triangle_sample, byte noise_sample);
 
     static bool ChannelEnabled(const byte reg, ApuChannel channel) {
         return (reg & static_cast<byte>(channel)) != 0x00;

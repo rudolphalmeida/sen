@@ -1,22 +1,20 @@
 #pragma once
 
-#include <cassert>
+#include <spdlog/spdlog.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
-#include <tuple>
-
-#include <fmt/core.h>
-#include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
+#include <tuple>
 
 #include "constants.hxx"
 #include "util.hxx"
 
-#define OPCODE_CASE(opc)   \
+#define OPCODE_CASE(opc) \
     case OpcodeClass::opc: \
-        opc(opcode);       \
+        opc(opcode); \
         break;
 
 // Effective address and if there was a page crossing
@@ -175,23 +173,23 @@ struct ExecutedOpcode {
 };
 
 enum class StatusFlag : byte {
-    Carry = (1 << 0),             // C
-    Zero = (1 << 1),              // Z
-    InterruptDisable = (1 << 2),  // I
-    Decimal = (1 << 3),           // D
-    B = (0b11 << 4),              // No CPU effect, bits 45
-    Overflow = (1 << 6),          // V
-    Negative = (1 << 7),          // N
+    Carry = (1 << 0), // C
+    Zero = (1 << 1), // Z
+    InterruptDisable = (1 << 2), // I
+    Decimal = (1 << 3), // D
+    B = (0b11 << 4), // No CPU effect, bits 45
+    Overflow = (1 << 6), // V
+    Negative = (1 << 7), // N
 };
 
-template <typename BusType>
+template<typename BusType>
 class Cpu {
-   private:
-    byte a{0x00};           // Accumulator
-    byte x{0x00}, y{0x00};  // General purpose registers
-    word pc{0x0000};        // Program counter
-    byte s{0xFD};           // Stack pointer
-    byte p{0x34};           // Status register
+  private:
+    byte a{0x00}; // Accumulator
+    byte x{0x00}, y{0x00}; // General purpose registers
+    word pc{0x0000}; // Program counter
+    byte s{0xFD}; // Stack pointer
+    byte p{0x34}; // Status register
 
     std::shared_ptr<BusType> bus{};
     InterruptRequestFlag nmi_requested{}, irq_requested{};
@@ -286,19 +284,25 @@ class Cpu {
 
     void CheckForInterrupts();
 
-   public:
+  public:
     static constexpr word NMI_VECTOR = 0xFFFA;
     static constexpr word RESET_VECTOR = 0xFFFC;
     static constexpr word IRQ_VECTOR = 0xFFFE;
 
     Cpu() = default;
 
-    Cpu(std::shared_ptr<BusType> bus, InterruptRequestFlag nmi_requested, InterruptRequestFlag irq_requested)
-        : bus{std::move(bus)}, nmi_requested{std::move(nmi_requested)}, irq_requested{std::move(irq_requested)} {}
+    Cpu(std::shared_ptr<BusType> bus,
+        InterruptRequestFlag nmi_requested,
+        InterruptRequestFlag irq_requested) :
+        bus{std::move(bus)},
+        nmi_requested{std::move(nmi_requested)},
+        irq_requested{std::move(irq_requested)} {}
 
-    [[nodiscard]] bool IsSet(StatusFlag flag) const { return (p & static_cast<byte>(flag)) != 0; }
+    [[nodiscard]] bool IsSet(StatusFlag flag) const {
+        return (p & static_cast<byte>(flag)) != 0;
+    }
 
-    void UpdateStatusFlag(StatusFlag flag, bool value) {
+    void UpdateStatusFlag(StatusFlag flag, const bool value) {
         if (value) {
             p |= static_cast<byte>(flag);
         } else {
@@ -321,9 +325,13 @@ class Cpu {
     // Runs the CPU startup procedure. Should run for 7 NES cycles
     void Start();
 
-    void Reset() { spdlog::error("CPU reset procedure not implemented"); };
+    void Reset() {
+        spdlog::error("CPU reset procedure not implemented");
+    };
 
-    byte Fetch() { return bus->CpuRead(pc++); }
+    byte Fetch() {
+        return bus->CpuRead(pc++);
+    }
 
     void Execute();
     void ExecuteOpcode(Opcode opcode);
@@ -338,22 +346,22 @@ inline word NonPageCrossingAdd(word value, word increment) {
 
 static constexpr std::array<Opcode, 256> OPCODES{
     {
-        {OpcodeClass::BRK, 0x0, AddressingMode::Implied, 1, 7, "BRK"},
-        {OpcodeClass::ORA, 0x1, AddressingMode::IndirectX, 2, 6, "ORA"},
-        {OpcodeClass::JAM, 0x2, AddressingMode::Implied, 1, 1, "JAM"},
-        {OpcodeClass::JAM, 0x3, AddressingMode::Implied, 1, 1, "JAM"},
-        {OpcodeClass::NOP, 0x4, AddressingMode::ZeroPage, 2, 3, "NOP"},
-        {OpcodeClass::ORA, 0x5, AddressingMode::ZeroPage, 2, 3, "ORA"},
-        {OpcodeClass::ASL, 0x6, AddressingMode::ZeroPage, 2, 5, "ASL"},
-        {OpcodeClass::JAM, 0x7, AddressingMode::Implied, 1, 1, "JAM"},
-        {OpcodeClass::PHP, 0x8, AddressingMode::Implied, 1, 3, "PHP"},
-        {OpcodeClass::ORA, 0x9, AddressingMode::Immediate, 2, 2, "ORA"},
-        {OpcodeClass::ASL, 0xA, AddressingMode::Accumulator, 1, 2, "ASL"},
-        {OpcodeClass::JAM, 0xB, AddressingMode::Implied, 1, 1, "JAM"},
-        {OpcodeClass::NOP, 0xC, AddressingMode::Absolute, 3, 4, "NOP"},
-        {OpcodeClass::ORA, 0xD, AddressingMode::Absolute, 3, 4, "ORA"},
-        {OpcodeClass::ASL, 0xE, AddressingMode::Absolute, 3, 6, "ASL"},
-        {OpcodeClass::JAM, 0xF, AddressingMode::Implied, 1, 1, "JAM"},
+        {OpcodeClass::BRK, 0x00, AddressingMode::Implied, 1, 7, "BRK"},
+        {OpcodeClass::ORA, 0x01, AddressingMode::IndirectX, 2, 6, "ORA"},
+        {OpcodeClass::JAM, 0x02, AddressingMode::Implied, 1, 1, "JAM"},
+        {OpcodeClass::JAM, 0x03, AddressingMode::Implied, 1, 1, "JAM"},
+        {OpcodeClass::NOP, 0x04, AddressingMode::ZeroPage, 2, 3, "NOP"},
+        {OpcodeClass::ORA, 0x05, AddressingMode::ZeroPage, 2, 3, "ORA"},
+        {OpcodeClass::ASL, 0x06, AddressingMode::ZeroPage, 2, 5, "ASL"},
+        {OpcodeClass::JAM, 0x07, AddressingMode::Implied, 1, 1, "JAM"},
+        {OpcodeClass::PHP, 0x08, AddressingMode::Implied, 1, 3, "PHP"},
+        {OpcodeClass::ORA, 0x09, AddressingMode::Immediate, 2, 2, "ORA"},
+        {OpcodeClass::ASL, 0x0A, AddressingMode::Accumulator, 1, 2, "ASL"},
+        {OpcodeClass::JAM, 0x0B, AddressingMode::Implied, 1, 1, "JAM"},
+        {OpcodeClass::NOP, 0x0C, AddressingMode::Absolute, 3, 4, "NOP"},
+        {OpcodeClass::ORA, 0x0D, AddressingMode::Absolute, 3, 4, "ORA"},
+        {OpcodeClass::ASL, 0x0E, AddressingMode::Absolute, 3, 6, "ASL"},
+        {OpcodeClass::JAM, 0x0F, AddressingMode::Implied, 1, 1, "JAM"},
         {OpcodeClass::BPL, 0x10, AddressingMode::Relative, 2, 2, "BPL"},
         {OpcodeClass::ORA, 0x11, AddressingMode::IndirectY, 2, 5, "ORA"},
         {OpcodeClass::JAM, 0x12, AddressingMode::Implied, 1, 1, "JAM"},
@@ -597,21 +605,21 @@ static constexpr std::array<Opcode, 256> OPCODES{
     },
 };
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::Start() {
     // The CPU start procedure takes 7 NES cycles
-    bus->CpuRead(0x0000);          // Address does not matter
-    bus->CpuRead(0x0001);          // First start state
-    bus->CpuRead(0x0100 + s);      // Second start state
-    bus->CpuRead(0x0100 + s - 1);  // Third start state
-    bus->CpuRead(0x0100 + s - 2);  // Fourth start state
+    bus->CpuRead(0x0000); // Address does not matter
+    bus->CpuRead(0x0001); // First start state
+    bus->CpuRead(0x0100 + s); // Second start state
+    bus->CpuRead(0x0100 + s - 1); // Third start state
+    bus->CpuRead(0x0100 + s - 2); // Fourth start state
     auto pcl = bus->CpuRead(RESET_VECTOR);
     auto pch = bus->CpuRead(RESET_VECTOR + 1);
     pc = (static_cast<word>(pch) << 8) | static_cast<word>(pcl);
     spdlog::info("Starting execution at {:#06X}", pc);
 };
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::Execute() {
     CheckForInterrupts();
 
@@ -635,7 +643,7 @@ void Cpu<BusType>::Execute() {
     ExecuteOpcode(opcode);
 };
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::CheckForInterrupts() {
     if (*nmi_requested) {
         *nmi_requested = false;
@@ -648,7 +656,7 @@ void Cpu<BusType>::CheckForInterrupts() {
         UpdateStatusFlag(StatusFlag::InterruptDisable, true);
         // Ensure the B flag is not set when pushing
         UpdateStatusFlag(StatusFlag::B, false);
-        p |= (1 << 5);  // The unused flag is set when pushing by NMI
+        p |= (1 << 5); // The unused flag is set when pushing by NMI
         bus->CpuWrite(0x100 + s--, p);
 
         auto pcl = bus->CpuRead(NMI_VECTOR);
@@ -665,7 +673,7 @@ void Cpu<BusType>::CheckForInterrupts() {
         UpdateStatusFlag(StatusFlag::InterruptDisable, true);
         // Ensure the B flag is not set when pushing
         UpdateStatusFlag(StatusFlag::B, false);
-        p |= (1 << 5);  // The unused flag is set when pushing by NMI
+        p |= (1 << 5); // The unused flag is set when pushing by NMI
         bus->CpuWrite(0x100 + s--, p);
 
         auto pcl = bus->CpuRead(IRQ_VECTOR);
@@ -674,7 +682,7 @@ void Cpu<BusType>::CheckForInterrupts() {
     }
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::ExecuteOpcode(Opcode opcode) {
     switch (opcode.opcode_class) {
         OPCODE_CASE(ADC)
@@ -741,15 +749,15 @@ void Cpu<BusType>::ExecuteOpcode(Opcode opcode) {
 }
 
 // Addressing Modes
-template <typename BusType>
+template<typename BusType>
 EffectiveAddress Cpu<BusType>::AbsoluteAddressing() {
-    auto low = Fetch();
-    auto high = Fetch();
+    const auto low = Fetch();
+    const auto high = Fetch();
 
     return {static_cast<word>(high) << 8 | static_cast<word>(low), false};
 }
 
-template <typename BusType>
+template<typename BusType>
 EffectiveAddress Cpu<BusType>::IndirectAddressing() {
     auto [pointer, _] = AbsoluteAddressing();
 
@@ -759,58 +767,58 @@ EffectiveAddress Cpu<BusType>::IndirectAddressing() {
     return {static_cast<word>(high) << 8 | static_cast<word>(low), false};
 }
 
-template <typename BusType>
+template<typename BusType>
 EffectiveAddress Cpu<BusType>::ZeroPageAddressing() {
     return {static_cast<word>(Fetch()), false};
 }
 
-template <typename BusType>
+template<typename BusType>
 EffectiveAddress Cpu<BusType>::ZeroPageXAddressing() {
     auto [address, _] = ZeroPageAddressing();
-    bus->Tick();  // Dummy read cycle
+    bus->Tick(); // Dummy read cycle
     return {NonPageCrossingAdd(address, x), false};
 }
 
-template <typename BusType>
+template<typename BusType>
 EffectiveAddress Cpu<BusType>::ZeroPageYAddressing() {
     auto [address, _] = ZeroPageAddressing();
-    bus->Tick();  // Dummy read cycle
+    bus->Tick(); // Dummy read cycle
     return {NonPageCrossingAdd(address, y), false};
 }
 
-template <typename BusType>
+template<typename BusType>
 EffectiveAddress Cpu<BusType>::AbsoluteXIndexedAddressing() {
     auto [address, _] = AbsoluteAddressing();
 
     bool page_crossed = false;
     if ((address + x) != NonPageCrossingAdd(address, x)) {
         // If a page was crossed we require an additional cycle
-        bus->Tick();  // Dummy read cycle
+        bus->Tick(); // Dummy read cycle
         page_crossed = true;
     }
 
     return {address + x, page_crossed};
 }
 
-template <typename BusType>
+template<typename BusType>
 EffectiveAddress Cpu<BusType>::AbsoluteYIndexedAddressing() {
     auto [address, _] = AbsoluteAddressing();
 
     bool page_crossed = false;
     if ((address + y) != NonPageCrossingAdd(address, y)) {
         // If a page was crossed we require an additional cycle
-        bus->Tick();  // Dummy read cycle
+        bus->Tick(); // Dummy read cycle
         page_crossed = true;
     }
 
     return {address + y, page_crossed};
 }
 
-template <typename BusType>
+template<typename BusType>
 EffectiveAddress Cpu<BusType>::IndirectXAddressing() {
     auto operand = static_cast<word>(Fetch());
     const auto pointer = operand + x;
-    bus->CpuRead(operand);  // Dummy read cycle
+    bus->CpuRead(operand); // Dummy read cycle
 
     const auto low = static_cast<word>(bus->CpuRead(pointer & 0xFF));
     const auto high = static_cast<word>(bus->CpuRead((pointer + 1) & 0xFF));
@@ -818,7 +826,7 @@ EffectiveAddress Cpu<BusType>::IndirectXAddressing() {
     return {(high << 8) | low, false};
 }
 
-template <typename BusType>
+template<typename BusType>
 EffectiveAddress Cpu<BusType>::IndirectYAddressing() {
     auto pointer = static_cast<word>(Fetch());
     const auto low = static_cast<word>(bus->CpuRead(pointer));
@@ -836,7 +844,7 @@ EffectiveAddress Cpu<BusType>::IndirectYAddressing() {
     }
 }
 
-template <typename BusType>
+template<typename BusType>
 EffectiveAddress Cpu<BusType>::FetchEffectiveAddress(AddressingMode mode) {
     switch (mode) {
         case AddressingMode::Immediate:
@@ -866,7 +874,7 @@ EffectiveAddress Cpu<BusType>::FetchEffectiveAddress(AddressingMode mode) {
 }
 
 // Opcodes
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::BRK(const Opcode&) {
     Fetch();
     bus->CpuWrite(0x100 + s--, static_cast<byte>(pc >> 8));
@@ -876,7 +884,7 @@ void Cpu<BusType>::BRK(const Opcode&) {
     // TODO: Implement IRQ interrupt although it should not matter since both
     //       use the same vector
     auto interrupt_vector = *nmi_requested ? NMI_VECTOR : IRQ_VECTOR;
-    byte temp_p = p | static_cast<byte>(StatusFlag::B);  // Ensure bits 45 are set before push
+    byte temp_p = p | static_cast<byte>(StatusFlag::B); // Ensure bits 45 are set before push
     bus->CpuWrite(0x100 + s--, temp_p);
     UpdateStatusFlag(StatusFlag::InterruptDisable, true);
 
@@ -885,13 +893,13 @@ void Cpu<BusType>::BRK(const Opcode&) {
     pc = (static_cast<word>(pch) << 8) | static_cast<word>(pcl);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::JMP(const Opcode& opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     pc = address;
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::LDX(const Opcode& opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     x = bus->CpuRead(address);
@@ -899,35 +907,36 @@ void Cpu<BusType>::LDX(const Opcode& opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (x & 0x80) != 0x00);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::STX(const Opcode& opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
-    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-         opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
-        !page_crossed) {
-        bus->CpuRead(address);  // Dummy read cycle
+    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed
+         || opcode.addressing_mode == AddressingMode::AbsoluteYIndexed)
+        && !page_crossed) {
+        bus->CpuRead(address); // Dummy read cycle
     }
     bus->CpuWrite(address, x);
 }
-template <typename BusType>
+
+template<typename BusType>
 void Cpu<BusType>::JSR(const Opcode&) {
     const auto low = static_cast<word>(Fetch());
 
-    bus->CpuRead(0x100 + s);  // Dummy read cycle (3)
+    bus->CpuRead(0x100 + s); // Dummy read cycle (3)
 
     bus->CpuWrite(0x100 + s--, static_cast<byte>(pc >> 8));
     bus->CpuWrite(0x100 + s--, static_cast<byte>(pc));
 
-    word high = static_cast<word>(Fetch()) << 8;
+    const word high = static_cast<word>(Fetch()) << 8;
 
     pc = high | low;
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::RTS(const Opcode&) {
-    bus->CpuRead(pc);  // Fetch next opcode and discard it
+    bus->CpuRead(pc); // Fetch next opcode and discard it
 
-    bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
+    bus->CpuRead(0x100 + s++); // Dummy read cycle (3)
 
     auto low = bus->CpuRead(0x100 + s++);
     auto high = bus->CpuRead(0x100 + s);
@@ -936,7 +945,7 @@ void Cpu<BusType>::RTS(const Opcode&) {
     bus->CpuRead(pc++);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::NOP(const Opcode& opcode) {
     if (opcode.addressing_mode != AddressingMode::Implied) {
         auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
@@ -946,97 +955,97 @@ void Cpu<BusType>::NOP(const Opcode& opcode) {
     }
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::JAM(const Opcode&) {
     // These two reads are based on ProcessorTests
     bus->CpuRead(pc);
     bus->CpuRead(pc);
-    pc--;  // The PC should not be incremented after a JAM opcode
+    pc--; // The PC should not be incremented after a JAM opcode
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::SEC(const Opcode&) {
     UpdateStatusFlag(StatusFlag::Carry, true);
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::CLC(const Opcode&) {
     UpdateStatusFlag(StatusFlag::Carry, false);
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::CLD(const Opcode&) {
     UpdateStatusFlag(StatusFlag::Decimal, false);
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::CLV(const Opcode&) {
     UpdateStatusFlag(StatusFlag::Overflow, false);
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::CLI(const Opcode&) {
     UpdateStatusFlag(StatusFlag::InterruptDisable, false);
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::SEI(const Opcode&) {
     UpdateStatusFlag(StatusFlag::InterruptDisable, true);
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::SED(const Opcode&) {
     UpdateStatusFlag(StatusFlag::Decimal, true);
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::BCC(const Opcode&) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Carry));
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::BCS(const Opcode&) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Carry));
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::BEQ(const Opcode&) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Zero));
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::BNE(const Opcode&) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Zero));
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::BMI(const Opcode&) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Negative));
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::BPL(const Opcode&) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Negative));
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::BVC(const Opcode&) {
     RelativeBranchOnCondition(!IsSet(StatusFlag::Overflow));
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::BVS(const Opcode&) {
     RelativeBranchOnCondition(IsSet(StatusFlag::Overflow));
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::LDA(const Opcode& opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     if (opcode.addressing_mode == AddressingMode::IndirectY && !page_crossed) {
@@ -1048,30 +1057,30 @@ void Cpu<BusType>::LDA(const Opcode& opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::STA(const Opcode& opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
-    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-         opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
-        !page_crossed) {
-        bus->CpuRead(address);  // Dummy read cycle
+    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed
+         || opcode.addressing_mode == AddressingMode::AbsoluteYIndexed)
+        && !page_crossed) {
+        bus->CpuRead(address); // Dummy read cycle
     }
 
     bus->CpuWrite(address, a);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::STY(const Opcode& opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
-    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-         opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
-        !page_crossed) {
-        bus->CpuRead(address);  // Dummy read cycle
+    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed
+         || opcode.addressing_mode == AddressingMode::AbsoluteYIndexed)
+        && !page_crossed) {
+        bus->CpuRead(address); // Dummy read cycle
     }
     bus->CpuWrite(address, y);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::BIT(const Opcode& opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     auto operand = bus->CpuRead(address);
@@ -1081,38 +1090,38 @@ void Cpu<BusType>::BIT(const Opcode& opcode) {
     UpdateStatusFlag(StatusFlag::Zero, (operand & a) == 0x00);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::PHA(const Opcode&) {
-    bus->CpuRead(pc);  // Fetch next opcode and discard it
+    bus->CpuRead(pc); // Fetch next opcode and discard it
     bus->CpuWrite(0x100 + s--, a);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::PLA(const Opcode&) {
-    bus->CpuRead(pc);           // Fetch next opcode and discard it
-    bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
+    bus->CpuRead(pc); // Fetch next opcode and discard it
+    bus->CpuRead(0x100 + s++); // Dummy read cycle (3)
     a = bus->CpuRead(0x100 + s);
     UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::PHP(const Opcode&) {
-    bus->CpuRead(pc);                                    // Fetch next opcode and discard it
-    byte temp_p = p | static_cast<byte>(StatusFlag::B);  // Ensure bits 45 are set before push
+    bus->CpuRead(pc); // Fetch next opcode and discard it
+    byte temp_p = p | static_cast<byte>(StatusFlag::B); // Ensure bits 45 are set before push
     bus->CpuWrite(0x100 + s--, temp_p);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::PLP(const Opcode&) {
-    bus->CpuRead(pc);           // Fetch next opcode and discard it
-    bus->CpuRead(0x100 + s++);  // Dummy read cycle (3)
+    bus->CpuRead(pc); // Fetch next opcode and discard it
+    bus->CpuRead(0x100 + s++); // Dummy read cycle (3)
     auto temp_p = bus->CpuRead(0x100 + s);
     // Bits 54 of the popped value from the stack should be ignored
     p = (p & 0x30) | (temp_p & 0xCF);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::AND(const Opcode& opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     byte operand;
@@ -1126,7 +1135,7 @@ void Cpu<BusType>::AND(const Opcode& opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::ORA(const Opcode& opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     byte operand;
@@ -1140,7 +1149,7 @@ void Cpu<BusType>::ORA(const Opcode& opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::EOR(const Opcode& opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     byte operand;
@@ -1154,22 +1163,22 @@ void Cpu<BusType>::EOR(const Opcode& opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (a & 0x80) != 0x00);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::CMP(const Opcode& opcode) {
     CompareRegisterAndMemory(opcode, a);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::CPX(const Opcode& opcode) {
     CompareRegisterAndMemory(opcode, x);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::CPY(const Opcode& opcode) {
     CompareRegisterAndMemory(opcode, y);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::ADC(const Opcode& opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     word operand;
@@ -1188,13 +1197,15 @@ void Cpu<BusType>::ADC(const Opcode& opcode) {
     // Reference:
     // https://github.com/OneLoneCoder/olcNES/blob/663e3777191c011135dfb6d40c887ae126970dd7/Part%20%233%20-%20Buses%2C%20Rams%2C%20Roms%20%26%20Mappers/olc6502.cpp#L589
     // http://www.6502.org/tutorials/vflag.html
-    UpdateStatusFlag(StatusFlag::Overflow,
-                     ((~(temp_a ^ operand) & (temp_a ^ result)) & 0x80) != 0x00);
+    UpdateStatusFlag(
+        StatusFlag::Overflow,
+        ((~(temp_a ^ operand) & (temp_a ^ result)) & 0x80) != 0x00
+    );
 
     a = static_cast<byte>(result & 0xFF);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::SBC(const Opcode& opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     // Fetch operand and invert bottom 8 bits
@@ -1207,7 +1218,8 @@ void Cpu<BusType>::SBC(const Opcode& opcode) {
     operand ^= 0x00FF;
 
     const auto temp_a = static_cast<word>(a);
-    const word result = temp_a + operand + static_cast<word>(p & static_cast<byte>(StatusFlag::Carry));
+    const word result =
+        temp_a + operand + static_cast<word>(p & static_cast<byte>(StatusFlag::Carry));
 
     UpdateStatusFlag(StatusFlag::Zero, (result & 0xFF) == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0x00);
@@ -1215,13 +1227,15 @@ void Cpu<BusType>::SBC(const Opcode& opcode) {
     // Reference:
     // https://github.com/OneLoneCoder/olcNES/blob/663e3777191c011135dfb6d40c887ae126970dd7/Part%20%233%20-%20Buses%2C%20Rams%2C%20Roms%20%26%20Mappers/olc6502.cpp#L589
     // http://www.6502.org/tutorials/vflag.html
-    UpdateStatusFlag(StatusFlag::Overflow,
-                     ((~(temp_a ^ operand) & (temp_a ^ result)) & 0x80) != 0x00);
+    UpdateStatusFlag(
+        StatusFlag::Overflow,
+        ((~(temp_a ^ operand) & (temp_a ^ result)) & 0x80) != 0x00
+    );
 
     a = static_cast<byte>(result);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::LDY(const Opcode& opcode) {
     auto [address, _] = FetchEffectiveAddress(opcode.addressing_mode);
     y = bus->CpuRead(address);
@@ -1229,7 +1243,7 @@ void Cpu<BusType>::LDY(const Opcode& opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (y & 0x80) != 0x00);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::INY(const Opcode&) {
     y++;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
@@ -1237,7 +1251,7 @@ void Cpu<BusType>::INY(const Opcode&) {
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::INX(const Opcode&) {
     x++;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
@@ -1245,41 +1259,41 @@ void Cpu<BusType>::INX(const Opcode&) {
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::INC(const Opcode& opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
-    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-         opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
-        !page_crossed) {
-        bus->CpuRead(address);  // Dummy read cycle
+    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed
+         || opcode.addressing_mode == AddressingMode::AbsoluteYIndexed)
+        && !page_crossed) {
+        bus->CpuRead(address); // Dummy read cycle
     }
     byte operand = bus->CpuRead(address);
 
-    bus->CpuWrite(address, operand++);  // Dummy write cycle
+    bus->CpuWrite(address, operand++); // Dummy write cycle
     UpdateStatusFlag(StatusFlag::Zero, operand == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (operand & 0x80) != 0x00);
 
     bus->CpuWrite(address, operand);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::DEC(const Opcode& opcode) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
-    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-         opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
-        !page_crossed) {
-        bus->CpuRead(address);  // Dummy read cycle
+    if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed
+         || opcode.addressing_mode == AddressingMode::AbsoluteYIndexed)
+        && !page_crossed) {
+        bus->CpuRead(address); // Dummy read cycle
     }
     byte operand = bus->CpuRead(address);
 
-    bus->CpuWrite(address, operand--);  // Dummy write cycle
+    bus->CpuWrite(address, operand--); // Dummy write cycle
     UpdateStatusFlag(StatusFlag::Zero, operand == 0x00);
     UpdateStatusFlag(StatusFlag::Negative, (operand & 0x80) != 0x00);
 
     bus->CpuWrite(address, operand);
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::DEY(const Opcode&) {
     y--;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
@@ -1287,7 +1301,7 @@ void Cpu<BusType>::DEY(const Opcode&) {
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::DEX(const Opcode&) {
     x--;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
@@ -1295,7 +1309,7 @@ void Cpu<BusType>::DEX(const Opcode&) {
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::TAX(const Opcode&) {
     x = a;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
@@ -1303,7 +1317,7 @@ void Cpu<BusType>::TAX(const Opcode&) {
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::TAY(const Opcode&) {
     y = a;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
@@ -1311,7 +1325,7 @@ void Cpu<BusType>::TAY(const Opcode&) {
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::TSX(const Opcode&) {
     x = s;
     UpdateStatusFlag(StatusFlag::Zero, x == 0x00);
@@ -1319,7 +1333,7 @@ void Cpu<BusType>::TSX(const Opcode&) {
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::TXA(const Opcode&) {
     a = x;
     UpdateStatusFlag(StatusFlag::Zero, a == 0x00);
@@ -1327,13 +1341,13 @@ void Cpu<BusType>::TXA(const Opcode&) {
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::TXS(const Opcode&) {
     s = x;
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::TYA(const Opcode&) {
     a = y;
     UpdateStatusFlag(StatusFlag::Zero, y == 0x00);
@@ -1341,10 +1355,10 @@ void Cpu<BusType>::TYA(const Opcode&) {
     bus->Tick();
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::RTI(const Opcode&) {
-    bus->CpuRead(pc);             // Fetch next opcode and discard it
-    bus->CpuRead(0x100 + (s++));  // Dummy read cycle
+    bus->CpuRead(pc); // Fetch next opcode and discard it
+    bus->CpuRead(0x100 + (s++)); // Dummy read cycle
     auto temp_p = bus->CpuRead(0x100 + s++);
     // Bits 54 of the popped value from the stack should be ignored
     p = (p & 0x30) | (temp_p & 0xCF);
@@ -1355,7 +1369,7 @@ void Cpu<BusType>::RTI(const Opcode&) {
     pc = (high << 8) | low;
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::LSR(const Opcode& opcode) {
     byte operand;
     word address{};
@@ -1364,10 +1378,10 @@ void Cpu<BusType>::LSR(const Opcode& opcode) {
     } else {
         auto [temp_address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
         address = temp_address;
-        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-             opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
-            !page_crossed) {
-            bus->CpuRead(address);  // Dummy read cycle
+        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed
+             || opcode.addressing_mode == AddressingMode::AbsoluteYIndexed)
+            && !page_crossed) {
+            bus->CpuRead(address); // Dummy read cycle
         }
         operand = bus->CpuRead(address);
     }
@@ -1376,7 +1390,7 @@ void Cpu<BusType>::LSR(const Opcode& opcode) {
     UpdateStatusFlag(StatusFlag::Negative, false);
     UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
     UpdateStatusFlag(StatusFlag::Carry, (operand & 0b1) != 0x00);
-    bus->Tick();  // Dummy read cycle
+    bus->Tick(); // Dummy read cycle
 
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         a = result;
@@ -1385,7 +1399,7 @@ void Cpu<BusType>::LSR(const Opcode& opcode) {
     }
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::ASL(const Opcode& opcode) {
     byte operand;
     word address{};
@@ -1394,10 +1408,10 @@ void Cpu<BusType>::ASL(const Opcode& opcode) {
     } else {
         auto [temp_address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
         address = temp_address;
-        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-             opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
-            !page_crossed) {
-            bus->CpuRead(address);  // Dummy read cycle
+        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed
+             || opcode.addressing_mode == AddressingMode::AbsoluteYIndexed)
+            && !page_crossed) {
+            bus->CpuRead(address); // Dummy read cycle
         }
         operand = bus->CpuRead(address);
     }
@@ -1406,7 +1420,7 @@ void Cpu<BusType>::ASL(const Opcode& opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0);
     UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
     UpdateStatusFlag(StatusFlag::Carry, (operand & 0x80) != 0x00);
-    bus->Tick();  // Dummy read cycle
+    bus->Tick(); // Dummy read cycle
 
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         a = result;
@@ -1415,7 +1429,7 @@ void Cpu<BusType>::ASL(const Opcode& opcode) {
     }
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::ROL(const Opcode& opcode) {
     byte operand;
     word address{};
@@ -1424,10 +1438,10 @@ void Cpu<BusType>::ROL(const Opcode& opcode) {
     } else {
         auto [temp_address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
         address = temp_address;
-        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-             opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
-            !page_crossed) {
-            bus->CpuRead(address);  // Dummy read cycle
+        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed
+             || opcode.addressing_mode == AddressingMode::AbsoluteYIndexed)
+            && !page_crossed) {
+            bus->CpuRead(address); // Dummy read cycle
         }
         operand = bus->CpuRead(address);
     }
@@ -1436,7 +1450,7 @@ void Cpu<BusType>::ROL(const Opcode& opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0);
     UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
     UpdateStatusFlag(StatusFlag::Carry, (operand & 0x80) != 0x00);
-    bus->Tick();  // Dummy read cycle
+    bus->Tick(); // Dummy read cycle
 
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         a = result;
@@ -1445,7 +1459,7 @@ void Cpu<BusType>::ROL(const Opcode& opcode) {
     }
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::ROR(const Opcode& opcode) {
     byte operand;
     word address{};
@@ -1454,10 +1468,10 @@ void Cpu<BusType>::ROR(const Opcode& opcode) {
     } else {
         auto [temp_address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
         address = temp_address;
-        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed ||
-             opcode.addressing_mode == AddressingMode::AbsoluteYIndexed) &&
-            !page_crossed) {
-            bus->CpuRead(address);  // Dummy read cycle
+        if ((opcode.addressing_mode == AddressingMode::AbsoluteXIndexed
+             || opcode.addressing_mode == AddressingMode::AbsoluteYIndexed)
+            && !page_crossed) {
+            bus->CpuRead(address); // Dummy read cycle
         }
         operand = bus->CpuRead(address);
     }
@@ -1466,7 +1480,7 @@ void Cpu<BusType>::ROR(const Opcode& opcode) {
     UpdateStatusFlag(StatusFlag::Negative, (result & 0x80) != 0);
     UpdateStatusFlag(StatusFlag::Zero, result == 0x00);
     UpdateStatusFlag(StatusFlag::Carry, (operand & 0b1) != 0x00);
-    bus->Tick();  // Dummy read cycle
+    bus->Tick(); // Dummy read cycle
 
     if (opcode.addressing_mode == AddressingMode::Accumulator) {
         a = result;
@@ -1477,7 +1491,7 @@ void Cpu<BusType>::ROR(const Opcode& opcode) {
 
 // Opcode helpers
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::RelativeBranchOnCondition(bool condition) {
     // First change the type, then the size, then type again
     const auto offset = static_cast<word>(static_cast<int16_t>(static_cast<int8_t>(Fetch())));
@@ -1485,7 +1499,7 @@ void Cpu<BusType>::RelativeBranchOnCondition(bool condition) {
     if (!condition)
         return;
 
-    bus->Tick();  // Cycle 3 if branch taken
+    bus->Tick(); // Cycle 3 if branch taken
 
     const word page_crossed = pc + offset;
     const word non_page_crossed = NonPageCrossingAdd(pc, offset);
@@ -1493,17 +1507,17 @@ void Cpu<BusType>::RelativeBranchOnCondition(bool condition) {
     pc = non_page_crossed;
 
     if (page_crossed != non_page_crossed) {
-        bus->Tick();  // Cycle 4 for page crossing
+        bus->Tick(); // Cycle 4 for page crossing
         pc = page_crossed;
     }
 }
 
-template <typename BusType>
+template<typename BusType>
 void Cpu<BusType>::CompareRegisterAndMemory(const Opcode& opcode, byte reg) {
     auto [address, page_crossed] = FetchEffectiveAddress(opcode.addressing_mode);
     word operand;
-    if (opcode.opcode_class == OpcodeClass::CMP &&
-        opcode.addressing_mode == AddressingMode::IndirectY && !page_crossed) {
+    if (opcode.opcode_class == OpcodeClass::CMP
+        && opcode.addressing_mode == AddressingMode::IndirectY && !page_crossed) {
         operand = static_cast<word>(bus->UntickedCpuRead(address));
     } else {
         operand = static_cast<word>(bus->CpuRead(address));

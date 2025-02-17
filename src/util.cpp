@@ -1,12 +1,12 @@
+#include "util.hxx"
+
+#include <spdlog/spdlog.h>
+
 #include <filesystem>
 #include <fstream>
 #include <ios>
 #include <iterator>
 #include <vector>
-
-#include <spdlog/spdlog.h>
-
-#include "util.hxx"
 
 std::vector<byte> ReadBinaryFile(const std::filesystem::path& path) {
     if (!std::filesystem::exists(path)) {
@@ -24,8 +24,11 @@ std::vector<byte> ReadBinaryFile(const std::filesystem::path& path) {
     std::vector<byte> buffer;
     buffer.reserve(size);
 
-    buffer.insert(buffer.begin(), std::istream_iterator<byte>(input_file),
-                  std::istream_iterator<byte>());
+    buffer.insert(
+        buffer.begin(),
+        std::istream_iterator<byte>(input_file),
+        std::istream_iterator<byte>()
+    );
 
     return buffer;
 }

@@ -5,13 +5,13 @@
 #include <optional>
 #include <vector>
 
+#include "apu.hxx"
 #include "bus.hxx"
 #include "cartridge.hxx"
 #include "constants.hxx"
 #include "controller.hxx"
 #include "cpu.hxx"
 #include "ppu.hxx"
-#include "apu.hxx"
 
 struct RomArgs {
     std::vector<byte> rom;
@@ -21,7 +21,7 @@ struct RomArgs {
 std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args);
 
 class Sen {
-   private:
+  private:
     uint64_t carry_over_cycles{};
     bool running{false};
 
@@ -33,10 +33,12 @@ class Sen {
 
     InterruptRequestFlag nmi_requested{}, irq_requested{};
 
-   public:
+  public:
     explicit Sen(const RomArgs& rom_args, const std::shared_ptr<AudioQueue>& sink);
 
-    uint64_t FrameCount() const { return ppu->frame_count; }
+    uint64_t FrameCount() const {
+        return ppu->frame_count;
+    }
 
     void RunForCycles(uint64_t cycles);
     void StepOpcode();

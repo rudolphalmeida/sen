@@ -1,18 +1,18 @@
-#include <span>
-
 #include "ui.hxx"
 
-#include <SDL2/SDL_opengl.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl2.h>
 #include <nfd.h>
+#include <SDL2/SDL_opengl.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
 
+#include <span>
+
 #include "IconsFontAwesome6.h"
-#include "ImGuiNotify.hpp"
 #include "imgui_memory_editor.h"
+#include "ImGuiNotify.hpp"
 #include "util.hxx"
 
 const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
@@ -70,8 +70,14 @@ void Ui::InitSDL() {
     constexpr auto window_flags =
         SDL_WindowFlags::SDL_WINDOW_RESIZABLE | SDL_WindowFlags::SDL_WINDOW_OPENGL;
 
-    window = SDL_CreateWindow("sen - NES Emulator", SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED, width, height, window_flags);
+    window = SDL_CreateWindow(
+        "sen - NES Emulator",
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        width,
+        height,
+        window_flags
+    );
     if (window == nullptr) {
         spdlog::error("Failed to create SDL2 window: {}", SDL_GetError());
         std::exit(-1);
@@ -117,10 +123,10 @@ void Ui::InitImGui() const {
     ImGui::CreateContext();
     auto& io = ImGui::GetIO();
     (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable Docking
 #ifdef WIN32
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Multi-Viewport
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Multi-Viewport
 #endif
     spdlog::info("Initialized ImGui context");
 
@@ -128,7 +134,7 @@ void Ui::InitImGui() const {
     io.Fonts->AddFontDefault();
     constexpr float baseFontSize = 24.0f;
     constexpr float iconFontSize =
-        baseFontSize * 2.0f / 3.0f;  // FontAwesome fonts need to have their sizes reduced
+        baseFontSize * 2.0f / 3.0f; // FontAwesome fonts need to have their sizes reduced
     // by 2.0f/3.0f in order to align correctly
 
     // merge in icons from Font Awesome
@@ -137,8 +143,8 @@ void Ui::InitImGui() const {
     icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
     icons_config.GlyphMinAdvanceX = iconFontSize;
-    io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAS, iconFontSize, &icons_config,
-                                 icons_ranges);
+    io.Fonts
+        ->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAS, iconFontSize, &icons_config, icons_ranges);
 
     SetImGuiStyle();
     // Setup Dear ImGui style
@@ -184,12 +190,12 @@ void Ui::HandleEvents() {
                 break;
 
             case SDL_WINDOWEVENT:
-                if (event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                    event.window.windowID == SDL_GetWindowID(window)) {
+                if (event.window.event == SDL_WINDOWEVENT_CLOSE
+                    && event.window.windowID == SDL_GetWindowID(window)) {
                     open = false;
                 }
-                if (event.window.event == SDL_WINDOWEVENT_RESIZED &&
-                    event.window.windowID == SDL_GetWindowID(window)) {
+                if (event.window.event == SDL_WINDOWEVENT_RESIZED
+                    && event.window.windowID == SDL_GetWindowID(window)) {
                     settings.Width(event.window.data1);
                     settings.Height(event.window.data2);
                 }
@@ -203,9 +209,9 @@ void Ui::HandleEvents() {
                 break;
 
             case SDL_CONTROLLERDEVICEREMOVED:
-                if (controller &&
-                    event.cdevice.which ==
-                        SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
+                if (controller
+                    && event.cdevice.which
+                        == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
                     spdlog::info("Controller disconnected");
                     SDL_GameControllerClose(controller);
                     controller = FindController();
@@ -219,12 +225,12 @@ void Ui::HandleEvents() {
         if (event.type == SDL_QUIT)
             open = false;
         if (event.type == SDL_WINDOWEVENT) {
-            if (event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                event.window.windowID == SDL_GetWindowID(window)) {
+            if (event.window.event == SDL_WINDOWEVENT_CLOSE
+                && event.window.windowID == SDL_GetWindowID(window)) {
                 open = false;
             }
-            if (event.window.event == SDL_WINDOWEVENT_RESIZED &&
-                event.window.windowID == SDL_GetWindowID(window)) {
+            if (event.window.event == SDL_WINDOWEVENT_RESIZED
+                && event.window.windowID == SDL_GetWindowID(window)) {
                 settings.Width(event.window.data1);
                 settings.Height(event.window.data2);
             }
@@ -232,8 +238,8 @@ void Ui::HandleEvents() {
     }
 
     for (auto [controller_key, key] : KEYMAP) {
-        if (controller && emulator_context && emulation_running &&
-            SDL_GameControllerGetButton(controller, controller_key)) {
+        if (controller && emulator_context && emulation_running
+            && SDL_GameControllerGetButton(controller, controller_key)) {
             emulator_context->ControllerPress(ControllerPort::Port1, key);
         }
     }
@@ -411,32 +417,36 @@ void Ui::RenderUi() {
     } else {
         ImGui::SetNextWindowSize(ImVec2(NES_WIDTH * DEFAULT_SCALE_FACTOR, 0));
         ImGui::Begin(
-            "Game", nullptr,
-            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+            "Game",
+            nullptr,
+            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar
+        );
 
         const auto framebuffer = debugger.Framebuffer();
         const auto [data, width, height] = filter->PostProcess(framebuffer, settings.ScaleFactor());
 
         glBindTexture(GL_TEXTURE_2D, display_texture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        ImGui::Image(display_texture, ImVec2(NES_WIDTH * settings.ScaleFactor(),
-                                             NES_HEIGHT * settings.ScaleFactor()));
+        ImGui::Image(
+            display_texture,
+            ImVec2(NES_WIDTH * settings.ScaleFactor(), NES_HEIGHT * settings.ScaleFactor())
+        );
         glBindTexture(GL_TEXTURE_2D, 0);
 
         ImGui::End();
 
         ShowRegisters();
-        ShowPatternTables();
-        ShowPpuMemory();
-        ShowOam();
+        // ShowPatternTables();
+        // ShowPpuMemory();
+        // ShowOam();
         ShowOpcodes();
         ShowDebugger();
     }
 
     ImGui::PopStyleVar();
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);    // Disable round borders
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);  // Disable borders
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f); // Disable round borders
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f); // Disable borders
     ImGui::RenderNotifications();
     ImGui::PopStyleVar(2);
 
@@ -486,7 +496,8 @@ void Ui::ShowMenuBar() {
                     if (ImGui::MenuItem(recent, nullptr, false, true)) {
                         LoadRomFile(recent);
                         ImGui::InsertNotification(
-                            {ImGuiToastType::Success, 3000, "Successfully loaded %s", recent});
+                            {ImGuiToastType::Success, 3000, "Successfully loaded %s", recent}
+                        );
                     }
                 }
 
@@ -499,8 +510,12 @@ void Ui::ShowMenuBar() {
         }
 
         if (ImGui::BeginMenu("Emulation")) {
-            if (ImGui::MenuItem("Start", nullptr, false,
-                                !emulation_running && emulator_context != nullptr)) {
+            if (ImGui::MenuItem(
+                    "Start",
+                    nullptr,
+                    false,
+                    !emulation_running && emulator_context != nullptr
+                )) {
                 StartEmulation();
             }
             if (ImGui::MenuItem("Pause", nullptr, false, emulation_running)) {
@@ -519,16 +534,23 @@ void Ui::ShowMenuBar() {
             ImGui::Text("Framerate: %.2f", ImGui::GetIO().Framerate);
             if (ImGui::BeginMenu("Scale")) {
                 for (int i = 1; i <= 5; i++) {
-                    if (ImGui::MenuItem(SCALING_FACTORS[i - 1], nullptr,
-                                        settings.ScaleFactor() == i, emulation_running)) {
+                    if (ImGui::MenuItem(
+                            SCALING_FACTORS[i - 1],
+                            nullptr,
+                            settings.ScaleFactor() == i,
+                            emulation_running
+                        )) {
                         settings.SetScale(i);
                     }
                 }
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Style")) {
-                if (ImGui::MenuItem("Classic", nullptr,
-                                    settings.GetUiStyle() == UiStyle::Classic)) {
+                if (ImGui::MenuItem(
+                        "Classic",
+                        nullptr,
+                        settings.GetUiStyle() == UiStyle::Classic
+                    )) {
                     ImGui::StyleColorsClassic();
                     settings.SetUiStyle(UiStyle::Classic);
                 }
@@ -540,8 +562,11 @@ void Ui::ShowMenuBar() {
                     ImGui::StyleColorsDark();
                     settings.SetUiStyle(UiStyle::Dark);
                 }
-                if (ImGui::MenuItem("Super Dark", nullptr,
-                                    settings.GetUiStyle() == UiStyle::SuperDark)) {
+                if (ImGui::MenuItem(
+                        "Super Dark",
+                        nullptr,
+                        settings.GetUiStyle() == UiStyle::SuperDark
+                    )) {
                     EmbraceTheDarkness();
                     settings.SetUiStyle(UiStyle::SuperDark);
                 }
@@ -549,13 +574,19 @@ void Ui::ShowMenuBar() {
             }
 
             if (ImGui::BeginMenu("Filter")) {
-                if (ImGui::MenuItem("None", nullptr,
-                                    settings.GetFilterType() == FilterType::NoFilter)) {
+                if (ImGui::MenuItem(
+                        "None",
+                        nullptr,
+                        settings.GetFilterType() == FilterType::NoFilter
+                    )) {
                     settings.SetFilterType(FilterType::NoFilter);
                     SetFilter(FilterType::NoFilter);
                 }
-                if (ImGui::MenuItem("NTSC", nullptr,
-                                    settings.GetFilterType() == FilterType::Ntsc)) {
+                if (ImGui::MenuItem(
+                        "NTSC",
+                        nullptr,
+                        settings.GetFilterType() == FilterType::Ntsc
+                    )) {
                     settings.SetFilterType(FilterType::Ntsc);
                     SetFilter(FilterType::Ntsc);
                 }
@@ -563,37 +594,60 @@ void Ui::ShowMenuBar() {
             }
 
             auto open_panels = settings.GetOpenPanels();
-            if (ImGui::MenuItem("Debugger", nullptr,
-                                open_panels[static_cast<int>(UiPanel::Debugger)],
-                                emulation_running)) {
+            if (ImGui::MenuItem(
+                    "Debugger",
+                    nullptr,
+                    open_panels[static_cast<int>(UiPanel::Debugger)],
+                    emulation_running
+                )) {
                 settings.TogglePanel(UiPanel::Debugger);
             }
-            if (ImGui::MenuItem("Registers", nullptr,
-                                open_panels[static_cast<int>(UiPanel::Registers)],
-                                emulation_running)) {
+            if (ImGui::MenuItem(
+                    "Registers",
+                    nullptr,
+                    open_panels[static_cast<int>(UiPanel::Registers)],
+                    emulation_running
+                )) {
                 settings.TogglePanel(UiPanel::Registers);
             }
-            if (ImGui::MenuItem("Disassembly", nullptr, open_panels[static_cast<int>(UiPanel::Disassembly)],
-                                emulation_running)) {
+            if (ImGui::MenuItem(
+                    "Disassembly",
+                    nullptr,
+                    open_panels[static_cast<int>(UiPanel::Disassembly)],
+                    emulation_running
+                )) {
                 settings.TogglePanel(UiPanel::Disassembly);
             }
-            if (ImGui::MenuItem("Pattern Tables", nullptr,
-                                open_panels[static_cast<int>(UiPanel::PatternTables)],
-                                emulation_running)) {
+            if (ImGui::MenuItem(
+                    "Pattern Tables",
+                    nullptr,
+                    open_panels[static_cast<int>(UiPanel::PatternTables)],
+                    emulation_running
+                )) {
                 settings.TogglePanel(UiPanel::PatternTables);
             }
-            if (ImGui::MenuItem("PPU Memory", nullptr,
-                                open_panels[static_cast<int>(UiPanel::PpuMemory)],
-                                emulation_running)) {
+            if (ImGui::MenuItem(
+                    "PPU Memory",
+                    nullptr,
+                    open_panels[static_cast<int>(UiPanel::PpuMemory)],
+                    emulation_running
+                )) {
                 settings.TogglePanel(UiPanel::PpuMemory);
             }
-            if (ImGui::MenuItem("Sprites", nullptr, open_panels[static_cast<int>(UiPanel::Sprites)],
-                                emulation_running)) {
+            if (ImGui::MenuItem(
+                    "Sprites",
+                    nullptr,
+                    open_panels[static_cast<int>(UiPanel::Sprites)],
+                    emulation_running
+                )) {
                 settings.TogglePanel(UiPanel::Sprites);
             }
-            if (ImGui::MenuItem("Volume", nullptr,
-                                open_panels[static_cast<int>(UiPanel::VolumeControl)],
-                                emulation_running)) {
+            if (ImGui::MenuItem(
+                    "Volume",
+                    nullptr,
+                    open_panels[static_cast<int>(UiPanel::VolumeControl)],
+                    emulation_running
+                )) {
                 settings.TogglePanel(UiPanel::VolumeControl);
             }
             ImGui::EndMenu();
@@ -612,8 +666,11 @@ void Ui::ShowRegisters() {
     if (ImGui::Begin("Registers", &open_panels[static_cast<int>(UiPanel::Registers)])) {
         ImGui::SeparatorText("CPU Registers");
         const auto [a, x, y, s, pc, p] = debugger.GetCpuState();
-        if (ImGui::BeginTable("cpu_registers", 2,
-                              ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+        if (ImGui::BeginTable(
+                "cpu_registers",
+                2,
+                ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders
+            )) {
             ImGui::TableSetupColumn("Register");
             ImGui::TableSetupColumn("Value");
             ImGui::TableHeadersRow();
@@ -704,10 +761,22 @@ void Ui::ShowRegisters() {
         }
 
         ImGui::SeparatorText("PPU Registers");
-        const auto [palettes, frame_count, scanline, line_cycles, v, t, ppuctrl, ppumask, ppustatus,
-                    oamaddr] = debugger.GetPpuState();
-        if (ImGui::BeginTable("ppu_registers", 2,
-                              ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+        const auto
+            [palettes,
+             frame_count,
+             scanline,
+             line_cycles,
+             v,
+             t,
+             ppuctrl,
+             ppumask,
+             ppustatus,
+             oamaddr] = debugger.GetPpuState();
+        if (ImGui::BeginTable(
+                "ppu_registers",
+                2,
+                ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders
+            )) {
             ImGui::TableSetupColumn("Register");
             ImGui::TableSetupColumn("Value");
             ImGui::TableHeadersRow();
@@ -763,9 +832,11 @@ void Ui::ShowRegisters() {
     ImGui::End();
 }
 
-void Ui::DrawSprite(const size_t index,
-                    const SpriteData& sprite,
-                    const std::span<byte, 0x20>& palettes) const {
+void Ui::DrawSprite(
+    const size_t index,
+    const SpriteData& sprite,
+    const std::span<byte, 0x20>& palettes
+) const {
     std::vector<Pixel> pixels(8 * 8);
     const auto palette_id = sprite.oam_entry.PaletteIndex() + 4;
 
@@ -784,8 +855,17 @@ void Ui::DrawSprite(const size_t index,
     }
 
     glBindTexture(GL_TEXTURE_2D, sprite_textures[index]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 8, 8, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                 reinterpret_cast<unsigned char*>(pixels.data()));
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGB,
+        8,
+        8,
+        0,
+        GL_RGB,
+        GL_UNSIGNED_BYTE,
+        reinterpret_cast<unsigned char*>(pixels.data())
+    );
     ImGui::Image(static_cast<ImTextureID>(sprite_textures[index]), ImVec2(64, 64));
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -921,8 +1001,8 @@ void Ui::ShowOpcodes() {
             switch (addressing_mode) {
                 case AddressingMode::Absolute: {
                     assert(length == 3);
-                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                             static_cast<uint16_t>(executed_opcode.arg1);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8
+                        | static_cast<uint16_t>(executed_opcode.arg1);
                     if (opcode_class == OpcodeClass::JMP || opcode_class == OpcodeClass::JSR) {
                         formatted_args = std::format("0x{:04X}", address);
                     } else {
@@ -935,16 +1015,16 @@ void Ui::ShowOpcodes() {
                 case AddressingMode::AbsoluteXIndexed: {
                     assert(length == 3);
                     arg_color = ImVec4(0.2f, 0.6f, 0.3f, 1.0f);
-                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                             static_cast<uint16_t>(executed_opcode.arg1);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8
+                        | static_cast<uint16_t>(executed_opcode.arg1);
                     formatted_args = std::format("(0x{:04X} + X)", address);
                     break;
                 }
                 case AddressingMode::AbsoluteYIndexed: {
                     assert(length == 3);
                     arg_color = ImVec4(0.2f, 0.6f, 0.3f, 1.0f);
-                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                             static_cast<uint16_t>(executed_opcode.arg1);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8
+                        | static_cast<uint16_t>(executed_opcode.arg1);
                     formatted_args = std::format("(0x{:04X} + Y)", address);
                     break;
                 }
@@ -956,8 +1036,8 @@ void Ui::ShowOpcodes() {
                 case AddressingMode::Indirect: {
                     assert(length == 3);
                     arg_color = ImVec4(0.2f, 0.6f, 0.3f, 1.0f);
-                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8 |
-                                             static_cast<uint16_t>(executed_opcode.arg1);
+                    const uint16_t address = static_cast<uint16_t>(executed_opcode.arg2) << 8
+                        | static_cast<uint16_t>(executed_opcode.arg1);
                     formatted_args = std::format("(0x{:04X})", address);
                     break;
                 }
@@ -994,8 +1074,11 @@ void Ui::ShowOpcodes() {
                     break;
             }
 
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(%lu)    ",
-                               executed_opcode.start_cycle);
+            ImGui::TextColored(
+                ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+                "(%lu)    ",
+                executed_opcode.start_cycle
+            );
             ImGui::SameLine();
             ImGui::Text("0x%.4X    ", executed_opcode.pc);
             ImGui::SameLine();
@@ -1026,8 +1109,7 @@ void Ui::ShowDebugger() {
         }
         ImGui::SetItemTooltip("Play/Pause");
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_STOP, ImVec2(30, 30))) {
-        }
+        if (ImGui::Button(ICON_FA_STOP, ImVec2(30, 30))) {}
         ImGui::SameLine();
         ImGui::SetItemTooltip("Stop");
 
@@ -1057,6 +1139,7 @@ void Ui::ShowDebugger() {
 
     ImGui::End();
 }
+
 void Ui::ShowVolumeControl() {
     auto& open_panels = settings.GetOpenPanels();
 
@@ -1064,8 +1147,7 @@ void Ui::ShowVolumeControl() {
         return;
     }
 
-    if (ImGui::Begin("Volume Control", &open_panels[static_cast<int>(UiPanel::VolumeControl)])) {
-    }
+    if (ImGui::Begin("Volume Control", &open_panels[static_cast<int>(UiPanel::VolumeControl)])) {}
 
     ImGui::End();
 }
@@ -1092,8 +1174,17 @@ void Ui::ShowPatternTables() {
 
         auto left_pixels = RenderPixelsForPatternTable(left, palettes, palette_id);
         glBindTexture(GL_TEXTURE_2D, pattern_table_left_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                     reinterpret_cast<unsigned char*>(left_pixels.data()));
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_RGB,
+            128,
+            128,
+            0,
+            GL_RGB,
+            GL_UNSIGNED_BYTE,
+            reinterpret_cast<unsigned char*>(left_pixels.data())
+        );
 
         ImGui::Image(static_cast<ImTextureID>(pattern_table_left_texture), ImVec2(385, 385));
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -1102,8 +1193,17 @@ void Ui::ShowPatternTables() {
 
         auto right_pixels = RenderPixelsForPatternTable(right, palettes, palette_id);
         glBindTexture(GL_TEXTURE_2D, pattern_table_right_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                     reinterpret_cast<unsigned char*>(right_pixels.data()));
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_RGB,
+            128,
+            128,
+            0,
+            GL_RGB,
+            GL_UNSIGNED_BYTE,
+            reinterpret_cast<unsigned char*>(right_pixels.data())
+        );
         ImGui::Image(static_cast<ImTextureID>(pattern_table_right_texture), ImVec2(385, 385));
         glBindTexture(GL_TEXTURE_2D, 0);
     }
@@ -1125,9 +1225,11 @@ void Ui::LoadRomFile(const char* path) {
     audio_queue->Clear();
 }
 
-std::vector<Pixel> Ui::RenderPixelsForPatternTable(const std::span<const byte, 4096> pattern_table,
-                                                   const std::span<byte, 32> nes_palette,
-                                                   const int palette_id) {
+std::vector<Pixel> Ui::RenderPixelsForPatternTable(
+    const std::span<const byte, 4096> pattern_table,
+    const std::span<byte, 32> nes_palette,
+    const int palette_id
+) {
     static std::vector<Pixel> pixels(128 * 128);
 
     for (size_t column = 0; column < 128; column++) {
