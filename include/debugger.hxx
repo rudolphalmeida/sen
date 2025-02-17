@@ -1,11 +1,15 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <span>
 
 #include "constants.hxx"
 #include "cpu.hxx"
+#include "ppu.hxx"
 #include "sen.hxx"
 #include "util.hxx"
 
@@ -25,12 +29,10 @@ struct SpriteData {
 
 struct Sprites {
     std::array<SpriteData, 64> sprites_data;
-    std::span<byte, 0x20> palettes;
+    std::array<byte, 0x20> palettes;
 };
 
 struct PpuState {
-    std::span<byte, 0x20> palettes;
-
     uint64_t frame_count;
     unsigned int scanline;
     unsigned int line_cycles;
@@ -44,10 +46,9 @@ struct PpuState {
 };
 
 struct PatternTablesState {
-    std::span<const byte, 4096> left;
-    std::span<const byte, 4096> right;
-
-    std::span<byte, 0x20> palettes;
+    std::array<byte, 0x1000> left;
+    std::array<byte, 0x1000> right;
+    std::array<byte, 0x20> palettes;
 };
 
 struct PpuMemory {
@@ -55,7 +56,6 @@ struct PpuMemory {
 };
 
 class Debugger {
-  private:
     std::shared_ptr<Sen> emulator_context{};
 
   public:
@@ -100,69 +100,51 @@ class Debugger {
         return GetCpuExecutedOpcodes(this->emulator_context->cpu);
     }
 
-    static Sprites GetSprites(const std::shared_ptr<Ppu>& ppu) {
-        Sprites sprites{
-            .sprites_data = {},
-            .palettes = std::span<byte, 0x20>{&ppu->palette_table[0], 0x20}
-        };
-        auto chr_mem = ppu->cartridge->chr_rom_ref();
-        word sprite_pattern_table_address = ppu->SpritePatternTableAddress();
-        std::ranges::transform(
-            ppu->oam,
-            sprites.sprites_data.begin(),
-            [&](Sprite sprite) -> SpriteData {
-                std::array<byte, 16> tile_data{};
-                std::ranges::copy(
-                    &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4)],
-                    &chr_mem[sprite_pattern_table_address + (sprite.tile_index << 4) + 16],
-                    tile_data.begin()
-                );
-                return {.oam_entry = sprite, .tile_data = tile_data};
+    void load_sprite_data(Sprites& sprites) const {
+        const auto& ppu = emulator_context->ppu;
+        const auto& cart = ppu->cartridge;
+        const auto& oam = ppu->oam;
+
+        sprites.sprites_data = {};
+        for (size_t i = 0; i < 0x20; i++) {
+            sprites.palettes.at(i) = ppu->palette_table.at(i);
+        }
+
+        const word sprite_pattern_table_address = ppu->SpritePatternTableAddress();
+
+        for (size_t i = 0; i < 64; i++) {
+            sprites.sprites_data[i].oam_entry = ppu->oam[i];
+            for (size_t j = 0; j < 16; j++) {
+                sprites.sprites_data[i].tile_data[j] = cart->ppu_read(sprite_pattern_table_address + (sprites.sprites_data[i].oam_entry.tile_index << 4) + j);
             }
-        );
-
-        return sprites;
+        }
     }
 
-    Sprites GetSprites() {
-        return GetSprites(this->emulator_context->ppu);
+    void load_ppu_state(PpuState& ppu_state) const {
+        const auto& ppu = emulator_context->ppu;
+        ppu_state.frame_count = ppu->frame_count;
+        ppu_state.scanline = ppu->scanline;
+        ppu_state.line_cycles = ppu->line_cycles;
+        ppu_state.v = ppu->v.value;
+        ppu_state.t = ppu->t.value;
+        ppu_state.ppuctrl = ppu->ppuctrl;
+        ppu_state.ppumask = ppu->ppumask;
+        ppu_state.ppustatus = ppu->ppustatus;
+        ppu_state.oamaddr = ppu->oamaddr;
     }
 
-    [[nodiscard]] Sprites GetSprites() const {
-        return GetSprites(this->emulator_context->ppu);
-    }
+    void load_pattern_table_state(PatternTablesState& pattern_tables_state) const {
+        const auto& cart = emulator_context->bus->cartridge;
+        const auto& palette_table = emulator_context->ppu->palette_table;
 
-    static PpuState GetPpuState(const std::shared_ptr<Ppu>& ppu) {
-        auto chr_mem = ppu->cartridge->chr_rom_ref();
-        return PpuState{
-            .palettes = std::span<byte, 0x20>{&ppu->palette_table[0], 0x20},
-            .frame_count = ppu->frame_count,
-            .scanline = ppu->scanline,
-            .line_cycles = ppu->line_cycles,
-            .v = ppu->v.value,
-            .t = ppu->t.value,
-            .ppuctrl = ppu->ppuctrl,
-            .ppumask = ppu->ppumask,
-            .ppustatus = ppu->ppustatus,
-            .oamaddr = ppu->oamaddr,
-        };
-    }
+        for (size_t i = 0; i < 0x1000; i++) {
+            pattern_tables_state.left.at(i) = cart->ppu_read(i);
+            pattern_tables_state.right.at(i) = cart->ppu_read(0x1000 + i);
+        }
 
-    PpuState GetPpuState() {
-        return GetPpuState(this->emulator_context->ppu);
-    }
-
-    [[nodiscard]] PpuState GetPpuState() const {
-        return GetPpuState(this->emulator_context->ppu);
-    }
-
-    [[nodiscard]] PatternTablesState GetPatternTableState() const {
-        const auto chr_mem = emulator_context->bus->cartridge->chr_rom_ref();
-        return {
-            .left = std::span(chr_mem.first<0x1000>()),
-            .right = std::span(chr_mem.subspan(0x1000).first<0x1000>()),
-            .palettes = std::span<byte, 32>{&emulator_context->ppu->palette_table[0], 32}
-        };
+        for (size_t i = 0; i < 32; i++) {
+            pattern_tables_state.palettes[i] = palette_table[i];
+        }
     }
 
     void LoadPpuMemory(std::vector<byte>& buffer) const {
@@ -170,6 +152,4 @@ class Debugger {
             buffer[i] = emulator_context->ppu->PpuRead(i);
         }
     }
-
-    void GetCartridgeInfo() const {}
 };

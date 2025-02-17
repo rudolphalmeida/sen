@@ -41,8 +41,6 @@ class Cartridge {
         return header.hardware_mirroring;
     }
 
-    [[nodiscard]] virtual std::span<const unsigned char> chr_rom_ref() const = 0;
-
     virtual ~Cartridge() = default;
 
     friend class Debugger;

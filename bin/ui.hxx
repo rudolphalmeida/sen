@@ -115,8 +115,8 @@ class Ui {
     static SDL_GameController* FindController();
 
     [[nodiscard]] static std::vector<Pixel> RenderPixelsForPatternTable(
-        std::span<const byte, 4096> pattern_table,
-        std::span<byte, 32> nes_palette,
+        const std::array<byte, 4096>& pattern_table,
+        const std::array<byte, 32>& nes_palette,
         int palette_id
     );
 
@@ -131,7 +131,7 @@ class Ui {
     void ShowVolumeControl();
 
     void
-    DrawSprite(size_t index, const SpriteData& sprite, const std::span<byte, 0x20>& palettes) const;
+    DrawSprite(size_t index, const SpriteData& sprite, const std::array<byte, 32>& palettes) const;
     void ShowOam();
 
     void StartEmulation();

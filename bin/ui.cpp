@@ -8,6 +8,7 @@
 #include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <span>
 
 #include "IconsFontAwesome6.h"
@@ -436,11 +437,11 @@ void Ui::RenderUi() {
         ImGui::End();
 
         ShowRegisters();
-        // ShowPatternTables();
-        // ShowPpuMemory();
-        // ShowOam();
+        ShowPpuMemory();
+        ShowOam();
         ShowOpcodes();
         ShowDebugger();
+        ShowPatternTables();
     }
 
     ImGui::PopStyleVar();
@@ -761,17 +762,8 @@ void Ui::ShowRegisters() {
         }
 
         ImGui::SeparatorText("PPU Registers");
-        const auto
-            [palettes,
-             frame_count,
-             scanline,
-             line_cycles,
-             v,
-             t,
-             ppuctrl,
-             ppumask,
-             ppustatus,
-             oamaddr] = debugger.GetPpuState();
+        static PpuState ppu_state;
+
         if (ImGui::BeginTable(
                 "ppu_registers",
                 2,
@@ -784,47 +776,47 @@ void Ui::ShowRegisters() {
             ImGui::TableNextColumn();
             ImGui::Text("Frame Count");
             ImGui::TableNextColumn();
-            ImGui::Text("%lu", frame_count);
+            ImGui::Text("%lu", ppu_state.frame_count);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("Scanline");
             ImGui::TableNextColumn();
-            ImGui::Text("%u", scanline);
+            ImGui::Text("%u", ppu_state.scanline);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("Scanline Cycles");
             ImGui::TableNextColumn();
-            ImGui::Text("%u", line_cycles);
+            ImGui::Text("%u", ppu_state.line_cycles);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUCTRL");
             ImGui::TableNextColumn();
-            ImGui::Text("%.8b", ppuctrl);
+            ImGui::Text("%.8b", ppu_state.ppuctrl);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUMASK");
             ImGui::TableNextColumn();
-            ImGui::Text("%.8b", ppumask);
+            ImGui::Text("%.8b", ppu_state.ppumask);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUSTATUS");
             ImGui::TableNextColumn();
-            ImGui::Text("%.8b", ppustatus);
+            ImGui::Text("%.8b", ppu_state.ppustatus);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("OAMADDR");
             ImGui::TableNextColumn();
-            ImGui::Text("%.8b", oamaddr);
+            ImGui::Text("%.8b", ppu_state.oamaddr);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("V");
             ImGui::TableNextColumn();
-            ImGui::Text("0x%.4X", v);
+            ImGui::Text("0x%.4X", ppu_state.v);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("T");
             ImGui::TableNextColumn();
-            ImGui::Text("0x%.4X", t);
+            ImGui::Text("0x%.4X", ppu_state.t);
 
             ImGui::EndTable();
         }
@@ -835,7 +827,7 @@ void Ui::ShowRegisters() {
 void Ui::DrawSprite(
     const size_t index,
     const SpriteData& sprite,
-    const std::span<byte, 0x20>& palettes
+    const std::array<byte, 0x20>& palettes
 ) const {
     std::vector<Pixel> pixels(8 * 8);
     const auto palette_id = sprite.oam_entry.PaletteIndex() + 4;
@@ -877,7 +869,10 @@ void Ui::ShowOam() {
     }
 
     if (ImGui::Begin("Sprites", &open_panels[static_cast<int>(UiPanel::Sprites)])) {
-        const auto [sprites_data, palettes] = debugger.GetSprites();
+        static Sprites sprites{};
+        debugger.load_sprite_data(sprites);
+        const auto& sprites_data = sprites.sprites_data;
+        const auto& palettes = sprites.palettes;
 
         if (ImGui::BeginTable("ppu_sprites", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
             constexpr ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
@@ -1160,16 +1155,15 @@ void Ui::ShowPatternTables() {
     }
 
     if (ImGui::Begin("Pattern Tables", &open_panels[static_cast<int>(UiPanel::PatternTables)])) {
-        auto [left, right, palettes] = debugger.GetPatternTableState();
+        static PatternTablesState pattern_tables_state;
+        debugger.load_pattern_table_state(pattern_tables_state);
+        const auto& left = pattern_tables_state.left;
+        const auto& right = pattern_tables_state.right;
+        const auto& palettes = pattern_tables_state.palettes;
+
         static int palette_id = 0;
         if (ImGui::InputInt("Palette ID", &palette_id)) {
-            if (palette_id < 0) {
-                palette_id = 0;
-            }
-
-            if (palette_id > 7) {
-                palette_id = 7;
-            }
+            palette_id = std::max(std::min(palette_id, 7), 0);
         }
 
         auto left_pixels = RenderPixelsForPatternTable(left, palettes, palette_id);
@@ -1226,8 +1220,8 @@ void Ui::LoadRomFile(const char* path) {
 }
 
 std::vector<Pixel> Ui::RenderPixelsForPatternTable(
-    const std::span<const byte, 4096> pattern_table,
-    const std::span<byte, 32> nes_palette,
+    const std::array<byte, 0x1000>& pattern_table,
+    const std::array<byte, 32>& nes_palette,
     const int palette_id
 ) {
     static std::vector<Pixel> pixels(128 * 128);

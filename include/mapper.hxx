@@ -41,10 +41,6 @@ class Nrom final: public Cartridge {
 
     void ppu_write(word address, byte data) override {}
 
-    [[nodiscard]] std::span<const unsigned char> chr_rom_ref() const override {
-        return std::span<const unsigned char, 8192>(chr_rom);
-    }
-
     friend class Debugger;
 
   private:
@@ -133,10 +129,6 @@ class Mmc1 final: public Cartridge {
         }
 
         return header.hardware_mirroring;
-    }
-
-    [[nodiscard]] std::span<const unsigned char> chr_rom_ref() const override {
-        return std::span(chr_rom);
     }
 
   private:

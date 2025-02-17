@@ -6,8 +6,13 @@
 #include <memory>
 #include <utility>
 
+#include "apu.hxx"
+#include "bus.hxx"
 #include "cartridge.hxx"
+#include "controller.hxx"
+#include "cpu.hxx"
 #include "mapper.hxx"
+#include "ppu.hxx"
 
 Sen::Sen(const RomArgs& rom_args, const std::shared_ptr<AudioQueue>& sink) {
     nmi_requested = std::make_shared<bool>(false);
