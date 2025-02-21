@@ -106,7 +106,8 @@ class Ui {
 
     int audio_frame_delay{MAX_AUDIO_FRAME_LAG};
     bool open{true};
-    byte pressed_keys{};
+
+    byte pressed_nes_keys{};
 
     void InitSDL();
     void InitSDLAudio();

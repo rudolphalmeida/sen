@@ -9,9 +9,11 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <ranges>
 #include <span>
 
 #include "IconsFontAwesome6.h"
+#include "controller.hxx"
 #include "imgui_memory_editor.h"
 #include "ImGuiNotify.hpp"
 #include "util.hxx"
@@ -219,26 +221,30 @@ void Ui::HandleEvents() {
                 }
                 break;
 
-            case SDL_CONTROLLERBUTTONDOWN: {
-                const auto external_controller_key = static_cast<SDL_GameControllerButton>(event.cbutton.which);
-                if (emulation_running && controller  && KEYMAP.contains(external_controller_key) && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
-                    const auto controller_key = KEYMAP.at(external_controller_key);
-                    emulator_context->ControllerPress(ControllerPort::Port1, controller_key);
-                }
-                break;
-            }
-
-            case SDL_CONTROLLERBUTTONUP: {
-                const auto external_controller_key = static_cast<SDL_GameControllerButton>(event.cbutton.which);
-                if (emulation_running && controller && KEYMAP.contains(external_controller_key) && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
-                    const auto controller_key = KEYMAP.at(external_controller_key);
-                    emulator_context->ControllerRelease(ControllerPort::Port1, controller_key);
-                }
-                break;
-            }
-
             default:
                 break;
+        }
+    }
+
+    if (controller == nullptr || !emulation_running) {
+        return;
+    }
+
+    byte current_keys{};
+    for (auto [controller_key, key] : KEYMAP) {
+        if (SDL_GameControllerGetButton(controller, controller_key)) {
+            current_keys |= static_cast<byte>(key);
+        }
+    }
+
+    for (const auto key : KEYMAP | std::views::values) {
+        const bool previously_pressed = (pressed_nes_keys & static_cast<byte>(key)) != 0;
+        const bool currently_pressed = (current_keys & static_cast<byte>(key)) != 0;
+
+        if (!previously_pressed && currently_pressed) {
+            emulator_context->ControllerPress(ControllerPort::Port1, key);
+        } else if (previously_pressed && !currently_pressed) {
+            emulator_context->ControllerRelease(ControllerPort::Port1, key);
         }
     }
 }
