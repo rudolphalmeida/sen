@@ -104,7 +104,7 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     size_t chr_rom_banks = *rom_iter++;
 
     if (const bool uses_chr_ram = chr_rom_banks == 0x00) {
-        spdlog::debug("Cartridge uses CHR-RAM");
+        spdlog::info("Cartridge uses CHR-RAM");
     }
 
     const auto flag_6 = *rom_iter++;
@@ -121,13 +121,16 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     const bool battery_backed_ram = (flag_6 & 0b10) == 0b10;
     if (battery_backed_ram) {
         // TODO: If battery_backed_ram is True, check for RAM provided in rom_args
-        spdlog::debug("Cartridge uses battery backed RAM");
+        spdlog::info("Cartridge uses battery backed RAM");
     }
 
     word mapper_number;
 
     const auto flag_7 = *rom_iter++;
     const bool nes2_0_format = (flag_7 & 0x0C) == 0x08;
+    
+    size_t prg_ram_size = 0U;
+    
     if (nes2_0_format) {
         spdlog::info("ROM is in NES2.0 format");
 
@@ -135,7 +138,7 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
         mapper_number = ((flag_8 & 0x0F) << 8) | (flag_7 & 0xF0) | ((flag_6 & 0xF0) >> 4);
 
         const auto submapper = (flag_8 & 0xF0) >> 4;
-        spdlog::debug("ROM has sub mapper: {}", submapper);
+        spdlog::info("ROM has sub mapper: {}", submapper);
 
         const auto flag_9 = *rom_iter++;
         prg_rom_banks |= ((flag_9 & 0x0F) << 8);
@@ -149,8 +152,8 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
         mapper_number = (flag_7 & 0xF0) | ((flag_6 & 0xF0) >> 4);
 
         const auto flag_8 = *rom_iter++;
-        const auto prg_ram_size = flag_8 ? flag_8 * 8192 : 8192;
-        spdlog::debug("PRG RAM size (Bytes): {}", prg_ram_size);
+        prg_ram_size = flag_8 ? flag_8 * 8192 : 8192;
+        spdlog::info("PRG RAM size (Bytes): {}", prg_ram_size);
 
         // Ignore bytes 9-15 for iNES
         std::advance(rom_iter, 16 - 9);
@@ -158,11 +161,11 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
 
     size_t prg_rom_size = 16384 * prg_rom_banks;
     size_t chr_rom_size = 8192 * chr_rom_banks;
-    spdlog::debug("PRG ROM size (Bytes): {}", prg_rom_size);
-    spdlog::debug("CHR ROM size (Bytes): {}", chr_rom_size);
+    spdlog::info("PRG ROM size (Bytes): {}", prg_rom_size);
+    spdlog::info("CHR ROM size (Bytes): {}", chr_rom_size);
 
     if (chr_rom_size == 0x00 && !nes2_0_format) {
-        spdlog::debug("Cartridge uses CHR-RAM");
+        spdlog::info("Cartridge uses CHR-RAM");
     }
 
     const RomHeader header{
@@ -170,6 +173,7 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
         prg_rom_banks,
         chr_rom_size,
         chr_rom_banks,
+        prg_ram_size,
         mirroring,
         mapper_number,
         battery_backed_ram

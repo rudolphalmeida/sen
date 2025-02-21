@@ -1,11 +1,11 @@
 #include "ui.hxx"
 
+#include <SDL2/SDL.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl2.h>
 #include <nfd.h>
 #include <SDL2/SDL_opengl.h>
-#include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -16,10 +16,10 @@
 #include "ImGuiNotify.hpp"
 #include "util.hxx"
 
-const char* SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
+static constexpr const char* const SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 constexpr auto GLSL_VERSION = "#version 130";
 
-void InitTexture(const GLuint id) {
+static void InitTexture(const GLuint id) {
     glBindTexture(GL_TEXTURE_2D, id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -219,29 +219,26 @@ void Ui::HandleEvents() {
                 }
                 break;
 
+            case SDL_CONTROLLERBUTTONDOWN: {
+                const auto external_controller_key = static_cast<SDL_GameControllerButton>(event.cbutton.which);
+                if (emulation_running && controller  && KEYMAP.contains(external_controller_key) && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
+                    const auto controller_key = KEYMAP.at(external_controller_key);
+                    emulator_context->ControllerPress(ControllerPort::Port1, controller_key);
+                }
+                break;
+            }
+
+            case SDL_CONTROLLERBUTTONUP: {
+                const auto external_controller_key = static_cast<SDL_GameControllerButton>(event.cbutton.which);
+                if (emulation_running && controller && KEYMAP.contains(external_controller_key) && event.cdevice.which == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
+                    const auto controller_key = KEYMAP.at(external_controller_key);
+                    emulator_context->ControllerRelease(ControllerPort::Port1, controller_key);
+                }
+                break;
+            }
+
             default:
                 break;
-        }
-
-        if (event.type == SDL_QUIT)
-            open = false;
-        if (event.type == SDL_WINDOWEVENT) {
-            if (event.window.event == SDL_WINDOWEVENT_CLOSE
-                && event.window.windowID == SDL_GetWindowID(window)) {
-                open = false;
-            }
-            if (event.window.event == SDL_WINDOWEVENT_RESIZED
-                && event.window.windowID == SDL_GetWindowID(window)) {
-                settings.Width(event.window.data1);
-                settings.Height(event.window.data2);
-            }
-        }
-    }
-
-    for (auto [controller_key, key] : KEYMAP) {
-        if (controller && emulator_context && emulation_running
-            && SDL_GameControllerGetButton(controller, controller_key)) {
-            emulator_context->ControllerPress(ControllerPort::Port1, key);
         }
     }
 }
@@ -454,7 +451,7 @@ void Ui::RenderUi() {
     ImGui::EndFrame();
 
     ImGui::Render();
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(0.0F, 0.0F, 0.0F, 1.0F);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -763,6 +760,7 @@ void Ui::ShowRegisters() {
 
         ImGui::SeparatorText("PPU Registers");
         static PpuState ppu_state;
+        debugger.load_ppu_state(ppu_state);
 
         if (ImGui::BeginTable(
                 "ppu_registers",
@@ -968,8 +966,7 @@ void Ui::ShowPpuMemory() {
     }
 
     if (ImGui::Begin("PPU Memory", &open_panels[static_cast<int>(UiPanel::PpuMemory)])) {
-        static std::vector<byte> ppu_memory;
-        ppu_memory.resize(0x4000);
+        static std::vector<byte> ppu_memory(0x4000U, 0U);
         debugger.LoadPpuMemory(ppu_memory);
         static MemoryEditor ppu_mem_edit;
         ppu_mem_edit.ReadOnly = true;

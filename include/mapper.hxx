@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -72,7 +73,8 @@ class Mmc1 final: public Cartridge {
             this->chr_rom = std::vector<byte>(0x2000, 0);
         }
 
-        if (header.battery_backed_ram) {
+        if (header.prg_ram_size) {
+            spdlog::info("Initializing PRG RAM of size 0x2000");
             prg_ram = std::make_optional<std::vector<byte>>(0x8000U-0x6000U, 0);
         }
     }
@@ -86,7 +88,7 @@ class Mmc1 final: public Cartridge {
             return prg_rom[map_cpu_addr(address)];
         }
 
-        spdlog::error("Unexpected address to MMC1::cpu_read {:#06X}", address);
+        spdlog::debug("Unexpected address to MMC1::cpu_read {:#06X}", address);
         return 0x00;
     }
 
@@ -101,14 +103,14 @@ class Mmc1 final: public Cartridge {
             return;
         }
 
-        spdlog::error("Unexpected address to MMC1::cpu_write {:#06X}", address);
+        spdlog::debug("Unexpected address to MMC1::cpu_write {:#06X}", address);
     }
 
     byte ppu_read(word address) override {
         if (InRange<word>(0x0000, address, 0x1FFF)) {
             return chr_rom[map_ppu_addr(address)];
         }
-        spdlog::error("Unexpected address to MMC1::ppu_read {:#06X}", address);
+        spdlog::debug("Unexpected address to MMC1::ppu_read {:#06X}", address);
         return 0x00;
     }
 
@@ -116,13 +118,13 @@ class Mmc1 final: public Cartridge {
         if (InRange<word>(0x0000, address, 0x1FFF)) {
             chr_rom[map_ppu_addr(address)] = data;
         }
-        spdlog::error("Unexpected address to MMC1::ppu_write {:#06X}", address);
+        spdlog::debug("Unexpected address to MMC1::ppu_write {:#06X}", address);
     }
 
     [[nodiscard]] Mirroring mirroring() const override {
         switch (control.value & 0b11U) {
-            case 0: spdlog::error("TODO: One screen lower bank mirroring"); break;
-            case 1: spdlog::error("TODO: One screen upper bank mirroring"); break;
+            case 0: break;
+            case 1: break;
             case 2: return Mirroring::Vertical;
             case 3: return Mirroring::Horizontal;
             default: break;
@@ -172,7 +174,7 @@ class Mmc1 final: public Cartridge {
     }
 
     [[nodiscard]] size_t map_cpu_addr(const word address) const {
-        switch ((control.value & 0x0C) >> 2U) {
+        switch ((control.value & 0x0CU) >> 2U) {
             case 0b00:
             case 0b01:
                 // Switching whole 32KB -> Ignore low bit of bank number

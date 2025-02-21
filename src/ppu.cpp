@@ -275,7 +275,7 @@ void Ppu::EvaluateNextLineSprites() {
         if (const auto& sprite = oam[i];
             scanline >= sprite.y && ((scanline - sprite.y) < SpriteHeight())) {
             if (secondary_oam.size() == 8) {
-                spdlog::debug("TODO: Implement sprite overflow");
+                // TODO: Implement sprite overflow
                 break;
             }
             secondary_oam.emplace_back(i, sprite);

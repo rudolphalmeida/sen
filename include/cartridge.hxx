@@ -20,6 +20,8 @@ struct RomHeader {
     size_t chr_rom_size;
     size_t chr_rom_banks;
 
+    size_t prg_ram_size;
+
     Mirroring hardware_mirroring;
     word mapper_number;
     bool battery_backed_ram = false;

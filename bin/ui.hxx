@@ -6,10 +6,11 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
-#include <span>
+#include <unordered_map>
 #include <vector>
 
 #include "constants.hxx"
+#include "controller.hxx"
 #include "debugger.hxx"
 #include "filters.hxx"
 #include "sen.hxx"
@@ -22,7 +23,7 @@ static const std::unordered_map<SDL_GameControllerButton, ControllerKey> KEYMAP 
     // Allow using alternate buttons
     {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_Y, ControllerKey::A},
     {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_X, ControllerKey::B},
-    {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_GUIDE, ControllerKey::Select},
+    {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_BACK, ControllerKey::Select},
     {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_START, ControllerKey::Start},
     {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_UP, ControllerKey::Up},
     {SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_DOWN, ControllerKey::Down},
@@ -40,15 +41,14 @@ class AudioStreamQueue final: public AudioQueue {
   public:
     SDL_AudioStream* stream{};
 
-    AudioStreamQueue() {
-        stream = SDL_NewAudioStream(
+    AudioStreamQueue() : stream(SDL_NewAudioStream(
             DEVICE_FORMAT,
             DEVICE_CHANNELS,
             NTSC_NES_CLOCK_FREQ,
             DEVICE_FORMAT,
             DEVICE_CHANNELS,
             DEVICE_SAMPLE_RATE
-        );
+        )) {
         if (stream == nullptr) {
             spdlog::error("Failed to initialize SDL_AudioStream: {}", SDL_GetError());
             std::exit(-1);
@@ -106,6 +106,7 @@ class Ui {
 
     int audio_frame_delay{MAX_AUDIO_FRAME_LAG};
     bool open{true};
+    byte pressed_keys{};
 
     void InitSDL();
     void InitSDLAudio();
