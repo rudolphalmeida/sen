@@ -45,8 +45,7 @@ class Sen {
     void RunForOneScanline();
     void RunForOneFrame();
 
-    void ControllerPress(ControllerPort port, ControllerKey key) const;
-    void ControllerRelease(ControllerPort port, ControllerKey key) const;
+    void set_pressed_keys(ControllerPort port, byte key) const;
 
     friend class Debugger;
 };

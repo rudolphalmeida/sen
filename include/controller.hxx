@@ -35,7 +35,7 @@ class Controller {
                 }
             case 0x4017:
                 if (strobe) {
-                    return key_state_1 & 0b1;
+                    return key_state_2 & 0b1;
                 } else {
                     byte value = key_shift_reg_2 & 0b1;
                     key_shift_reg_2 = (key_shift_reg_2 >> 1) | 0x80; // Ensure all 1s after 8 reads
@@ -55,11 +55,8 @@ class Controller {
             if (old_strobe && !strobe) { // Stop polling
                 key_shift_reg_1 = key_state_1;
                 key_shift_reg_2 = key_state_2;
-
-                key_state_1 = key_state_2 = 0x00;
             }
-        } else if (address == 0x4017) {
-        } else {
+       } else {
             spdlog::error(
                 "Write to invalid controller address 0x{:#04X} with {:08b}",
                 address,
@@ -68,24 +65,13 @@ class Controller {
         }
     }
 
-    void ControllerPress(ControllerPort port, ControllerKey key) {
+    void set_pressed_keys(ControllerPort port, byte keys) {
         switch (port) {
             case ControllerPort::Port1:
-                key_state_1 |= static_cast<byte>(key);
+                key_state_1 = keys;
                 break;
             case ControllerPort::Port2:
-                key_state_2 |= static_cast<byte>(key);
-                break;
-        }
-    }
-
-    void ControllerRelease(ControllerPort port, ControllerKey key) {
-        switch (port) {
-            case ControllerPort::Port1:
-                key_state_1 &= ~static_cast<byte>(key);
-                break;
-            case ControllerPort::Port2:
-                key_state_2 &= ~static_cast<byte>(key);
+                key_state_2 = keys;
                 break;
         }
     }

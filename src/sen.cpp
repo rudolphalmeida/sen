@@ -82,12 +82,8 @@ void Sen::RunForOneFrame() {
     carry_over_cycles = bus->cycles - target_cycles;
 }
 
-void Sen::ControllerPress(const ControllerPort port, const ControllerKey key) const {
-    controller->ControllerPress(port, key);
-}
-
-void Sen::ControllerRelease(const ControllerPort port, const ControllerKey key) const {
-    controller->ControllerRelease(port, key);
+void Sen::set_pressed_keys(const ControllerPort port, const byte key) const {
+    controller->set_pressed_keys(port, key);
 }
 
 std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {

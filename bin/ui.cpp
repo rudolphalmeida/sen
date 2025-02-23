@@ -1,6 +1,7 @@
 #include "ui.hxx"
 
 #include <SDL2/SDL.h>
+#include <SDL_events.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl2.h>
@@ -230,23 +231,13 @@ void Ui::HandleEvents() {
         return;
     }
 
-    byte current_keys{};
+    byte keys{};
     for (auto [controller_key, key] : KEYMAP) {
         if (SDL_GameControllerGetButton(controller, controller_key)) {
-            current_keys |= static_cast<byte>(key);
+            keys |= static_cast<byte>(key);
         }
     }
-
-    for (const auto key : KEYMAP | std::views::values) {
-        const bool previously_pressed = (pressed_nes_keys & static_cast<byte>(key)) != 0;
-        const bool currently_pressed = (current_keys & static_cast<byte>(key)) != 0;
-
-        if (!previously_pressed && currently_pressed) {
-            emulator_context->ControllerPress(ControllerPort::Port1, key);
-        } else if (previously_pressed && !currently_pressed) {
-            emulator_context->ControllerRelease(ControllerPort::Port1, key);
-        }
-    }
+    emulator_context->set_pressed_keys(ControllerPort::Port1, keys);
 }
 
 void Ui::SetFilter(const FilterType filter) {

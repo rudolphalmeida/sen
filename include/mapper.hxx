@@ -117,6 +117,7 @@ class Mmc1 final: public Cartridge {
     void ppu_write(word address, const byte data) override {
         if (InRange<word>(0x0000, address, 0x1FFF)) {
             chr_rom[map_ppu_addr(address)] = data;
+            return;
         }
         spdlog::debug("Unexpected address to MMC1::ppu_write {:#06X}", address);
     }

@@ -2,8 +2,9 @@
 // Created by rudolph on 30/11/24.
 //
 
-#include "apu.hxx"
+#include <cstdint>
 
+#include "apu.hxx"
 #include "util.hxx"
 
 void Apu::Tick(const uint64_t cpu_cycles) {
