@@ -1,29 +1,31 @@
 #include <fstream>
 #include <memory>
+#include <vector>
 
 #include <fmt/core.h>
+#include <nlohmann/json_fwd.hpp>
 #include <spdlog/cfg/env.h>
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 
-#include "debugger.hxx"
-
 #define CPU_TEST
- 
-#include "flatbus.hxx"
 
-void LoadInstructionCycles(const nlohmann::json& cycle_data, std::vector<Cycle>& cycles) {
+#include "debugger.hxx"
+#include "flatbus.hxx"
+#include "constants.hxx"
+
+void load_instruction_cycles(const nlohmann::json& cycle_data, std::vector<Cycle>& cycles) {
     for (auto cycle : cycle_data) {
         cycles.emplace_back(cycle[2].get<std::string>(), cycle[0], cycle[1]);
     }
 }
 
-nlohmann::json LoadTestCasesJsonFile(byte opcode) {
+nlohmann::json load_test_cases_json(byte opcode) {
     std::ifstream tests_json_file(fmt::format("./ProcessorTests/nes6502/v1/{:02x}.json", opcode));
     return nlohmann::json::parse(tests_json_file);
 }
 
-void TestOpcode(const nlohmann::json& tests_data) {
+void test_opcode(const nlohmann::json& tests_data) {
     auto nmi_requested = std::make_shared<bool>(false);
     auto irq_requested = std::make_shared<bool>(false);
     std::vector<Cycle> expected_cycles{};
@@ -33,7 +35,7 @@ void TestOpcode(const nlohmann::json& tests_data) {
     for (auto test_case : tests_data) {
         // Erase the vector before loading the current test case cycles
         expected_cycles.erase(expected_cycles.begin(), expected_cycles.end());
-        LoadInstructionCycles(test_case["cycles"], expected_cycles);
+        load_instruction_cycles(test_case["cycles"], expected_cycles);
 
         auto bus = std::make_shared<FlatBus>(expected_cycles);
         REQUIRE(bus->cycles == 0);  // Tests require cycles to start at zero
@@ -48,10 +50,10 @@ void TestOpcode(const nlohmann::json& tests_data) {
         cpu_state.y = initial_state["y"];
         cpu_state.p = initial_state["p"];
         for (auto ram_state : initial_state["ram"]) {
-            bus->UntickedCpuWrite(static_cast<word>(ram_state[0]), static_cast<byte>(ram_state[1]));
+            bus->cpu_write(static_cast<word>(ram_state[0]), static_cast<byte>(ram_state[1]));
         }
 
-        cpu.Execute();
+        cpu.step();
 
         auto final_state = test_case["final"];
         REQUIRE(cpu_state.pc == final_state["pc"]);
@@ -61,7 +63,7 @@ void TestOpcode(const nlohmann::json& tests_data) {
         REQUIRE(cpu_state.y == final_state["y"]);
         REQUIRE(cpu_state.p == final_state["p"]);
         for (auto ram_state : final_state["ram"]) {
-            REQUIRE(bus->UntickedCpuRead(static_cast<word>(ram_state[0])) ==
+            REQUIRE(bus->cpu_read(static_cast<word>(ram_state[0])) ==
                     static_cast<byte>(ram_state[1]));
         }
 
@@ -72,7 +74,7 @@ void TestOpcode(const nlohmann::json& tests_data) {
 #define OPCODE_TEST(opc)                                     \
     TEST_CASE("Test opcode " #opc, "[opcodeTest" #opc "]") { \
         spdlog::cfg::load_env_levels();                      \
-        TestOpcode(LoadTestCasesJsonFile(opc));              \
+        test_opcode(load_test_cases_json(opc));              \
     }
 
 // Only testing for the legal opcodes and JAMs

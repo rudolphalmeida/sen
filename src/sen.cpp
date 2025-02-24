@@ -30,14 +30,14 @@ Sen::Sen(const RomArgs& rom_args, const std::shared_ptr<AudioQueue>& sink) {
 void Sen::RunForCycles(const uint64_t cycles) {
     if (!running) {
         running = true;
-        cpu.Start();
+        cpu.start();
     }
 
     const auto cpu_cycles = bus->cycles;
     const auto target_cycles = cpu_cycles + cycles - carry_over_cycles;
 
     while (bus->cycles < target_cycles) {
-        cpu.Execute();
+        cpu.step();
     }
 
     carry_over_cycles = bus->cycles - target_cycles;
@@ -46,37 +46,37 @@ void Sen::RunForCycles(const uint64_t cycles) {
 void Sen::StepOpcode() {
     if (!running) {
         running = true;
-        cpu.Start();
+        cpu.start();
     }
 
-    cpu.Execute();
+    cpu.step();
 }
 
 void Sen::RunForOneScanline() {
     if (!running) {
         running = true;
-        cpu.Start();
+        cpu.start();
     }
 
     const auto ppu_start_scanline = ppu->Scanline();
 
-    cpu.Execute();
+    cpu.step();
     while (ppu->Scanline() == ppu_start_scanline) {
-        cpu.Execute();
+        cpu.step();
     }
 }
 
 void Sen::RunForOneFrame() {
     if (!running) {
         running = true;
-        cpu.Start();
+        cpu.start();
     }
 
     const auto cpu_cycles = bus->cycles;
     const auto target_cycles = cpu_cycles + CYCLES_PER_FRAME - carry_over_cycles;
 
     while (bus->cycles < target_cycles) {
-        cpu.Execute();
+        cpu.step();
     }
 
     carry_over_cycles = bus->cycles - target_cycles;

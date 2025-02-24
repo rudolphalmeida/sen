@@ -12,7 +12,7 @@ inline bool InRange(T low, T value, T high) {
     return low <= value && value <= high;
 }
 
-template<typename BackingType, size_t RegisterSize>
+template<typename BackingType, size_t RegisterSize> requires ((sizeof(BackingType) << 3) >= RegisterSize)
 struct SizedBitField {
     BackingType value: RegisterSize;
 };

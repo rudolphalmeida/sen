@@ -24,33 +24,33 @@ class FlatBus {
 
     explicit FlatBus(const std::vector<Cycle>& expected_cycles): expected_cycles{expected_cycles} {};
 
-    void Tick() { cycles++; }
+    void tick() { cycles++; }
 
-    byte UntickedCpuRead(word address) { return ram[address]; }
+    byte cpu_read(const word address) const { return ram[address]; }
 
-    void UntickedCpuWrite(word address, byte data) { ram[address] = data; }
+    void cpu_write(const word address, const byte data) { ram[address] = data; }
 
-    byte CpuRead(word address) {
+    byte ticked_cpu_read(const word address) {
         auto expected_cycle = expected_cycles[cycles];
 
         REQUIRE(expected_cycle.verb == "read");
         REQUIRE(expected_cycle.address == address);
 
-        Tick();
-        auto data = UntickedCpuRead(address);
+        tick();
+        const auto data = cpu_read(address);
         REQUIRE(expected_cycle.data == data);
 
         return data;
     }
 
-    void CpuWrite(word address, byte data) {
+    void ticked_cpu_write(const word address, const byte data) {
         auto expected_cycle = expected_cycles[cycles];
 
         REQUIRE(expected_cycle.verb == "write");
         REQUIRE(expected_cycle.address == address);
         REQUIRE(expected_cycle.data == data);
 
-        Tick();
-        UntickedCpuWrite(address, data);
+        tick();
+        cpu_write(address, data);
     }
 };

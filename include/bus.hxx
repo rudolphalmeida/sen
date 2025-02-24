@@ -1,9 +1,11 @@
 #pragma once
 
-#include <spdlog/spdlog.h>
-
 #include <cstdint>
 #include <memory>
+#include <utility>
+#include <vector>
+
+#include <spdlog/spdlog.h>
 
 #include "apu.hxx"
 #include "cartridge.hxx"
@@ -34,20 +36,20 @@ class Bus {
         spdlog::debug("Initialized system bus");
     }
 
-    [[nodiscard]] byte UntickedCpuRead(word address) const;
-    void UntickedCpuWrite(word address, byte data);
+    [[nodiscard]] byte cpu_read(word address) const;
+    void cpu_write(word address, byte data);
 
-    byte CpuRead(const word address) {
-        Tick();
-        return UntickedCpuRead(address);
+    byte ticked_cpu_read(const word address) {
+        tick();
+        return cpu_read(address);
     }
 
-    void CpuWrite(const word address, const byte data) {
-        Tick();
-        UntickedCpuWrite(address, data);
+    void ticked_cpu_write(const word address, const byte data) {
+        tick();
+        cpu_write(address, data);
     }
 
-    void Tick() {
+    void tick() {
         cycles++;
 #ifndef CPU_TEST
         // Each CPU cycle is 3 PPU cycles
@@ -59,7 +61,7 @@ class Bus {
 #endif
     }
 
-    void PerformOamDma(byte high);
+    void perform_oam_dma(byte high);
 
     friend class Debugger;
 };
