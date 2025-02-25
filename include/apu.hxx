@@ -25,7 +25,7 @@ constexpr std::array<byte, 32> LENGTH_COUNTER_LOADS{10, 254, 20,  2,  40, 4,  80
 constexpr std::array<word, 16> NOISE_TIMER_CPU_CYCLES =
     {4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068};
 
-enum class FrameCounterStepMode {
+enum class FrameCounterStepMode: uint8_t {
     FourStep,
     FiveStep,
 };
@@ -34,9 +34,9 @@ class AudioQueue {
   public:
     virtual ~AudioQueue() = default;
 
-    virtual void PushSample(float sample) = 0;
-    virtual void GetSamples(uint8_t* output, size_t samples) = 0;
-    virtual void Clear() = 0;
+    virtual void push(float sample) = 0;
+    virtual void load_samples(uint8_t* output, size_t samples) = 0;
+    virtual void clear() = 0;
 };
 
 struct LengthCounter {
@@ -422,7 +422,7 @@ enum class ApuChannel : byte {
 class Apu {
   public:
     explicit Apu(std::shared_ptr<AudioQueue> sink, InterruptRequestFlag irq_requested) :
-        sink{std::move(sink)},
+        audio_queue{std::move(sink)},
         irq_requested(std::move(irq_requested)) {}
 
     void Tick(uint64_t cpu_cycles);
@@ -437,7 +437,7 @@ class Apu {
     friend class Debugger;
 
   private:
-    std::shared_ptr<AudioQueue> sink{};
+    std::shared_ptr<AudioQueue> audio_queue{};
 
     ApuPulse pulse_1{false}, pulse_2{true};
     ApuTriangle triangle;

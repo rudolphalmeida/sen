@@ -1,8 +1,14 @@
 #pragma once
 
-#include <SDL2/SDL.h>
-#include <SDL_opengl.h>
+#include <SDL2/SDL_audio.h>
+#include <SDL2/SDL_gamecontroller.h>
+#include <SDL2/SDL_opengl.h>
+#include <SDL_video.h>
+#include <spdlog/spdlog.h>
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -60,19 +66,19 @@ class AudioStreamQueue final: public AudioQueue {
     AudioStreamQueue& operator=(const AudioStreamQueue& other) = delete;
     AudioStreamQueue& operator=(AudioStreamQueue&& other) noexcept = default;
 
-    void PushSample(const float sample) override {
+    void push(const float sample) override {
         if (SDL_AudioStreamPut(stream, &sample, sizeof(float)) == -1) {
             spdlog::error("Failed to push sample into audio queue");
         }
     }
 
-    void GetSamples(uint8_t* output, size_t samples) override {
+    void load_samples(uint8_t* output, size_t samples) override {
         if (SDL_AudioStreamGet(stream, output, samples * sizeof(float)) == -1) {
             spdlog::error("Failed to get {} samples from audio stream", samples);
         }
     }
 
-    void Clear() override {
+    void clear() override {
         SDL_AudioStreamClear(stream);
     }
 
@@ -83,7 +89,7 @@ class AudioStreamQueue final: public AudioQueue {
 
 class Ui {
   private:
-    SenSettings settings{};
+    SenSettings settings;
 
     SDL_Window* window{};
     SDL_GLContext gl_context{};
@@ -109,48 +115,48 @@ class Ui {
 
     byte pressed_nes_keys{};
 
-    void InitSDL();
-    void InitSDLAudio();
-    void InitImGui() const;
+    void init_sdl();
+    void init_sdl_audio();
+    void init_imgui() const;
 
-    void LoadRomFile(const char* path);
-    static SDL_GameController* FindController();
+    void load_rom_file(const char* path);
+    static SDL_GameController* find_controllers();
 
-    [[nodiscard]] static std::vector<Pixel> RenderPixelsForPatternTable(
+    [[nodiscard]] static std::vector<Pixel> render_pattern_table(
         const std::array<byte, 4096>& pattern_table,
         const std::array<byte, 32>& nes_palette,
         int palette_id
     );
 
-    void RenderUi();
+    void render_ui();
 
-    void ShowMenuBar();
-    void ShowRegisters();
-    void ShowPatternTables();
-    void ShowPpuMemory();
-    void ShowOpcodes();
-    void ShowDebugger();
-    void ShowVolumeControl();
+    void show_menu_bar();
+    void show_registers();
+    void show_pattern_tables();
+    void show_ppu_memory();
+    void show_opcodes();
+    void show_debugger();
+    void show_volume_control();
 
     void
-    DrawSprite(size_t index, const SpriteData& sprite, const std::array<byte, 32>& palettes) const;
-    void ShowOam();
+    draw_sprite(size_t index, const SpriteData& sprite, const std::array<byte, 32>& palettes) const;
+    void show_oam();
 
-    void StartEmulation();
-    void PauseEmulation();
-    void ResetEmulation();
-    void StopEmulation();
+    void start_emulation();
+    void pause_emulation();
+    void reset_emulation();
+    void stop_emulation();
 
-    void HandleEvents();
+    void handle_sdl_events();
 
-    void SetFilter(FilterType filter);
+    void set_filter(FilterType filter);
 
     static void EmbraceTheDarkness();
-    static void SetImGuiStyle();
+    static void set_imgui_style();
 
   public:
     Ui();
     ~Ui();
 
-    void MainLoop();
+    void run();
 };

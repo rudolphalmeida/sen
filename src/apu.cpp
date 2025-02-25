@@ -108,7 +108,7 @@ void Apu::Tick(const uint64_t cpu_cycles) {
     const auto triangle_sample = triangle.GetSample();
     const auto noise_sample = noise.GetSample();
 
-    sink->PushSample(Mix(pulse1_sample, pulse2_sample, triangle_sample, noise_sample));
+    audio_queue->push(Mix(pulse1_sample, pulse2_sample, triangle_sample, noise_sample));
 }
 
 byte Apu::CpuRead(const word address) {
