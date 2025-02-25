@@ -476,6 +476,7 @@ void Ui::ShowMenuBar() {
                 if (const nfdresult_t result = NFD_OpenDialogU8_With(&outPath, &args);
                     result == NFD_OKAY) {
                     settings.PushRecentPath(outPath);
+                    StopEmulation();
                     LoadRomFile(outPath);
                     NFD_FreePathU8(outPath);
                 } else if (result == NFD_CANCEL) {
@@ -487,8 +488,9 @@ void Ui::ShowMenuBar() {
             if (ImGui::BeginMenu("Open Recent")) {
                 static std::vector<const char*> recents;
                 settings.RecentRoms(recents);
-                for (auto recent : recents) {
+                for (const auto *recent : recents) {
                     if (ImGui::MenuItem(recent, nullptr, false, true)) {
+                        StopEmulation();
                         LoadRomFile(recent);
                         ImGui::InsertNotification(
                             {ImGuiToastType::Success, 3000, "Successfully loaded %s", recent}
@@ -1098,7 +1100,9 @@ void Ui::ShowDebugger() {
         }
         ImGui::SetItemTooltip("Play/Pause");
         ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_STOP, ImVec2(30, 30))) {}
+        if (ImGui::Button(ICON_FA_STOP, ImVec2(30, 30))) {
+            StopEmulation();
+        }
         ImGui::SameLine();
         ImGui::SetItemTooltip("Stop");
 
@@ -1265,4 +1269,10 @@ void Ui::PauseEmulation() {
 
 void Ui::ResetEmulation() {}
 
-void Ui::StopEmulation() {}
+void Ui::StopEmulation() {
+    emulation_running = false;
+    emulator_context = nullptr;
+    audio_frame_delay = MAX_AUDIO_FRAME_LAG;
+    audio_queue->Clear();
+    SDL_PauseAudio(1);
+}

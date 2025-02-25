@@ -190,13 +190,17 @@ void Apu::CpuWrite(const word address, const byte data) {
         //       the $4017 write cycle, and if the write occurs between APU cycles,
         //       the effects occurs 4 CPU cycles after the write cycle.
         UpdateFrameCounter(data);
-        if (step_mode == FrameCounterStepMode::FiveStep) {
+        if ((data & 0x80U) != 0x00) {
             pulse_1.ClockEnvelope();
-            pulse_1.ClockSweep();
             pulse_1.ClockLengthCounter();
+            pulse_1.ClockSweep();
             pulse_2.ClockEnvelope();
-            pulse_2.ClockSweep();
             pulse_2.ClockLengthCounter();
+            pulse_2.ClockSweep();
+            triangle.ClockLinearCounter();
+            triangle.ClockLengthCounter();
+            noise.ClockEnvelope();
+            noise.ClockLengthCounter();
         }
     }
 }

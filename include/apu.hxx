@@ -4,22 +4,25 @@
 
 #pragma once
 
+#include <array>
+#include <memory>
+
 #include <spdlog/spdlog.h>
 
 #include "constants.hxx"
 
-constexpr byte DUTY_CYCLES[4] = {
+constexpr std::array<byte, 4> DUTY_CYCLES = {
     0b10000000,
     0b11000000,
     0b11110000,
     0b00111111,
 };
 
-constexpr std::array LENGTH_COUNTER_LOADS{10, 254, 20,  2,  40, 4,  80, 6,  160, 8,  60,
+constexpr std::array<byte, 32> LENGTH_COUNTER_LOADS{10, 254, 20,  2,  40, 4,  80, 6,  160, 8,  60,
                                          10, 14,  12,  26, 14, 12, 16, 24, 18,  48, 20,
                                          96, 22,  192, 24, 72, 26, 16, 28, 32,  30};
 
-constexpr word NOISE_TIMER_CPU_CYCLES[] =
+constexpr std::array<word, 16> NOISE_TIMER_CPU_CYCLES =
     {4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068};
 
 enum class FrameCounterStepMode {
@@ -50,7 +53,7 @@ struct LengthCounter {
     }
 
     void Load() {
-        Load(LENGTH_COUNTER_LOADS[counter_load]);
+        Load(LENGTH_COUNTER_LOADS.at(counter_load));
     }
 
     void Clock() {
@@ -221,10 +224,10 @@ class ApuPulse {
     byte volume{};
 
     void UpdateVolume(const byte volume) {
-        volume_reload = volume & 0x0F;
-        constant_volume = (volume & 0x10) != 0x00;
-        length_counter.halt = (volume & 0x20) != 0x00;
-        duty_cycle = DUTY_CYCLES[(volume & 0xC0) >> 6];
+        volume_reload = volume & 0x0FU;
+        constant_volume = (volume & 0x10U) != 0x00;
+        length_counter.halt = (volume & 0x20U) != 0x00;
+        duty_cycle = DUTY_CYCLES.at((volume & 0xC0U) >> 6U);
     }
 
     void UpdateTimerLow(const byte timer_low) {
@@ -277,7 +280,7 @@ class ApuTriangle {
     void ClockTimer() {
         if (timer == 0x00) {
             timer = timer_reload;
-            sequence = (sequence + static_cast<byte>(direction)) & 0xF;
+            sequence = static_cast<byte>(static_cast<int>(sequence) + direction) & 0xFU;
             if (sequence == 15) {
                 direction = -1;
             } else if (sequence == 0) {
@@ -394,7 +397,7 @@ class ApuNoise {
 
     void UpdateModeAndPeriod(const byte value) {
         mode_1 = (value & 0x80) != 0x00;
-        timer_reload = NOISE_TIMER_CPU_CYCLES[value & 0x0F];
+        timer_reload = NOISE_TIMER_CPU_CYCLES.at(value & 0x0F);
     }
 
     void UpdateLengthCounterLoad(const byte value) {
@@ -437,7 +440,7 @@ class Apu {
     std::shared_ptr<AudioQueue> sink{};
 
     ApuPulse pulse_1{false}, pulse_2{true};
-    ApuTriangle triangle{};
+    ApuTriangle triangle;
     ApuNoise noise{};
     ApuDmc dmc{};
 

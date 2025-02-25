@@ -79,7 +79,7 @@ struct SenSettings {
         } else {
             const int saved_open_panels = ui_settings["open_panels"];
             for (int i = 0; i < NUM_PANELS; i++) {
-                open_panels[i] = (saved_open_panels & (1 << i)) != 0;
+                open_panels[i] = (saved_open_panels & (1U << i)) != 0;
             }
         }
         int width = NES_WIDTH * DEFAULT_SCALE_FACTOR + 15;
