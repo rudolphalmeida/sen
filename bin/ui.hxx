@@ -2,15 +2,12 @@
 
 #include <SDL3/SDL_audio.h>
 #include <SDL3/SDL_gamepad.h>
-#include <SDL3/SDL_joystick.h>
-#include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_video.h>
 #include <spdlog/spdlog.h>
 
 #include <array>
 #include <cstddef>
-#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -25,7 +22,6 @@
 #include "sen.hxx"
 #include "settings.hxx"
 
-class Ui;
 static const std::unordered_map<SDL_GamepadButton, ControllerKey> KEYMAP = {
     // Assuming Nintendo style controllers. Only face buttons are used
     {SDL_GamepadButton::SDL_GAMEPAD_BUTTON_EAST, ControllerKey::A},

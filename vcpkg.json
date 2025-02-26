@@ -15,7 +15,6 @@
     "spdlog",
     "catch2",
     "libconfig",
-    "nativefiledialog-extended",
     {
       "name": "imgui",
       "features": ["opengl3-binding", "sdl3-binding", "docking-experimental"]

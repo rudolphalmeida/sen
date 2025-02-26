@@ -1,12 +1,12 @@
 #include "ui.hxx"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_dialog.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_video.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl3.h>
-#include <nfd.h>
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_audio.h>
 #include <spdlog/spdlog.h>
@@ -456,23 +456,16 @@ void Ui::show_menu_bar() {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open", "Ctrl+O")) {
-                nfdu8char_t* outPath;
-                constexpr nfdu8filteritem_t filters[1] = {{"NES ROM", "nes"}};
-                nfdopendialogu8args_t args = {nullptr};
-                args.filterList = filters;
-                args.filterCount = 1;
-
-                if (const nfdresult_t result = NFD_OpenDialogU8_With(&outPath, &args);
-                    result == NFD_OKAY) {
-                    settings.PushRecentPath(outPath);
-                    stop_emulation();
-                    load_rom_file(outPath);
-                    NFD_FreePathU8(outPath);
-                } else if (result == NFD_CANCEL) {
-                    spdlog::debug("User pressed cancel");
-                } else {
-                    spdlog::error("Error: {}\n", NFD_GetError());
-                }
+                constexpr SDL_DialogFileFilter filters[1] = {{"NES ROM", "nes"}};
+                SDL_ShowOpenFileDialog([](void * userData, const char * const* filelist, int filter) {
+                    if (*filelist != nullptr) {
+                        auto* ui_ptr = static_cast<Ui*>(userData);
+                        const char * out_path = *filelist;
+                        ui_ptr->settings.PushRecentPath(out_path);
+                        ui_ptr->stop_emulation();
+                        ui_ptr->load_rom_file(out_path);
+                    }
+                }, this, window, filters, 1, nullptr, false);
             }
             if (ImGui::BeginMenu("Open Recent")) {
                 static std::vector<const char*> recents;

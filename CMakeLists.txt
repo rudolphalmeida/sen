@@ -9,7 +9,6 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(nfd CONFIG REQUIRED)
 find_package(libconfig CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
 
@@ -57,7 +56,6 @@ target_link_libraries(sen_sdl PRIVATE
     spdlog::spdlog_header_only
     nlohmann_json::nlohmann_json
     OpenGL::GL
-    nfd::nfd
     imgui::imgui
     SDL3::SDL3
 
