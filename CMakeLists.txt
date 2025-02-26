@@ -11,7 +11,7 @@ find_package(fmt CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(nfd CONFIG REQUIRED)
 find_package(libconfig CONFIG REQUIRED)
-find_package(SDL2 CONFIG REQUIRED)
+find_package(SDL3 CONFIG REQUIRED)
 
 add_library(sen
     include/constants.hxx
@@ -33,7 +33,7 @@ target_link_libraries(sen PRIVATE
 )
 target_include_directories(sen PUBLIC include lib)
 
-add_executable(sen_sdl2
+add_executable(sen_sdl
     bin/main.cpp
     bin/ui.hxx
     bin/ui.cpp
@@ -50,8 +50,8 @@ add_executable(sen_sdl2
     bin/settings.hxx
     bin/filters.hxx
 )
-target_include_directories(sen_sdl2 PRIVATE include lib bin)
-target_link_libraries(sen_sdl2 PRIVATE
+target_include_directories(sen_sdl PRIVATE include lib bin)
+target_link_libraries(sen_sdl PRIVATE
     sen
     spdlog::spdlog
     spdlog::spdlog_header_only
@@ -59,12 +59,10 @@ target_link_libraries(sen_sdl2 PRIVATE
     OpenGL::GL
     nfd::nfd
     imgui::imgui
+    SDL3::SDL3
 
     $<$<PLATFORM_ID:Linux>:libconfig::config libconfig::config++>
     $<$<PLATFORM_ID:Windows>:libconfig::libconfig libconfig::libconfig++>
-
-    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
-    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
 )
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)

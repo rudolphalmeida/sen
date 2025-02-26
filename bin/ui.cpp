@@ -1,15 +1,18 @@
 #include "ui.hxx"
 
-#include <SDL2/SDL.h>
-#include <SDL_events.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_video.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
-#include <imgui_impl_sdl2.h>
+#include <imgui_impl_sdl3.h>
 #include <nfd.h>
-#include <SDL2/SDL_opengl.h>
+#include <SDL3/SDL_opengl.h>
+#include <SDL3/SDL_audio.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <memory>
 #include <ranges>
 #include <span>
 
@@ -17,6 +20,7 @@
 #include "controller.hxx"
 #include "imgui_memory_editor.h"
 #include "ImGuiNotify.hpp"
+#include "settings.hxx"
 #include "util.hxx"
 
 static constexpr const char* const SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
@@ -54,11 +58,11 @@ Ui::Ui() {
 }
 
 void Ui::init_sdl() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
-        spdlog::error("Failed to initialize SDL2: {}", SDL_GetError());
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD)) {
+        spdlog::error("Failed to initialize SDL3: {}", SDL_GetError());
         std::exit(-1);
     }
-    spdlog::info("Initialized SDL2");
+    spdlog::info("Initialized SDL3");
 
     // GL 3.0 + GLSL 130
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
@@ -71,25 +75,22 @@ void Ui::init_sdl() {
 
     const auto width = settings.Width();
     const auto height = settings.Height();
-    constexpr auto window_flags =
-        SDL_WindowFlags::SDL_WINDOW_RESIZABLE | SDL_WindowFlags::SDL_WINDOW_OPENGL;
+    constexpr auto window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL;
 
     window = SDL_CreateWindow(
         "sen - NES Emulator",
-        SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,
         width,
         height,
         window_flags
     );
     if (window == nullptr) {
-        spdlog::error("Failed to create SDL2 window: {}", SDL_GetError());
+        spdlog::error("Failed to create SDL3 window: {}", SDL_GetError());
         std::exit(-1);
     }
 
     gl_context = SDL_GL_CreateContext(window);
     if (gl_context == nullptr) {
-        spdlog::error("Failed to create SDL2 OpenGL context: {}", SDL_GetError());
+        spdlog::error("Failed to create SDL3 OpenGL context: {}", SDL_GetError());
         std::exit(-1);
     }
     SDL_GL_MakeCurrent(window, gl_context);
@@ -97,28 +98,16 @@ void Ui::init_sdl() {
 
     controller = find_controllers();
 
-    spdlog::info("Initialized SDL2 window and OpenGL context");
+    spdlog::info("Initialized SDL3 window and OpenGL context");
 }
 
 void Ui::init_sdl_audio() {
-    audio_queue = std::make_shared<AudioStreamQueue>();
-    SDL_AudioSpec spec = {
-        .freq = DEVICE_SAMPLE_RATE,
-        .format = DEVICE_FORMAT,
-        .channels = DEVICE_CHANNELS,
-        .samples = 2048,
-        .callback =
-            [](void* userData, Uint8* stream, const int length) {
-                const auto ui = static_cast<Ui*>(userData);
-                ui->audio_queue->load_samples(stream, length / sizeof(float));
-            },
-        .userdata = static_cast<void*>(this),
-    };
-
-    if (SDL_OpenAudio(&spec, nullptr) < 0) {
-        spdlog::error("Failed to initialize audio device: {}", SDL_GetError());
+    const auto audio_device_id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &OUTPUT_DEVICE_SPEC);
+    if (audio_device_id == 0) {
+        spdlog::error("Failed to open SDL audio device: {}", SDL_GetError());
         std::exit(-1);
     }
+    audio_queue = std::make_shared<AudioStreamQueue>(audio_device_id);
 }
 
 void Ui::init_imgui() const {
@@ -168,56 +157,56 @@ void Ui::init_imgui() const {
     }
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+    ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(GLSL_VERSION);
 }
 
-SDL_GameController* Ui::find_controllers() {
-    for (int i = 0; i < SDL_NumJoysticks(); i++) {
-        if (SDL_IsGameController(i)) {
-            spdlog::debug("Found controller with ID: {}", i);
-            return SDL_GameControllerOpen(i);
-        }
+SDL_Gamepad* Ui::find_controllers() {
+    if (!SDL_HasGamepad()) {
+        return nullptr;
     }
 
+    int num_gamepads = 0;
+    const auto *const gamepad_ids = SDL_GetGamepads(&num_gamepads);
+    if (num_gamepads > 0) {
+        return SDL_OpenGamepad(gamepad_ids[0]);
+    }
     return nullptr;
 }
 
 void Ui::handle_sdl_events() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        ImGui_ImplSDL2_ProcessEvent(&event);
+        ImGui_ImplSDL3_ProcessEvent(&event);
 
         switch (event.type) {
-            case SDL_QUIT:
+            case SDL_EVENT_QUIT:
                 open = false;
                 break;
 
-            case SDL_WINDOWEVENT:
-                if (event.window.event == SDL_WINDOWEVENT_CLOSE
-                    && event.window.windowID == SDL_GetWindowID(window)) {
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                if (event.window.windowID == SDL_GetWindowID(window)) {
                     open = false;
                 }
-                if (event.window.event == SDL_WINDOWEVENT_RESIZED
-                    && event.window.windowID == SDL_GetWindowID(window)) {
+
+            case SDL_EVENT_WINDOW_RESIZED:
+                if (event.window.windowID == SDL_GetWindowID(window)) {
                     settings.Width(event.window.data1);
                     settings.Height(event.window.data2);
                 }
                 break;
 
-            case SDL_CONTROLLERDEVICEADDED:
+            case SDL_EVENT_GAMEPAD_ADDED:
                 if (!controller) {
                     spdlog::info("Controller connected");
-                    controller = SDL_GameControllerOpen(event.cdevice.which);
+                    controller = SDL_OpenGamepad(event.cdevice.which);
                 }
                 break;
 
-            case SDL_CONTROLLERDEVICEREMOVED:
-                if (controller
-                    && event.cdevice.which
-                        == SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller))) {
+            case SDL_EVENT_GAMEPAD_REMOVED:
+                if (controller && event.cdevice.which == SDL_GetJoystickID(SDL_GetGamepadJoystick(controller))) {
                     spdlog::info("Controller disconnected");
-                    SDL_GameControllerClose(controller);
+                    SDL_CloseGamepad(controller);
                     controller = find_controllers();
                 }
                 break;
@@ -233,7 +222,7 @@ void Ui::handle_sdl_events() {
 
     byte keys{};
     for (auto [controller_key, key] : KEYMAP) {
-        if (SDL_GameControllerGetButton(controller, controller_key)) {
+        if (SDL_GetGamepadButton(controller, controller_key)) {
             keys |= static_cast<byte>(key);
         }
     }
@@ -337,10 +326,10 @@ void Ui::set_imgui_style() {
 }
 
 void Ui::run() {
-    Uint64 current_time = SDL_GetTicks64();
+    Uint64 current_time = SDL_GetTicks();
 
     while (open) {
-        const auto new_time = SDL_GetTicks64();
+        const auto new_time = SDL_GetTicks();
         const auto dt = new_time - current_time;
         current_time = new_time;
 
@@ -355,7 +344,7 @@ void Ui::run() {
             if (emulator_context->FrameCount() != initial_frame_count && audio_frame_delay != 0) {
                 audio_frame_delay--;
                 if (audio_frame_delay == 0) {
-                    SDL_PauseAudio(0);
+                    audio_queue->resume();
                 }
             }
         }
@@ -376,10 +365,10 @@ Ui::~Ui() {
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
-    SDL_GL_DeleteContext(gl_context);
+    SDL_GL_DestroyContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
 }
@@ -387,7 +376,7 @@ Ui::~Ui() {
 void Ui::render_ui() {
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
 #ifdef IMGUI_HAS_VIEWPORT
@@ -1093,9 +1082,8 @@ void Ui::show_debugger() {
             if (emulation_running) {
                 audio_frame_delay = MAX_AUDIO_FRAME_LAG;
                 audio_queue->clear();
-                SDL_PauseAudio(0);
             } else {
-                SDL_PauseAudio(1);
+                audio_queue->resume();
             }
         }
         ImGui::SetItemTooltip("Play/Pause");
@@ -1175,7 +1163,7 @@ void Ui::show_pattern_tables() {
             0,
             GL_RGB,
             GL_UNSIGNED_BYTE,
-            reinterpret_cast<unsigned char*>(left_pixels.data())
+            left_pixels.data()
         );
 
         ImGui::Image(static_cast<ImTextureID>(pattern_table_left_texture), ImVec2(385, 385));
@@ -1274,5 +1262,4 @@ void Ui::stop_emulation() {
     emulator_context = nullptr;
     audio_frame_delay = MAX_AUDIO_FRAME_LAG;
     audio_queue->clear();
-    SDL_PauseAudio(1);
 }

@@ -2,12 +2,12 @@
   "dependencies": [
     "fmt",
     {
-      "name": "sdl2",
+      "name": "sdl3",
       "features": ["wayland", "alsa"],
       "platform": "linux"
     },
     {
-      "name": "sdl2",
+      "name": "sdl3",
       "platform": "windows",
       "features": []
     },
@@ -18,7 +18,7 @@
     "nativefiledialog-extended",
     {
       "name": "imgui",
-      "features": ["opengl3-binding", "sdl2-binding", "docking-experimental"]
+      "features": ["opengl3-binding", "sdl3-binding", "docking-experimental"]
     }
   ],
   "name": "sen",

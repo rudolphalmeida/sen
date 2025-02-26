@@ -35,8 +35,6 @@ class AudioQueue {
     virtual ~AudioQueue() = default;
 
     virtual void push(float sample) = 0;
-    virtual void load_samples(uint8_t* output, size_t samples) = 0;
-    virtual void clear() = 0;
 };
 
 struct LengthCounter {
