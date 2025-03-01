@@ -90,9 +90,17 @@ class AudioStreamQueue final: public AudioQueue {
         SDL_ClearAudioStream(stream);
     }
 
-    ~AudioStreamQueue() override {
+    void destroy() {
+        SDL_PauseAudioDevice(device_id);
         SDL_UnbindAudioStream(stream);
         SDL_DestroyAudioStream(stream);
+        stream = nullptr;
+    }
+
+    ~AudioStreamQueue() override {
+        if (stream) {
+            destroy();
+        }
     }
 };
 

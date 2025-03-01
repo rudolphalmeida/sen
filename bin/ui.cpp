@@ -4,11 +4,11 @@
 #include <SDL3/SDL_dialog.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_video.h>
+#include <SDL3/SDL_audio.h>
+#include <SDL3/SDL_opengl.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl3.h>
-#include <SDL3/SDL_opengl.h>
-#include <SDL3/SDL_audio.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -23,7 +23,7 @@
 #include "settings.hxx"
 #include "util.hxx"
 
-static constexpr const char* const SCALING_FACTORS[] = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
+static constexpr std::array<const char *, 5> SCALING_FACTORS = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 constexpr auto GLSL_VERSION = "#version 130";
 
 static void InitTexture(const GLuint id) {
@@ -190,7 +190,7 @@ void Ui::handle_sdl_events() {
                 }
 
             case SDL_EVENT_WINDOW_RESIZED:
-                if (event.window.windowID == SDL_GetWindowID(window)) {
+                if (event.window.windowID == SDL_GetWindowID(window) && event.window.data1 != 0 && event.window.data2 != 0) {
                     settings.Width(event.window.data1);
                     settings.Height(event.window.data2);
                 }
@@ -356,18 +356,19 @@ void Ui::run() {
 }
 
 Ui::~Ui() {
-    try {
-        settings.SyncPanelStates();
-        settings.cfg.writeFile("test.cfg");
-    } catch (const libconfig::FileIOException& e) {
-        spdlog::error("Failed to save settings: {}", e.what());
-    }
+    settings.write_to_disk();
+    audio_queue->destroy();
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
+    if (controller) {
+        SDL_CloseGamepad(controller);
+    }
+
+    SDL_CloseAudioDevice(audio_queue->device_id);
     SDL_GL_DestroyContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();

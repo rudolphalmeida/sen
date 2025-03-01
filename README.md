@@ -26,7 +26,7 @@ cmake --build build
 Run using:
 
 ```shell
-./build/sen_sdl2
+./build/sen_sdl
 ```
 
 Note that the app files (for remembering open windows and layout) are stored in the working directory.

@@ -82,17 +82,12 @@ struct SenSettings {
                 open_panels[i] = (saved_open_panels & (1U << i)) != 0;
             }
         }
-        int width = NES_WIDTH * DEFAULT_SCALE_FACTOR + 15;
-        int height = NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55;
+
         if (!ui_settings.exists("width")) {
-            ui_settings.add("width", libconfig::Setting::TypeInt) = width;
-        } else {
-            width = Width();
+            ui_settings.add("width", libconfig::Setting::TypeInt) = NES_WIDTH * DEFAULT_SCALE_FACTOR + 15;
         }
         if (!ui_settings.exists("height")) {
-            ui_settings.add("height", libconfig::Setting::TypeInt) = height;
-        } else {
-            height = Height();
+            ui_settings.add("height", libconfig::Setting::TypeInt) = NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55;
         }
     }
 
@@ -148,11 +143,11 @@ struct SenSettings {
     }
 
     void SyncPanelStates() const {
-        int panel_config = 0;
-        for (int i = 0; i < NUM_PANELS; i++) {
-            panel_config |= static_cast<int>(open_panels[i]) << i;
+        unsigned int panel_config = 0;
+        for (size_t i = 0; i < NUM_PANELS; i++) {
+            panel_config |= (open_panels[i] ? 0b1U : 0b0U) << i;
         }
-        cfg.getRoot()["ui"]["open_panels"] = panel_config;
+        cfg.getRoot()["ui"]["open_panels"] = static_cast<int>(panel_config);
     }
 
     void RecentRoms(std::vector<const char*>& paths) const {
@@ -170,5 +165,14 @@ struct SenSettings {
             }
         }
         recents.add(libconfig::Setting::TypeString) = path;
+    }
+
+    void write_to_disk() {
+        try {
+            SyncPanelStates();
+            cfg.writeFile("test.cfg");
+        } catch (const libconfig::FileIOException& e) {
+            spdlog::error("Failed to save settings: {}", e.what());
+        }
     }
 };
