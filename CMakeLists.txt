@@ -11,6 +11,7 @@ find_package(fmt CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(libconfig CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
+find_package(boost_circular_buffer REQUIRED CONFIG)
 
 add_library(sen
     include/constants.hxx
@@ -48,6 +49,7 @@ add_executable(sen_sdl
     lib/ImGuiNotify.hpp
     bin/settings.hxx
     bin/filters.hxx
+    bin/spdlog_imgui_sink.h
 )
 target_include_directories(sen_sdl PRIVATE include lib bin)
 target_link_libraries(sen_sdl PRIVATE
@@ -58,6 +60,7 @@ target_link_libraries(sen_sdl PRIVATE
     OpenGL::GL
     imgui::imgui
     SDL3::SDL3
+    Boost::circular_buffer
 
     $<$<PLATFORM_ID:Linux>:libconfig::config libconfig::config++>
     $<$<PLATFORM_ID:Windows>:libconfig::libconfig libconfig::libconfig++>

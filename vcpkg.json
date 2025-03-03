@@ -1,25 +1,32 @@
 {
+  "name": "sen",
+  "version": "0.1.0",
   "dependencies": [
+    "catch2",
     "fmt",
     {
+      "name": "imgui",
+      "features": [
+        "docking-experimental",
+        "opengl3-binding",
+        "sdl3-binding"
+      ]
+    },
+    "libconfig",
+    "nlohmann-json",
+    {
       "name": "sdl3",
-      "features": ["wayland", "alsa"],
+      "features": [
+        "alsa",
+        "wayland"
+      ],
       "platform": "linux"
     },
     {
       "name": "sdl3",
-      "platform": "windows",
-      "features": []
+      "platform": "windows"
     },
-    "nlohmann-json",
     "spdlog",
-    "catch2",
-    "libconfig",
-    {
-      "name": "imgui",
-      "features": ["opengl3-binding", "sdl3-binding", "docking-experimental"]
-    }
-  ],
-  "name": "sen",
-  "version": "0.1.0"
+    "boost-circular-buffer"
+  ]
 }

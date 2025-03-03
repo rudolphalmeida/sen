@@ -1,26 +1,28 @@
 #include "ui.hxx"
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_dialog.h>
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_video.h>
-#include <SDL3/SDL_audio.h>
-#include <SDL3/SDL_opengl.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl3.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_audio.h>
+#include <SDL3/SDL_dialog.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_opengl.h>
+#include <SDL3/SDL_video.h>
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include <algorithm>
 #include <memory>
 #include <ranges>
 #include <span>
 
-#include "IconsFontAwesome6.h"
 #include "controller.hxx"
+#include "IconsFontAwesome6.h"
 #include "imgui_memory_editor.h"
 #include "ImGuiNotify.hpp"
 #include "settings.hxx"
+#include "spdlog_imgui_sink.h"
 #include "util.hxx"
 
 static constexpr std::array<const char *, 5> SCALING_FACTORS = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
@@ -35,6 +37,12 @@ static void InitTexture(const GLuint id) {
 }
 
 Ui::Ui() {
+    sink = std::make_shared<imgui_sink<>>(100);
+    const auto stdout_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    const auto logger = std::make_shared<spdlog::logger>("sen_logger", sink);
+    logger->sinks().push_back(stdout_sink);
+    spdlog::set_default_logger(logger);
+
     init_sdl();
     init_imgui();
     init_sdl_audio();
@@ -428,6 +436,8 @@ void Ui::render_ui() {
         show_pattern_tables();
     }
 
+    show_logs();
+
     ImGui::PopStyleVar();
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f); // Disable round borders
@@ -630,6 +640,14 @@ void Ui::show_menu_bar() {
                 )) {
                 settings.TogglePanel(UiPanel::VolumeControl);
             }
+            if (ImGui::MenuItem(
+                    "Logs",
+                    nullptr,
+                    open_panels[static_cast<int>(UiPanel::Logs)],
+                    emulation_running
+                )) {
+                settings.TogglePanel(UiPanel::Logs);
+                }
             ImGui::EndMenu();
         }
 
@@ -1070,7 +1088,7 @@ void Ui::show_debugger() {
         return;
     }
 
-    if (ImGui::Begin("Debugger", &open_panels[static_cast<int>(UiPanel::Debugger)])) {
+    if (ImGui::Begin("Debugger", &open_panels[static_cast<int>(UiPanel::Debugger)], ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse)) {
         if (ImGui::Button(emulation_running ? ICON_FA_PAUSE : ICON_FA_PLAY, ImVec2(30, 30))) {
             emulation_running = !emulation_running;
             if (emulation_running) {
@@ -1125,6 +1143,16 @@ void Ui::show_volume_control() {
     if (ImGui::Begin("Volume Control", &open_panels[static_cast<int>(UiPanel::VolumeControl)])) {}
 
     ImGui::End();
+}
+
+void Ui::show_logs() {
+    auto &open_panels = settings.GetOpenPanels();
+
+    if (!open_panels[static_cast<int>(UiPanel::Logs)]) {
+        return;
+    }
+
+    sink->render_window(&open_panels[static_cast<int>(UiPanel::Logs)], 0);
 }
 
 void Ui::show_pattern_tables() {

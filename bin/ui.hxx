@@ -4,6 +4,7 @@
 #include <SDL3/SDL_gamepad.h>
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_video.h>
+#include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 
 #include <array>
@@ -21,6 +22,7 @@
 #include "filters.hxx"
 #include "sen.hxx"
 #include "settings.hxx"
+#include "spdlog_imgui_sink.h"
 
 static const std::unordered_map<SDL_GamepadButton, ControllerKey> KEYMAP = {
     // Assuming Nintendo style controllers. Only face buttons are used
@@ -105,6 +107,8 @@ class AudioStreamQueue final: public AudioQueue {
 };
 
 class Ui {
+    std::shared_ptr<imgui_sink<>> sink;
+
     SenSettings settings;
 
     SDL_Window* window{};
@@ -152,6 +156,7 @@ class Ui {
     void show_opcodes();
     void show_debugger();
     void show_volume_control();
+    void show_logs();
 
     void
     draw_sprite(size_t index, const SpriteData& sprite, const std::array<byte, 32>& palettes) const;
