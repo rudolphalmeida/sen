@@ -834,8 +834,8 @@ void Ui::draw_sprite(
         for (int row = 0; row < 8; row++) {
             const byte low = sprite.tile_data[row];
             const byte high = sprite.tile_data[row + 8];
-            const byte pixel_msb = ((high & (1 << column)) != 0) ? 0b10 : 0b00;
-            const byte pixel_lsb = ((low & (1 << column)) != 0) ? 0b01 : 0b00;
+            const byte pixel_msb = ((high & (1 << (7 - column))) != 0) ? 0b10 : 0b00;
+            const byte pixel_lsb = ((low & (1 << (7 - column))) != 0) ? 0b01 : 0b00;
             const byte color_index = pixel_msb | pixel_lsb;
 
             const size_t pixel_index = column + row * 8;
@@ -854,9 +854,9 @@ void Ui::draw_sprite(
         0,
         GL_RGB,
         GL_UNSIGNED_BYTE,
-        reinterpret_cast<unsigned char*>(pixels.data())
+        pixels.data()
     );
-    ImGui::Image(static_cast<ImTextureID>(sprite_textures[index]), ImVec2(64, 64));
+    ImGui::Image(sprite_textures[index], ImVec2(64, 64));
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 

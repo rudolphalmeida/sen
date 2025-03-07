@@ -3,12 +3,17 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <utility>
+#include <iterator>
+#include <vector>
 
 #include "apu.hxx"
 #include "bus.hxx"
 #include "cartridge.hxx"
+#include "constants.hxx"
 #include "controller.hxx"
 #include "cpu.hxx"
 #include "mapper.hxx"
@@ -89,12 +94,13 @@ void Sen::set_pressed_keys(const ControllerPort port, const byte key) const {
 std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     auto rom_iter = rom_args.rom.cbegin();
 
-    if (*rom_iter++ != '\x4E' || *rom_iter++ != '\x45' || *rom_iter++ != '\x53'
-        || *rom_iter++ != '\x1A') {
+    if (*(rom_iter + 0) != '\x4E' || *(rom_iter + 1) != '\x45' || *(rom_iter + 2) != '\x53'
+        || *(rom_iter + 3) != '\x1A') {
         // ROM should begin with NES\x1A
         spdlog::error("Provided file is not a valid NES ROM");
         std::exit(-1);
     }
+    std::advance(rom_iter, 4);
 
     size_t prg_rom_banks = *rom_iter++;
     size_t chr_rom_banks = *rom_iter++;
@@ -105,10 +111,10 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
 
     const auto flag_6 = *rom_iter++;
     Mirroring mirroring{};
-    if (flag_6 & 0b1000) {
+    if (flag_6 & 0b1000U) {
         spdlog::debug("TODO: Cartridge uses alternative nametable layout");
         mirroring = Mirroring::FourScreenVram;
-    } else if (flag_6 & 0b1) {
+    } else if (flag_6 & 0b1U) {
         mirroring = Mirroring::Vertical;
     } else {
         mirroring = Mirroring::Horizontal;
