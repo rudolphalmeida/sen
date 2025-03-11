@@ -24,6 +24,7 @@
 #include "settings.hxx"
 #include "spdlog_imgui_sink.h"
 #include "util.hxx"
+#include <bitset>
 
 static constexpr std::array<const char *, 5> SCALING_FACTORS = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 constexpr auto GLSL_VERSION = "#version 130";
@@ -789,22 +790,38 @@ void Ui::show_registers() {
             ImGui::TableNextColumn();
             ImGui::Text("PPUCTRL");
             ImGui::TableNextColumn();
+#ifdef WIN32
+            ImGui::Text("%s", std::string(std::bitset<8>(ppu_state.ppuctrl).to_string()).c_str());
+#else
             ImGui::Text("%.8b", ppu_state.ppuctrl);
+#endif
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUMASK");
             ImGui::TableNextColumn();
+#ifdef WIN32
+            ImGui::Text("%s", std::string(std::bitset<8>(ppu_state.ppumask).to_string()).c_str());
+#else
             ImGui::Text("%.8b", ppu_state.ppumask);
+#endif
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUSTATUS");
             ImGui::TableNextColumn();
+#ifdef WIN32
+            ImGui::Text("%s", std::string(std::bitset<8>(ppu_state.ppustatus).to_string()).c_str());
+#else
             ImGui::Text("%.8b", ppu_state.ppustatus);
+#endif
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("OAMADDR");
             ImGui::TableNextColumn();
+#ifdef WIN32
+            ImGui::Text("%s", std::string(std::bitset<8>(ppu_state.oamaddr).to_string()).c_str());
+#else
             ImGui::Text("%.8b", ppu_state.oamaddr);
+#endif
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("V");
@@ -1242,8 +1259,6 @@ std::vector<Pixel> Ui::render_pattern_table(
             const size_t tile_row = row / 8;
             const size_t pixel_row_in_tile = 7 - (row % 8);
 
-            // TODO: Find out why this works correctly with
-            // pixel_{column,row}_in_tile
             const size_t tile_index = tile_row + tile_column * 16;
             const size_t pixel_row_bitplane_0_index = tile_index * 16 + pixel_column_in_tile;
             const size_t pixel_row_bitplane_1_index = pixel_row_bitplane_0_index + 8;
