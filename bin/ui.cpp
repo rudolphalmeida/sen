@@ -197,6 +197,7 @@ void Ui::handle_sdl_events() {
                 if (event.window.windowID == SDL_GetWindowID(window)) {
                     open = false;
                 }
+                break;
 
             case SDL_EVENT_WINDOW_RESIZED:
                 if (event.window.windowID == SDL_GetWindowID(window) && event.window.data1 != 0 && event.window.data2 != 0) {
@@ -429,12 +430,12 @@ void Ui::render_ui() {
 
         ImGui::End();
 
+        show_pattern_tables();
         show_registers();
         show_ppu_memory();
         show_oam();
         show_opcodes();
         show_debugger();
-        show_pattern_tables();
     }
 
     show_logs();
@@ -476,6 +477,9 @@ void Ui::show_menu_bar() {
                         ui_ptr->settings.PushRecentPath(out_path);
                         ui_ptr->stop_emulation();
                         ui_ptr->load_rom_file(out_path);
+                        ImGui::InsertNotification(
+                            {ImGuiToastType::Success, 3000, "Successfully loaded %s", out_path}
+                        );
                     }
                 }, this, window, filters, 1, nullptr, false);
             }
