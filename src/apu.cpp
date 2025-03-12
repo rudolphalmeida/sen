@@ -107,8 +107,9 @@ void Apu::Tick(const uint64_t cpu_cycles) {
     const auto pulse2_sample = pulse_2.GetSample();
     const auto triangle_sample = triangle.GetSample();
     const auto noise_sample = noise.GetSample();
+    const auto dmc_sample = dmc.get_sample();
 
-    audio_queue->push(Mix(pulse1_sample, pulse2_sample, triangle_sample, noise_sample));
+    audio_queue->push(Mix(pulse1_sample, pulse2_sample, triangle_sample, noise_sample, dmc_sample));
 }
 
 byte Apu::CpuRead(const word address) {
@@ -147,6 +148,8 @@ void Apu::CpuWrite(const word address, const byte data) {
         triangle.WriteRegister(address - 0x4008, data);
     } else if (InRange<word>(0x400C, address, 0x400F)) {
         noise.WriteRegister(address - 0x400C, data);
+    } else if (InRange<word>(0x4010, address, 0x4013)) {
+        dmc.WriteRegister(address - 0x4010, data);
     } else if (address == 0x4015) {
         if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1)
             && !ChannelEnabled(data, ApuChannel::Pulse1)) {
@@ -184,6 +187,14 @@ void Apu::CpuWrite(const word address, const byte data) {
             noise.enabled = true;
         }
 
+        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Dmc)
+            && !ChannelEnabled(data, ApuChannel::Dmc)) {
+            dmc.enabled = false;
+        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Dmc)
+                   && ChannelEnabled(data, ApuChannel::Dmc)) {
+            dmc.enabled = true;
+        }
+
         prev_enabled_channels = data;
     } else if (address == 0x4017) {
         // TODO: If the write occurs during an APU cycle, the effects occur 3 CPU cycles after
@@ -215,7 +226,8 @@ float Apu::Mix(
     const byte pulse1_sample,
     const byte pulse2_sample,
     const byte triangle_sample,
-    const byte noise_sample
+    const byte noise_sample,
+    const byte dmc_sample
 ) {
     float pulse_out = 0.0f;
     if (pulse1_sample != 0x00 || pulse2_sample != 0x00) {

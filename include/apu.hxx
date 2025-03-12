@@ -408,20 +408,75 @@ class ApuNoise {
 class ApuDmc {
   public:
     bool enabled{false};
+
+    explicit ApuDmc(InterruptRequestFlag irq_flag) :
+        irq_flag{std::move(irq_flag)} {}
+
+    byte get_sample() {
+        return 0x00;
+    }
+
+    void WriteRegister(const byte offset, const byte data) {
+        switch (offset) {
+            case 0:
+                update_irq_loop_freq(data);
+                break;
+            case 1:
+                load_counter(data);
+                break;
+            case 2:
+                load_sample_address(data);
+                break;
+            case 3:
+                load_sample_length(data);
+                break;
+            default:
+                break;
+        }
+    }
+
+private:
+    InterruptRequestFlag irq_flag;
+
+    word sample_start_address{}, sample_length{};
+
+    byte frequency{};
+    byte counter{};
+
+    bool irq_enable{}, loop{};
+
+    void update_irq_loop_freq(const byte data) {
+        irq_enable = (data & 0x80) != 0x00;
+        loop = (data & 0x40) != 0x00;
+        frequency = data & 0x0F;
+    }
+
+    void load_counter(const byte data) {
+        counter = data & 0x7F;
+    }
+
+    void load_sample_address(const byte data) {
+        sample_start_address = 0xC000U | (static_cast<word>(data) << 6);
+    }
+
+    void load_sample_length(const byte data) {
+        sample_length = (static_cast<word>(data) << 4) | 0x0001;
+    }
 };
 
 enum class ApuChannel : byte {
-    Pulse1 = (1 << 0),
-    Pulse2 = (1 << 1),
-    Triangle = (1 << 2),
-    Noise = (1 << 3),
-    Dmc = (1 << 4),
+    Pulse1 = (1U << 0U),
+    Pulse2 = (1U << 1U),
+    Triangle = (1U << 2U),
+    Noise = (1U << 3U),
+    Dmc = (1U << 4U),
 };
 
 class Apu {
   public:
     explicit Apu(std::shared_ptr<AudioQueue> sink, InterruptRequestFlag irq_requested) :
         audio_queue{std::move(sink)},
+        dmc {irq_requested},
         irq_requested(std::move(irq_requested)) {}
 
     void Tick(uint64_t cpu_cycles);
@@ -440,8 +495,8 @@ class Apu {
 
     ApuPulse pulse_1{false}, pulse_2{true};
     ApuTriangle triangle;
-    ApuNoise noise{};
-    ApuDmc dmc{};
+    ApuNoise noise;
+    ApuDmc dmc;
 
     InterruptRequestFlag irq_requested{};
 
@@ -453,7 +508,7 @@ class Apu {
 
     void UpdateFrameCounter(byte data);
     static float
-    Mix(byte pulse1_sample, byte pulse2_sample, byte triangle_sample, byte noise_sample);
+    Mix(byte pulse1_sample, byte pulse2_sample, byte triangle_sample, byte noise_sample, byte dmc_sample);
 
     static bool ChannelEnabled(const byte reg, ApuChannel channel) {
         return (reg & static_cast<byte>(channel)) != 0x00;
