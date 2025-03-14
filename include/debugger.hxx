@@ -113,9 +113,12 @@ class Debugger {
         const word sprite_pattern_table_address = ppu->SpritePatternTableAddress();
 
         for (size_t i = 0; i < 64; i++) {
-            sprites.sprites_data[i].oam_entry = ppu->oam[i];
+            sprites.sprites_data[i].oam_entry = oam[i];
             for (size_t j = 0; j < 16; j++) {
-                sprites.sprites_data[i].tile_data[j] = cart->ppu_read(sprite_pattern_table_address + (sprites.sprites_data[i].oam_entry.tile_index << 4) + j);
+                sprites.sprites_data[i].tile_data[j] = cart->ppu_read(
+                    sprite_pattern_table_address
+                    + (sprites.sprites_data[i].oam_entry.tile_index << 4) + j
+                );
             }
         }
     }

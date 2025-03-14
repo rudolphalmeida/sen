@@ -2,9 +2,10 @@
 // Created by rudolph on 30/11/24.
 //
 
+#include "apu.hxx"
+
 #include <cstdint>
 
-#include "apu.hxx"
 #include "util.hxx"
 
 void Apu::Tick(const uint64_t cpu_cycles) {
@@ -227,7 +228,7 @@ float Apu::Mix(
     const byte pulse2_sample,
     const byte triangle_sample,
     const byte noise_sample,
-    const byte dmc_sample
+    const byte
 ) {
     float pulse_out = 0.0f;
     if (pulse1_sample != 0x00 || pulse2_sample != 0x00) {

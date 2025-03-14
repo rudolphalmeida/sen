@@ -65,9 +65,9 @@ class imgui_sink final: public spdlog::sinks::base_sink<Mutex> {
             ImGui::Separator();
 
             for (const formatted_log& log_msg : msg_buf | std::ranges::views::reverse
-                     | std::ranges::views::filter([selected_level](
-                                                      const formatted_log& msg
-                                                  ) { return msg.level >= selected_level; })
+                     | std::ranges::views::filter([selected_level](const formatted_log& msg) {
+                                                    return msg.level >= selected_level;
+                                                })
                      | std::ranges::views::take(max_log_output) | std::ranges::views::reverse) {
                 const char* level = nullptr;
                 auto level_color = ImVec4(1.0F, 1.0F, 1.0F, 1.0F);
@@ -100,7 +100,7 @@ class imgui_sink final: public spdlog::sinks::base_sink<Mutex> {
                     ImGui::SameLine();
                 }
 
-                ImGui::Text(log_msg.message.c_str());
+                ImGui::Text("%s", log_msg.message.c_str());
             }
 
             ImGui::Separator();

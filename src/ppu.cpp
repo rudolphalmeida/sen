@@ -66,7 +66,7 @@ void Ppu::Tick() {
                         + offset_into_sprite;
                 }
 
-                switch (const size_t cycle_into_sprite = (line_cycles - 257) % 8) {
+                switch ((line_cycles - 257) % 8) {
                     case 1:
                     case 3:
                         // TODO: Garbage nametable read here
@@ -102,7 +102,7 @@ void Ppu::Tick() {
 
             if (line_cycles == 338 || line_cycles == 340) {
                 // Unused nametable fetches
-                auto _ = PpuRead(0x2000 | (v.value & 0x0FFF));
+                // PpuRead(0x2000 | (v.value & 0x0FFF));
             }
 
             if (scanline == PRE_RENDER_SCANLINE && InRange<unsigned int>(280, line_cycles, 304)) {
@@ -201,7 +201,7 @@ void Ppu::RenderPixel() { // Output pixels
         rendered_sprite_on_pixel = true;
     }
 
-    if (!had_sprite_on_pixel && !bg_pixel || ((screen_x < 8) && !ShowBackgroundInLeft())) {
+    if ((!had_sprite_on_pixel && !bg_pixel) || ((screen_x < 8) && !ShowBackgroundInLeft())) {
         framebuffer[screen_y * NES_WIDTH + screen_x] = emphasis_bits | (PpuRead(0x3F00) & 0x3F);
     } else if (!rendered_sprite_on_pixel) {
         const byte bg_attrib_msb = (bg_attrib_msb_shift_reg & (1 << (7 - fine_x))) ? 1 : 0;

@@ -9,10 +9,11 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_video.h>
-#include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <bitset>
 #include <memory>
 #include <ranges>
 #include <span>
@@ -24,9 +25,9 @@
 #include "settings.hxx"
 #include "spdlog_imgui_sink.h"
 #include "util.hxx"
-#include <bitset>
 
-static constexpr std::array<const char *, 5> SCALING_FACTORS = {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
+static constexpr std::array<const char*, 5> SCALING_FACTORS =
+    {"240p (1x)", "480p (2x)", "720p (3x)", "960p (4x)", "1200p (5x)"};
 constexpr auto GLSL_VERSION = "#version 130";
 
 static void InitTexture(const GLuint id) {
@@ -86,12 +87,7 @@ void Ui::init_sdl() {
     const auto height = settings.Height();
     constexpr auto window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL;
 
-    window = SDL_CreateWindow(
-        "sen - NES Emulator",
-        width,
-        height,
-        window_flags
-    );
+    window = SDL_CreateWindow("sen - NES Emulator", width, height, window_flags);
     if (window == nullptr) {
         spdlog::error("Failed to create SDL3 window: {}", SDL_GetError());
         std::exit(-1);
@@ -111,7 +107,8 @@ void Ui::init_sdl() {
 }
 
 void Ui::init_sdl_audio() {
-    const auto audio_device_id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &OUTPUT_DEVICE_SPEC);
+    const auto audio_device_id =
+        SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &OUTPUT_DEVICE_SPEC);
     if (audio_device_id == 0) {
         spdlog::error("Failed to open SDL audio device: {}", SDL_GetError());
         std::exit(-1);
@@ -176,7 +173,7 @@ SDL_Gamepad* Ui::find_controllers() {
     }
 
     int num_gamepads = 0;
-    const auto *const gamepad_ids = SDL_GetGamepads(&num_gamepads);
+    const auto* const gamepad_ids = SDL_GetGamepads(&num_gamepads);
     if (num_gamepads > 0) {
         return SDL_OpenGamepad(gamepad_ids[0]);
     }
@@ -200,7 +197,8 @@ void Ui::handle_sdl_events() {
                 break;
 
             case SDL_EVENT_WINDOW_RESIZED:
-                if (event.window.windowID == SDL_GetWindowID(window) && event.window.data1 != 0 && event.window.data2 != 0) {
+                if (event.window.windowID == SDL_GetWindowID(window) && event.window.data1 != 0
+                    && event.window.data2 != 0) {
                     settings.Width(event.window.data1);
                     settings.Height(event.window.data2);
                 }
@@ -214,7 +212,9 @@ void Ui::handle_sdl_events() {
                 break;
 
             case SDL_EVENT_GAMEPAD_REMOVED:
-                if (controller && event.cdevice.which == SDL_GetJoystickID(SDL_GetGamepadJoystick(controller))) {
+                if (controller
+                    && event.cdevice.which
+                        == SDL_GetJoystickID(SDL_GetGamepadJoystick(controller))) {
                     spdlog::info("Controller disconnected");
                     SDL_CloseGamepad(controller);
                     controller = find_controllers();
@@ -470,23 +470,31 @@ void Ui::show_menu_bar() {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Open", "Ctrl+O")) {
                 constexpr SDL_DialogFileFilter filters[1] = {{"NES ROM", "nes"}};
-                SDL_ShowOpenFileDialog([](void * userData, const char * const* filelist, int filter) {
-                    if (*filelist != nullptr) {
-                        auto* ui_ptr = static_cast<Ui*>(userData);
-                        const char * out_path = *filelist;
-                        ui_ptr->settings.PushRecentPath(out_path);
-                        ui_ptr->stop_emulation();
-                        ui_ptr->load_rom_file(out_path);
-                        ImGui::InsertNotification(
-                            {ImGuiToastType::Success, 3000, "Successfully loaded %s", out_path}
-                        );
-                    }
-                }, this, window, filters, 1, nullptr, false);
+                SDL_ShowOpenFileDialog(
+                    [](void* userData, const char* const* filelist, int) {
+                        if (*filelist != nullptr) {
+                            auto* ui_ptr = static_cast<Ui*>(userData);
+                            const char* out_path = *filelist;
+                            ui_ptr->settings.PushRecentPath(out_path);
+                            ui_ptr->stop_emulation();
+                            ui_ptr->load_rom_file(out_path);
+                            ImGui::InsertNotification(
+                                {ImGuiToastType::Success, 3000, "Successfully loaded %s", out_path}
+                            );
+                        }
+                    },
+                    this,
+                    window,
+                    filters,
+                    1,
+                    nullptr,
+                    false
+                );
             }
             if (ImGui::BeginMenu("Open Recent")) {
                 static std::vector<const char*> recents;
                 settings.RecentRoms(recents);
-                for (const auto *recent : recents) {
+                for (const auto* recent : recents) {
                     if (ImGui::MenuItem(recent, nullptr, false, true)) {
                         stop_emulation();
                         load_rom_file(recent);
@@ -652,7 +660,7 @@ void Ui::show_menu_bar() {
                     emulation_running
                 )) {
                 settings.TogglePanel(UiPanel::Logs);
-                }
+            }
             ImGui::EndMenu();
         }
 
@@ -794,38 +802,22 @@ void Ui::show_registers() {
             ImGui::TableNextColumn();
             ImGui::Text("PPUCTRL");
             ImGui::TableNextColumn();
-#ifdef WIN32
             ImGui::Text("%s", std::string(std::bitset<8>(ppu_state.ppuctrl).to_string()).c_str());
-#else
-            ImGui::Text("%.8b", ppu_state.ppuctrl);
-#endif
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUMASK");
             ImGui::TableNextColumn();
-#ifdef WIN32
             ImGui::Text("%s", std::string(std::bitset<8>(ppu_state.ppumask).to_string()).c_str());
-#else
-            ImGui::Text("%.8b", ppu_state.ppumask);
-#endif
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("PPUSTATUS");
             ImGui::TableNextColumn();
-#ifdef WIN32
             ImGui::Text("%s", std::string(std::bitset<8>(ppu_state.ppustatus).to_string()).c_str());
-#else
-            ImGui::Text("%.8b", ppu_state.ppustatus);
-#endif
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("OAMADDR");
             ImGui::TableNextColumn();
-#ifdef WIN32
             ImGui::Text("%s", std::string(std::bitset<8>(ppu_state.oamaddr).to_string()).c_str());
-#else
-            ImGui::Text("%.8b", ppu_state.oamaddr);
-#endif
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("V");
@@ -866,17 +858,7 @@ void Ui::draw_sprite(
     }
 
     glBindTexture(GL_TEXTURE_2D, sprite_textures[index]);
-    glTexImage2D(
-        GL_TEXTURE_2D,
-        0,
-        GL_RGB,
-        8,
-        8,
-        0,
-        GL_RGB,
-        GL_UNSIGNED_BYTE,
-        pixels.data()
-    );
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 8, 8, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
     ImGui::Image(sprite_textures[index], ImVec2(64, 64));
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -1109,7 +1091,11 @@ void Ui::show_debugger() {
         return;
     }
 
-    if (ImGui::Begin("Debugger", &open_panels[static_cast<int>(UiPanel::Debugger)], ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse)) {
+    if (ImGui::Begin(
+            "Debugger",
+            &open_panels[static_cast<int>(UiPanel::Debugger)],
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse
+        )) {
         if (ImGui::Button(emulation_running ? ICON_FA_PAUSE : ICON_FA_PLAY, ImVec2(30, 30))) {
             emulation_running = !emulation_running;
             if (emulation_running) {
@@ -1167,7 +1153,7 @@ void Ui::show_volume_control() {
 }
 
 void Ui::show_logs() {
-    auto &open_panels = settings.GetOpenPanels();
+    auto& open_panels = settings.GetOpenPanels();
 
     if (!open_panels[static_cast<int>(UiPanel::Logs)]) {
         return;

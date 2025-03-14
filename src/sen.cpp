@@ -5,9 +5,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <memory>
 #include <utility>
-#include <iterator>
 #include <vector>
 
 #include "apu.hxx"
@@ -105,7 +105,7 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     size_t prg_rom_banks = *rom_iter++;
     size_t chr_rom_banks = *rom_iter++;
 
-    if (const bool uses_chr_ram = chr_rom_banks == 0x00) {
+    if (chr_rom_banks == 0x00) {
         spdlog::info("Cartridge uses CHR-RAM");
     }
 
@@ -130,9 +130,9 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
 
     const auto flag_7 = *rom_iter++;
     const bool nes2_0_format = (flag_7 & 0x0C) == 0x08;
-    
+
     size_t prg_ram_size = 0U;
-    
+
     if (nes2_0_format) {
         spdlog::info("ROM is in NES2.0 format");
 

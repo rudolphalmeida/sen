@@ -58,11 +58,8 @@ struct SenSettings {
             root.add("ui", libconfig::Setting::TypeGroup);
         }
         libconfig::Setting& ui_settings = root["ui"];
-        int scale_factor = DEFAULT_SCALE_FACTOR;
         if (!ui_settings.exists("scale")) {
             ui_settings.add("scale", libconfig::Setting::TypeInt) = DEFAULT_SCALE_FACTOR;
-        } else {
-            scale_factor = ScaleFactor();
         }
         if (!ui_settings.exists("recents")) {
             ui_settings.add("recents", libconfig::Setting::TypeArray);
@@ -84,10 +81,12 @@ struct SenSettings {
         }
 
         if (!ui_settings.exists("width")) {
-            ui_settings.add("width", libconfig::Setting::TypeInt) = NES_WIDTH * DEFAULT_SCALE_FACTOR + 15;
+            ui_settings.add("width", libconfig::Setting::TypeInt) =
+                NES_WIDTH * DEFAULT_SCALE_FACTOR + 15;
         }
         if (!ui_settings.exists("height")) {
-            ui_settings.add("height", libconfig::Setting::TypeInt) = NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55;
+            ui_settings.add("height", libconfig::Setting::TypeInt) =
+                NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55;
         }
     }
 

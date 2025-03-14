@@ -222,6 +222,6 @@ class Ppu {
     byte CpuRead(word address);
     void CpuWrite(word address, byte data);
 
-    [[nodiscard]] byte PpuRead(word address) const;
+    byte PpuRead(word address) const;
     void PpuWrite(word address, byte data);
 };

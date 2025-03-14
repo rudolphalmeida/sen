@@ -1,13 +1,13 @@
 #pragma once
 
+#include <spdlog/spdlog.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
-
-#include <spdlog/spdlog.h>
 
 #include "cartridge.hxx"
 #include "constants.hxx"
@@ -34,13 +34,13 @@ class Nrom final: public Cartridge {
         return prg_rom[map_cpu_addr(address)];
     }
 
-    void cpu_write(uint64_t cpu_cycle, word address, byte data) override {}
+    void cpu_write(uint64_t, word, byte) override {}
 
     byte ppu_read(const word address) override {
         return chr_rom[address];
     }
 
-    void ppu_write(word address, byte data) override {}
+    void ppu_write(word, byte) override {}
 
     friend class Debugger;
 
@@ -69,13 +69,14 @@ class Mmc1 final: public Cartridge {
         Cartridge(header),
         prg_rom(std::move(prg_rom)),
         chr_rom(std::move(chr_rom)) {
-        if (header.chr_rom_size == 0x00) {  // iNES format only!! Size 0 indicates CHR-RAM is being used
+        if (header.chr_rom_size
+            == 0x00) { // iNES format only!! Size 0 indicates CHR-RAM is being used
             this->chr_rom = std::vector<byte>(0x2000, 0);
         }
 
         if (header.prg_ram_size) {
             spdlog::info("Initializing PRG RAM of size 0x2000");
-            prg_ram = std::make_optional<std::vector<byte>>(0x8000U-0x6000U, 0);
+            prg_ram = std::make_optional<std::vector<byte>>(0x8000U - 0x6000U, 0);
         }
     }
 
@@ -124,11 +125,16 @@ class Mmc1 final: public Cartridge {
 
     [[nodiscard]] Mirroring mirroring() const override {
         switch (control.value & 0b11U) {
-            case 0: break;
-            case 1: break;
-            case 2: return Mirroring::Vertical;
-            case 3: return Mirroring::Horizontal;
-            default: break;
+            case 0:
+                break;
+            case 1:
+                break;
+            case 2:
+                return Mirroring::Vertical;
+            case 3:
+                return Mirroring::Horizontal;
+            default:
+                break;
         }
 
         return header.hardware_mirroring;
@@ -163,11 +169,20 @@ class Mmc1 final: public Cartridge {
             if (shift_reg_write_cnt == 5) {
                 shift_reg_write_cnt = 0;
                 switch ((address & 0x6000U) >> 13U) {
-                    case 0b00: control.value = shift_reg.value; break;
-                    case 0b01: chr_bank_0.value = shift_reg.value; break;
-                    case 0b10: chr_bank_1.value = shift_reg.value; break;
-                    case 0b11: prg_bank.value = shift_reg.value; break;
-                    default: break;
+                    case 0b00:
+                        control.value = shift_reg.value;
+                        break;
+                    case 0b01:
+                        chr_bank_0.value = shift_reg.value;
+                        break;
+                    case 0b10:
+                        chr_bank_1.value = shift_reg.value;
+                        break;
+                    case 0b11:
+                        prg_bank.value = shift_reg.value;
+                        break;
+                    default:
+                        break;
                 }
                 shift_reg.value = 0x00;
             }
@@ -194,7 +209,8 @@ class Mmc1 final: public Cartridge {
                 }
                 // Fixed last bank
                 return ((header.prg_rom_banks - 1) * 16384) + (address - 0xC000U);
-            default: break;
+            default:
+                break;
         }
 
         return address;
