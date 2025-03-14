@@ -31,6 +31,7 @@ target_link_libraries(sen PRIVATE
         spdlog::spdlog_header_only
         nlohmann_json::nlohmann_json
         fmt::fmt
+        Boost::circular_buffer
 )
 target_include_directories(sen PUBLIC include lib)
 if (UNIX)
@@ -73,14 +74,6 @@ target_link_libraries(sen_sdl PRIVATE
         $<$<PLATFORM_ID:Linux>:libconfig::config libconfig::config++>
         $<$<PLATFORM_ID:Windows>:libconfig::libconfig libconfig::libconfig++>
 )
-
-if (WIN32)
-    set(SUBSYSTEM_LINKER_OPTIONS $<IF:$<CONFIG:Debug>,\/SUBSYSTEM:CONSOLE,/SUBSYSTEM:WINDOWS> /ENTRY:mainCRTStartup)
-else ()
-    set(SUBSYSTEM_LINKER_OPTIONS $<IF:$<NOT:$<CONFIG:Debug>>,-mwindows,>)
-endif ()
-
-target_link_options(sen_sdl PRIVATE ${SUBSYSTEM_LINKER_OPTIONS})
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)
 target_link_libraries(cpu_tests PRIVATE sen Catch2::Catch2WithMain nlohmann_json::nlohmann_json)

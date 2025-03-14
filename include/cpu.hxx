@@ -3,6 +3,8 @@
 #include <spdlog/spdlog.h>
 
 #include <array>
+#include <boost/circular_buffer.hpp>
+#include <boost/circular_buffer/base.hpp>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -26,7 +28,7 @@ concept SystemBus = requires(T bus, word address, byte data) {
     bus.tick();
 
     { bus.ticked_cpu_read(address) } -> std::convertible_to<byte>;
-    { bus.cpu_read(address) }-> std::convertible_to<byte>;
+    { bus.cpu_read(address) } -> std::convertible_to<byte>;
 
     bus.ticked_cpu_write(address, data);
     bus.cpu_write(address, data);
@@ -185,13 +187,13 @@ struct ExecutedOpcode {
 };
 
 enum class StatusFlag : byte {
-    Carry = (1 << 0), // C
-    Zero = (1 << 1), // Z
-    InterruptDisable = (1 << 2), // I
-    Decimal = (1 << 3), // D
-    B = (0b11 << 4), // No CPU effect, bits 45
-    Overflow = (1 << 6), // V
-    Negative = (1 << 7), // N
+    Carry = (1U << 0U), // C
+    Zero = (1U << 1U), // Z
+    InterruptDisable = (1U << 2U), // I
+    Decimal = (1U << 3U), // D
+    B = (0b11U << 4U), // No CPU effect, bits 45
+    Overflow = (1U << 6U), // V
+    Negative = (1U << 7U), // N
 };
 
 template<SystemBus BusType>
@@ -206,7 +208,7 @@ class Cpu {
     std::shared_ptr<BusType> bus{};
     InterruptRequestFlag nmi_requested, irq_requested;
 
-    FixedSizeQueue<ExecutedOpcode> executed_opcodes{30};
+    boost::circular_buffer<ExecutedOpcode> executed_opcodes{30};
 
     // Addressing Modes
 
@@ -638,7 +640,7 @@ void Cpu<BusType>::step() {
     if (opcode.length >= 3) {
         executed_opcode.arg2 = bus->cpu_read(pc + 1);
     }
-    executed_opcodes.PushBack(executed_opcode);
+    executed_opcodes.push_back(executed_opcode);
 
     execute_opcode(opcode);
 };
@@ -1197,10 +1199,7 @@ void Cpu<BusType>::ADC(const Opcode& opcode) {
     // Reference:
     // https://github.com/OneLoneCoder/olcNES/blob/663e3777191c011135dfb6d40c887ae126970dd7/Part%20%233%20-%20Buses%2C%20Rams%2C%20Roms%20%26%20Mappers/olc6502.cpp#L589
     // http://www.6502.org/tutorials/vflag.html
-    update_flag(
-        StatusFlag::Overflow,
-        ((~(temp_a ^ operand) & (temp_a ^ result)) & 0x80) != 0x00
-    );
+    update_flag(StatusFlag::Overflow, ((~(temp_a ^ operand) & (temp_a ^ result)) & 0x80) != 0x00);
 
     a = static_cast<byte>(result & 0xFF);
 }
@@ -1227,10 +1226,7 @@ void Cpu<BusType>::SBC(const Opcode& opcode) {
     // Reference:
     // https://github.com/OneLoneCoder/olcNES/blob/663e3777191c011135dfb6d40c887ae126970dd7/Part%20%233%20-%20Buses%2C%20Rams%2C%20Roms%20%26%20Mappers/olc6502.cpp#L589
     // http://www.6502.org/tutorials/vflag.html
-    update_flag(
-        StatusFlag::Overflow,
-        ((~(temp_a ^ operand) & (temp_a ^ result)) & 0x80) != 0x00
-    );
+    update_flag(StatusFlag::Overflow, ((~(temp_a ^ operand) & (temp_a ^ result)) & 0x80) != 0x00);
 
     a = static_cast<byte>(result);
 }

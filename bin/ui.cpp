@@ -970,7 +970,7 @@ void Ui::show_ppu_memory() {
 
     if (ImGui::Begin("PPU Memory", &open_panels[static_cast<int>(UiPanel::PpuMemory)])) {
         static std::vector<byte> ppu_memory(0x4000U, 0U);
-        debugger.LoadPpuMemory(ppu_memory);
+        debugger.load_ppu_memory(ppu_memory);
         static MemoryEditor ppu_mem_edit;
         ppu_mem_edit.ReadOnly = true;
         ppu_mem_edit.DrawContents(ppu_memory.data(), 0x4000);
@@ -985,8 +985,10 @@ void Ui::show_opcodes() {
     }
 
     if (ImGui::Begin("Disassembly", &open_panels[static_cast<int>(UiPanel::Disassembly)])) {
-        for (const auto executed_opcodes = debugger.GetCpuExecutedOpcodes();
-             const auto& executed_opcode : executed_opcodes.values | std::ranges::views::reverse) {
+        static std::vector<ExecutedOpcode> executed_opcodes{};
+        debugger.load_cpu_opcodes(executed_opcodes);
+
+        for (const auto& executed_opcode : executed_opcodes | std::ranges::views::reverse) {
             auto [opcode_class, opcode, addressing_mode, length, cycles, label] =
                 OPCODES[executed_opcode.opcode];
 

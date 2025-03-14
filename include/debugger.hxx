@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <memory>
 #include <span>
 
@@ -91,13 +92,13 @@ class Debugger {
         return GetCpuState(this->emulator_context->cpu);
     }
 
-    template<typename BusType>
-    static const FixedSizeQueue<ExecutedOpcode>& GetCpuExecutedOpcodes(const Cpu<BusType>& cpu) {
-        return cpu.executed_opcodes;
-    }
+    void load_cpu_opcodes(std::vector<ExecutedOpcode>& executed_opcodes) const {
+        const auto& cpu_opcodes = emulator_context->cpu.executed_opcodes;
 
-    [[nodiscard]] const FixedSizeQueue<ExecutedOpcode>& GetCpuExecutedOpcodes() const {
-        return GetCpuExecutedOpcodes(this->emulator_context->cpu);
+        executed_opcodes.clear();
+        executed_opcodes.reserve(cpu_opcodes.size());
+
+        std::ranges::copy(cpu_opcodes, std::back_inserter(executed_opcodes));
     }
 
     void load_sprite_data(Sprites& sprites) const {
@@ -150,7 +151,7 @@ class Debugger {
         }
     }
 
-    void LoadPpuMemory(std::vector<byte>& buffer) const {
+    void load_ppu_memory(std::vector<byte>& buffer) const {
         for (word i = 0; i < 0x4000; i++) {
             buffer[i] = emulator_context->ppu->PpuRead(i);
         }
