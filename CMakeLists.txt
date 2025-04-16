@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28.0)
 project(sen VERSION 0.1.0)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(spdlog CONFIG REQUIRED)
@@ -74,6 +74,13 @@ target_link_libraries(sen_sdl PRIVATE
         $<$<PLATFORM_ID:Linux>:libconfig::config libconfig::config++>
         $<$<PLATFORM_ID:Windows>:libconfig::libconfig libconfig::libconfig++>
 )
+
+add_custom_command(TARGET sen_sdl POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${PROJECT_SOURCE_DIR}/resources/fa-solid-900.ttf"
+        $<TARGET_FILE_DIR:sen_sdl>/fa-solid-900.ttf
+)
+
 
 add_executable(cpu_tests tests/flatbus.hxx tests/cpu_tests.cpp)
 target_link_libraries(cpu_tests PRIVATE sen Catch2::Catch2WithMain nlohmann_json::nlohmann_json)

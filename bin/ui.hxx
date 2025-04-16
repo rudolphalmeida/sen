@@ -123,11 +123,11 @@ class Ui {
 
     GLuint pattern_table_left_texture{};
     GLuint pattern_table_right_texture{};
-    GLuint display_texture{};
+    GLuint game_texture{};
     std::array<GLuint, 64> sprite_textures{};
 
-    std::unique_ptr<Filter> filter{};
-    std::shared_ptr<AudioStreamQueue> audio_queue{};
+    std::unique_ptr<Filter> filter;
+    std::shared_ptr<AudioStreamQueue> audio_queue;
 
     int audio_frame_delay{MAX_AUDIO_FRAME_LAG};
     bool open{true};

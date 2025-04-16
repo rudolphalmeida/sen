@@ -13,7 +13,6 @@
 #include <tuple>
 
 #include "constants.hxx"
-#include "util.hxx"
 
 #define OPCODE_CASE(opc) \
     case OpcodeClass::opc: \
@@ -179,9 +178,9 @@ struct Opcode {
 };
 
 struct ExecutedOpcode {
-    uint64_t start_cycle;
-    word pc;
-    byte opcode;
+    uint64_t start_cycle{};
+    word pc{};
+    byte opcode{};
     byte arg1{};
     byte arg2{};
 };

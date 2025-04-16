@@ -56,8 +56,8 @@ Ui::Ui() {
     glGenTextures(1, &pattern_table_right_texture);
     InitTexture(pattern_table_right_texture);
 
-    glGenTextures(1, &display_texture);
-    InitTexture(display_texture);
+    glGenTextures(1, &game_texture);
+    InitTexture(game_texture);
 
     glGenTextures(64, sprite_textures.data());
     for (int i = 0; i < 64; i++) {
@@ -340,10 +340,10 @@ void Ui::run() {
 
     while (open) {
         const auto new_time = SDL_GetTicks();
-        const auto dt = new_time - current_time;
+        const auto time_delta = new_time - current_time;
         current_time = new_time;
 
-        const auto cpu_cycles_to_run = dt * CYCLES_PER_FRAME / 16;
+        const auto cpu_cycles_to_run = time_delta * CYCLES_PER_FRAME / 16;
 
         handle_sdl_events();
 
@@ -374,7 +374,7 @@ Ui::~Ui() {
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
-    if (controller) {
+    if (controller != nullptr) {
         SDL_CloseGamepad(controller);
     }
 
@@ -399,7 +399,7 @@ void Ui::render_ui() {
     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
 #endif
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0F);
 
     show_menu_bar();
 
@@ -420,10 +420,10 @@ void Ui::render_ui() {
         const auto framebuffer = debugger.Framebuffer();
         const auto [data, width, height] = filter->PostProcess(framebuffer, settings.ScaleFactor());
 
-        glBindTexture(GL_TEXTURE_2D, display_texture);
+        glBindTexture(GL_TEXTURE_2D, game_texture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         ImGui::Image(
-            display_texture,
+            game_texture,
             ImVec2(NES_WIDTH * settings.ScaleFactor(), NES_HEIGHT * settings.ScaleFactor())
         );
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -725,7 +725,7 @@ void Ui::show_registers() {
             ImGui::Text("P");
             ImGui::TableNextColumn();
 
-            constexpr ImVec4 gray(0.5f, 0.5f, 0.5f, 1.0f);
+            constexpr ImVec4 gray(0.5F, 0.5F, 0.5F, 1.0F);
 
             if ((p & static_cast<byte>(StatusFlag::Carry)) != 0) {
                 ImGui::Text("C");

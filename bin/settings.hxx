@@ -3,8 +3,11 @@
 #include <spdlog/spdlog.h>
 
 #include <cstring>
+#include <filesystem>
 #include <libconfig.h++>
 #include <vector>
+#include <cstdlib>
+#include <fstream>
 
 #include "constants.hxx"
 
@@ -36,13 +39,13 @@ enum class FilterType {
 };
 
 struct SenSettings {
-    libconfig::Config cfg{};
+    libconfig::Config cfg;
     std::array<bool, NUM_PANELS> open_panels{};
 
     SenSettings() {
+        const auto settings_file_path = settings_file_path_for_platform();
         try {
-            // TODO: Change this path to be the standard config directory for each OS
-            cfg.readFile("test.cfg");
+            cfg.readFile(settings_file_path.c_str());
         } catch (const libconfig::FileIOException&) {
             spdlog::info("Failed to find settings. Using default");
         } catch (const libconfig::ParseException& e) {
@@ -88,6 +91,16 @@ struct SenSettings {
             ui_settings.add("height", libconfig::Setting::TypeInt) =
                 NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55;
         }
+    }
+
+    static std::filesystem::path settings_file_path_for_platform() {
+#if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
+        return std::filesystem::path(std::getenv("LOCALAPPDATA")) / "sen" / "config.cfg";
+#elif defined(__linux__)
+        return std::filesystem::path(std::getenv("HOME")) / ".sen" / "config.cfg";
+#else
+        return std::filesystem::path("config.cfg");
+#endif
     }
 
     [[nodiscard]] int Width() const {
@@ -166,11 +179,20 @@ struct SenSettings {
         recents.add(libconfig::Setting::TypeString) = path;
     }
 
-    void write_to_disk() {
+    void write_to_disk(bool create_file = true) {
+        const auto settings_file_path = settings_file_path_for_platform();
         try {
             SyncPanelStates();
-            cfg.writeFile("test.cfg");
+            cfg.writeFile(settings_file_path.c_str());
         } catch (const libconfig::FileIOException& e) {
+            if (create_file) {
+                std::filesystem::create_directories(settings_file_path.parent_path());
+                std::ofstream ofs(settings_file_path.c_str());
+                ofs.close();
+                spdlog::info("Created configuration file at {}", settings_file_path.c_str());
+                write_to_disk(false);
+                return;
+            }
             spdlog::error("Failed to save settings: {}", e.what());
         }
     }
