@@ -98,7 +98,7 @@ struct SweepUnit {
     void Clock(const word timer) {
         UpdateTargetPeriod(timer);
 
-        if (sweep_counter == 0x00 && sweep_enabled && !(timer < 8 || target_period > 0x7FF)) {
+        if (sweep_counter == 0x00 && sweep_enabled && timer >= 8 && target_period <= 0x7FF) {
             timer_reload = target_period;
         }
 
@@ -132,19 +132,21 @@ struct EnvelopeGenerator {
     byte divider{};
     bool start{false};
 
+    static constexpr byte MAX_DECAY_LEVEL = 15;
+
     void Clock(const byte volume_reload, const LengthCounter& length_counter) {
         if (!start) {
             if (divider == 0x00) {
                 divider = volume_reload;
                 if (decay_level == 0x00 && length_counter.halt) {
-                    decay_level = 15;
+                    decay_level = MAX_DECAY_LEVEL;
                 } else if (decay_level != 0x00) {
                     decay_level--;
                 }
             }
         } else {
             start = false;
-            decay_level = 15;
+            decay_level = MAX_DECAY_LEVEL;
             divider = volume_reload;
         }
     }
@@ -193,7 +195,7 @@ class ApuPulse {
     void ClockTimer() {
         if (timer == 0x00) {
             timer = timer_reload;
-            duty_counter_bit = (duty_counter_bit - 1) & 0x07;
+            duty_counter_bit = (duty_counter_bit - 1) & 0x07U;
         } else {
             timer--;
         }

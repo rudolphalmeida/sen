@@ -20,6 +20,7 @@
 
 #include "controller.hxx"
 #include "IconsFontAwesome6.h"
+#include "fa.h"
 #include "imgui_memory_editor.h"
 #include "ImGuiNotify.hpp"
 #include "settings.hxx"
@@ -133,7 +134,7 @@ void Ui::init_imgui() const {
     io.Fonts->AddFontDefault();
     constexpr float baseFontSize = 24.0f;
     constexpr float iconFontSize =
-        baseFontSize * 2.0f / 3.0f; // FontAwesome fonts need to have their sizes reduced
+        baseFontSize * 2.0F / 4.0F; // FontAwesome fonts need to have their sizes reduced
     // by 2.0f/3.0f in order to align correctly
 
     // merge in icons from Font Awesome
@@ -143,7 +144,7 @@ void Ui::init_imgui() const {
     icons_config.PixelSnapH = true;
     icons_config.GlyphMinAdvanceX = iconFontSize;
     io.Fonts
-        ->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAS, iconFontSize, &icons_config, icons_ranges);
+        ->AddFontFromMemoryCompressedTTF(FontAwesome_compressed_data, FontAwesome_compressed_size, iconFontSize, &icons_config, icons_ranges);
 
     set_imgui_style();
     // Setup Dear ImGui style
