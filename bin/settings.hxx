@@ -2,18 +2,21 @@
 
 #include <spdlog/spdlog.h>
 
+#include <array>
+#include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
-#include <libconfig.h++>
-#include <vector>
-#include <cstdlib>
 #include <fstream>
+#include <libconfig.h++>
+#include <ranges>
+#include <vector>
 
 #include "constants.hxx"
 
 constexpr int DEFAULT_SCALE_FACTOR = 4;
 
-enum class UiStyle {
+enum class UiStyle : uint8_t {
     Classic = 0,
     Light = 1,
     Dark = 2,
@@ -21,7 +24,7 @@ enum class UiStyle {
 };
 
 constexpr int NUM_PANELS = 9;
-enum class UiPanel {
+enum class UiPanel : uint8_t {
     Registers = 0,
     PatternTables = 1,
     PpuMemory = 2,
@@ -33,7 +36,7 @@ enum class UiPanel {
     VolumeControl = 8,
 };
 
-enum class FilterType {
+enum class FilterType : uint8_t {
     NoFilter = 0,
     Ntsc = 1,
 };
@@ -45,7 +48,7 @@ struct SenSettings {
     SenSettings() {
         const auto settings_file_path = settings_file_path_for_platform();
         try {
-            cfg.readFile(settings_file_path.c_str());
+            cfg.readFile(settings_file_path.string());
         } catch (const libconfig::FileIOException&) {
             spdlog::info("Failed to find settings. Using default");
         } catch (const libconfig::ParseException& e) {
@@ -77,19 +80,19 @@ struct SenSettings {
         if (!ui_settings.exists("open_panels")) {
             ui_settings.add("open_panels", libconfig::Setting::TypeInt) = 0;
         } else {
-            const int saved_open_panels = ui_settings["open_panels"];
+            const auto saved_open_panels = static_cast<unsigned>(ui_settings["open_panels"]);
             for (int i = 0; i < NUM_PANELS; i++) {
-                open_panels[i] = (saved_open_panels & (1U << i)) != 0;
+                open_panels.at(i) = (saved_open_panels & (1U << static_cast<unsigned>(i))) != 0;
             }
         }
 
         if (!ui_settings.exists("width")) {
             ui_settings.add("width", libconfig::Setting::TypeInt) =
-                NES_WIDTH * DEFAULT_SCALE_FACTOR + 15;
+                (NES_WIDTH * DEFAULT_SCALE_FACTOR) + 15;
         }
         if (!ui_settings.exists("height")) {
             ui_settings.add("height", libconfig::Setting::TypeInt) =
-                NES_HEIGHT * DEFAULT_SCALE_FACTOR + 55;
+                (NES_HEIGHT * DEFAULT_SCALE_FACTOR) + 55;
         }
     }
 
@@ -148,16 +151,17 @@ struct SenSettings {
     }
 
     void TogglePanel(UiPanel panel) {
-        const auto panel_id = static_cast<int>(panel);
-        const auto open_panels_config = static_cast<int>(cfg.getRoot()["ui"]["open_panels"]);
-        cfg.getRoot()["ui"]["open_panels"] = open_panels_config ^ (1 << panel_id);
-        open_panels[panel_id] = !open_panels[panel_id];
+        const auto panel_id = static_cast<unsigned>(panel);
+        const auto open_panels_config = static_cast<unsigned>(cfg.getRoot()["ui"]["open_panels"]);
+        cfg.getRoot()["ui"]["open_panels"] =
+            static_cast<int>(open_panels_config ^ (1U << panel_id));
+        open_panels.at(panel_id) = !open_panels.at(panel_id);
     }
 
     void SyncPanelStates() const {
         unsigned int panel_config = 0;
         for (size_t i = 0; i < NUM_PANELS; i++) {
-            panel_config |= (open_panels[i] ? 0b1U : 0b0U) << i;
+            panel_config |= (open_panels.at(i) ? 0b1U : 0b0U) << i;
         }
         cfg.getRoot()["ui"]["open_panels"] = static_cast<int>(panel_config);
     }
@@ -183,13 +187,13 @@ struct SenSettings {
         const auto settings_file_path = settings_file_path_for_platform();
         try {
             SyncPanelStates();
-            cfg.writeFile(settings_file_path.c_str());
+            cfg.writeFile(settings_file_path.string().c_str());
         } catch (const libconfig::FileIOException& e) {
             if (create_file) {
                 std::filesystem::create_directories(settings_file_path.parent_path());
-                std::ofstream ofs(settings_file_path.c_str());
+                std::ofstream ofs(settings_file_path.string());
                 ofs.close();
-                spdlog::info("Created configuration file at {}", settings_file_path.c_str());
+                spdlog::info("Created configuration file at {}", settings_file_path.string());
                 write_to_disk(false);
                 return;
             }
