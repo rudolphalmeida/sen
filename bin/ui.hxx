@@ -59,7 +59,9 @@ class AudioStreamQueue final: public AudioQueue {
     SDL_AudioStream* stream{};
     SDL_AudioDeviceID device_id;
 
-    explicit AudioStreamQueue(const SDL_AudioDeviceID device_id): stream(SDL_CreateAudioStream(&NES_AUDIO_SPEC, &OUTPUT_DEVICE_SPEC)), device_id{device_id} {
+    explicit AudioStreamQueue(const SDL_AudioDeviceID device_id) :
+        stream(SDL_CreateAudioStream(&NES_AUDIO_SPEC, &OUTPUT_DEVICE_SPEC)),
+        device_id{device_id} {
         if (stream == nullptr) {
             spdlog::error("Failed to initialize audio stream: {}", SDL_GetError());
             std::exit(-1);

@@ -8,9 +8,7 @@ log.txt
 imgui.ini
 *.cfg
 
-nes-test-roms
 roms
-ProcessorTests
 
 build
 cmake-build-*

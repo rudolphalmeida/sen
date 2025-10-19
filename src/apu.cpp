@@ -8,7 +8,7 @@
 
 #include "util.hxx"
 
-void Apu::Tick(const uint64_t cpu_cycles) {
+std::optional<word> Apu::Tick(const uint64_t cpu_cycles) {
     const uint64_t cpu_cycles_into_frame = cpu_cycles - frame_begin_cpu_cycle;
 
     if (cpu_cycles_into_frame == 7457) {
@@ -94,16 +94,18 @@ void Apu::Tick(const uint64_t cpu_cycles) {
         frame_begin_cpu_cycle = cpu_cycles;
     }
 
-    if ((cpu_cycles & 0b1) == 0x00) {
+    std::optional<word> dmc_sample_read_addr = std::nullopt;
+    if ((cpu_cycles & 0b1U) == 0x00) {
         // Pulse timers are updated every APU cycle
         pulse_1.ClockTimer();
         pulse_2.ClockTimer();
+        noise.ClockTimer();
+        dmc_sample_read_addr = dmc.ClockTimer();
     };
 
     // Triangle timers are updated every CPU cycle
     triangle.ClockTimer();
-    noise.ClockTimer();
-
+    
     const auto pulse1_sample = pulse_1.GetSample();
     const auto pulse2_sample = pulse_2.GetSample();
     const auto triangle_sample = triangle.GetSample();
@@ -111,10 +113,12 @@ void Apu::Tick(const uint64_t cpu_cycles) {
     const auto dmc_sample = dmc.get_sample();
 
     audio_queue->push(Mix(pulse1_sample, pulse2_sample, triangle_sample, noise_sample, dmc_sample));
+
+    return dmc_sample_read_addr;
 }
 
 byte Apu::CpuRead(const word address) {
-    if (address == 0x4015) {
+    if (address == 0x4015U) {
         byte res = 0x00;
         if (pulse_1.length_counter.counter > 0x00) {
             res |= 0x01;
@@ -152,52 +156,8 @@ void Apu::CpuWrite(const word address, const byte data) {
     } else if (InRange<word>(0x4010, address, 0x4013)) {
         dmc.WriteRegister(address - 0x4010, data);
     } else if (address == 0x4015) {
-        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1)
-            && !ChannelEnabled(data, ApuChannel::Pulse1)) {
-            pulse_1.length_counter.Load(0);
-            pulse_1.enabled = false;
-        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1)
-                   && ChannelEnabled(data, ApuChannel::Pulse1)) {
-            pulse_1.enabled = true;
-        }
-
-        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2)
-            && !ChannelEnabled(data, ApuChannel::Pulse2)) {
-            pulse_2.length_counter.Load(0);
-            pulse_2.enabled = false;
-        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2)
-                   && ChannelEnabled(data, ApuChannel::Pulse2)) {
-            pulse_2.enabled = true;
-        }
-
-        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle)
-            && !ChannelEnabled(data, ApuChannel::Triangle)) {
-            triangle.length_counter.Load(0);
-            triangle.enabled = false;
-        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle)
-                   && ChannelEnabled(data, ApuChannel::Triangle)) {
-            triangle.enabled = true;
-        }
-
-        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Noise)
-            && !ChannelEnabled(data, ApuChannel::Noise)) {
-            noise.length_counter.Load(0);
-            noise.enabled = false;
-        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Noise)
-                   && ChannelEnabled(data, ApuChannel::Noise)) {
-            noise.enabled = true;
-        }
-
-        if (ChannelEnabled(prev_enabled_channels, ApuChannel::Dmc)
-            && !ChannelEnabled(data, ApuChannel::Dmc)) {
-            dmc.enabled = false;
-        } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Dmc)
-                   && ChannelEnabled(data, ApuChannel::Dmc)) {
-            dmc.enabled = true;
-        }
-
-        prev_enabled_channels = data;
-    } else if (address == 0x4017) {
+        update_enabled_channels(data);
+    } else if (address == 0x4017U) {
         // TODO: If the write occurs during an APU cycle, the effects occur 3 CPU cycles after
         //       the $4017 write cycle, and if the write occurs between APU cycles,
         //       the effects occurs 4 CPU cycles after the write cycle.
@@ -217,10 +177,58 @@ void Apu::CpuWrite(const word address, const byte data) {
     }
 }
 
+void Apu::update_enabled_channels(byte data) {  
+    if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1)
+        && !ChannelEnabled(data, ApuChannel::Pulse1)) {
+        pulse_1.length_counter.Load(0);
+        pulse_1.enabled = false;
+    } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse1)
+               && ChannelEnabled(data, ApuChannel::Pulse1)) {
+        pulse_1.enabled = true;
+    }
+
+    if (ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2)
+        && !ChannelEnabled(data, ApuChannel::Pulse2)) {
+        pulse_2.length_counter.Load(0);
+        pulse_2.enabled = false;
+    } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Pulse2)
+               && ChannelEnabled(data, ApuChannel::Pulse2)) {
+        pulse_2.enabled = true;
+    }
+
+    if (ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle)
+        && !ChannelEnabled(data, ApuChannel::Triangle)) {
+        triangle.length_counter.Load(0);
+        triangle.enabled = false;
+    } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Triangle)
+               && ChannelEnabled(data, ApuChannel::Triangle)) {
+        triangle.enabled = true;
+    }
+
+    if (ChannelEnabled(prev_enabled_channels, ApuChannel::Noise)
+        && !ChannelEnabled(data, ApuChannel::Noise)) {
+        noise.length_counter.Load(0);
+        noise.enabled = false;
+    } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Noise)
+               && ChannelEnabled(data, ApuChannel::Noise)) {
+        noise.enabled = true;
+    }
+
+    if (ChannelEnabled(prev_enabled_channels, ApuChannel::Dmc)
+        && !ChannelEnabled(data, ApuChannel::Dmc)) {
+        dmc.enabled = false;
+    } else if (!ChannelEnabled(prev_enabled_channels, ApuChannel::Dmc)
+               && ChannelEnabled(data, ApuChannel::Dmc)) {
+        dmc.enabled = true;
+    }
+
+    prev_enabled_channels = data;
+}
+
 void Apu::UpdateFrameCounter(const byte data) {
     step_mode =
-        (data & 0x80) != 0x00 ? FrameCounterStepMode::FiveStep : FrameCounterStepMode::FourStep;
-    raise_irq = (data & 0x40) == 0x00;
+        (data & 0x80U) != 0x00 ? FrameCounterStepMode::FiveStep : FrameCounterStepMode::FourStep;
+    raise_irq = (data & 0x40U) == 0x00;
 }
 
 float Apu::Mix(
@@ -233,10 +241,10 @@ float Apu::Mix(
     float pulse_out = 0.0f;
     if (pulse1_sample != 0x00 || pulse2_sample != 0x00) {
         pulse_out =
-            95.88f / ((8128.0f / static_cast<float>(pulse1_sample + pulse2_sample)) + 100.0f);
+            95.88f / ((8128.0F / static_cast<float>(pulse1_sample + pulse2_sample)) + 100.0F);
     }
 
-    const float tnd_out = 0.00851f * static_cast<float>(triangle_sample) + 0.00494 * noise_sample;
+    const float tnd_out = 0.00851F * static_cast<float>(triangle_sample) + 0.00494F * noise_sample;
 
     return pulse_out + tnd_out;
 }

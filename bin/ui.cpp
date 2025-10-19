@@ -19,8 +19,8 @@
 #include <span>
 
 #include "controller.hxx"
-#include "IconsFontAwesome6.h"
 #include "fa.h"
+#include "IconsFontAwesome6.h"
 #include "imgui_memory_editor.h"
 #include "ImGuiNotify.hpp"
 #include "settings.hxx"
@@ -143,8 +143,13 @@ void Ui::init_imgui() const {
     icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
     icons_config.GlyphMinAdvanceX = iconFontSize;
-    io.Fonts
-        ->AddFontFromMemoryCompressedTTF(FontAwesome_compressed_data, FontAwesome_compressed_size, iconFontSize, &icons_config, icons_ranges);
+    io.Fonts->AddFontFromMemoryCompressedTTF(
+        FontAwesome_compressed_data,
+        FontAwesome_compressed_size,
+        iconFontSize,
+        &icons_config,
+        icons_ranges
+    );
 
     set_imgui_style();
     // Setup Dear ImGui style

@@ -1,11 +1,11 @@
 #pragma once
 
+#include <spdlog/spdlog.h>
+
 #include <cstdint>
 #include <memory>
 #include <utility>
 #include <vector>
-
-#include <spdlog/spdlog.h>
 
 #include "apu.hxx"
 #include "cartridge.hxx"
@@ -29,7 +29,7 @@ class Bus {
         std::shared_ptr<Apu> apu,
         std::shared_ptr<Controller> controller) :
         cartridge{std::move(cartridge)},
-        internal_ram(0x800, 0xFF),
+        internal_ram(IWRAM_SIZE, 0xFF),
         ppu{std::move(ppu)},
         apu{std::move(apu)},
         controller{std::move(controller)} {

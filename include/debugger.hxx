@@ -56,14 +56,27 @@ struct PpuMemory {
     std::vector<byte> ppu_memory;
 };
 
+class ExecutedOpcodesHandler: public Handler {
+  public:
+    boost::circular_buffer<ExecutedOpcode> executed_opcodes{30};
+
+    void operator()(const Event& opcode) override {
+        executed_opcodes.push_back(static_cast<ExecutedOpcode>(opcode));
+    }
+};
+
 class Debugger {
     std::shared_ptr<Sen> emulator_context{};
+
+    ExecutedOpcodesHandler executed_opcodes_handler{};
 
   public:
     Debugger() = default;
 
     explicit Debugger(std::shared_ptr<Sen> emulator_context) :
-        emulator_context{std::move(emulator_context)} {}
+        emulator_context{std::move(emulator_context)} {
+        this->emulator_context->register_handler<ExecutedOpcode>(&executed_opcodes_handler);
+    }
 
     [[nodiscard]] std::span<word, NES_WIDTH * NES_HEIGHT> Framebuffer() const {
         return std::span<word, NES_WIDTH * NES_HEIGHT>{
@@ -93,7 +106,7 @@ class Debugger {
     }
 
     void load_cpu_opcodes(std::vector<ExecutedOpcode>& executed_opcodes) const {
-        const auto& cpu_opcodes = emulator_context->cpu.executed_opcodes;
+        const auto& cpu_opcodes = executed_opcodes_handler.executed_opcodes;
 
         executed_opcodes.clear();
         executed_opcodes.reserve(cpu_opcodes.size());

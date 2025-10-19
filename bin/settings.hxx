@@ -183,7 +183,7 @@ struct SenSettings {
         recents.add(libconfig::Setting::TypeString) = path;
     }
 
-    void write_to_disk(bool create_file = true) {
+    void write_to_disk(const bool create_file = true) {
         const auto settings_file_path = settings_file_path_for_platform();
         try {
             SyncPanelStates();

@@ -4,11 +4,11 @@
 
 #pragma once
 
+#include <spdlog/spdlog.h>
+
 #include <array>
 #include <cstdint>
 #include <memory>
-
-#include <spdlog/spdlog.h>
 
 #include "constants.hxx"
 
@@ -20,13 +20,13 @@ constexpr std::array<byte, 4> DUTY_CYCLES = {
 };
 
 constexpr std::array<byte, 32> LENGTH_COUNTER_LOADS{10, 254, 20,  2,  40, 4,  80, 6,  160, 8,  60,
-                                         10, 14,  12,  26, 14, 12, 16, 24, 18,  48, 20,
-                                         96, 22,  192, 24, 72, 26, 16, 28, 32,  30};
+                                                    10, 14,  12,  26, 14, 12, 16, 24, 18,  48, 20,
+                                                    96, 22,  192, 24, 72, 26, 16, 28, 32,  30};
 
 constexpr std::array<word, 16> NOISE_TIMER_CPU_CYCLES =
     {4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068};
 
-enum class FrameCounterStepMode: uint8_t {
+enum class FrameCounterStepMode : uint8_t {
     FourStep,
     FiveStep,
 };
@@ -391,18 +391,18 @@ class ApuNoise {
 
   private:
     void UpdateCounter(const byte value) {
-        length_counter.halt = (value & 0x20) != 0x00;
-        constant_volume = (value & 0x10) != 0x00;
-        volume_reload = value & 0x0F;
+        length_counter.halt = (value & 0x20U) != 0x00U;
+        constant_volume = (value & 0x10U) != 0x00;
+        volume_reload = value & 0x0FU;
     }
 
     void UpdateModeAndPeriod(const byte value) {
         mode_1 = (value & 0x80) != 0x00;
-        timer_reload = NOISE_TIMER_CPU_CYCLES.at(value & 0x0F);
+        timer_reload = NOISE_TIMER_CPU_CYCLES.at(value & 0x0FU);
     }
 
     void UpdateLengthCounterLoad(const byte value) {
-        length_counter.UpdateLengthCounterLoad((value & 0xF8) >> 3);
+        length_counter.UpdateLengthCounterLoad((value & 0xF8U) >> 3);
         envelope_generator.start = true;
     }
 };
@@ -411,11 +411,10 @@ class ApuDmc {
   public:
     bool enabled{false};
 
-    explicit ApuDmc(InterruptRequestFlag irq_flag) :
-        irq_flag{std::move(irq_flag)} {}
+    explicit ApuDmc(InterruptRequestFlag irq_flag) : irq_flag{std::move(irq_flag)} {}
 
-    byte get_sample() {
-        return 0x00;
+    [[nodiscard]] byte get_sample() const {
+        return current_level;
     }
 
     void WriteRegister(const byte offset, const byte data) {
@@ -437,32 +436,48 @@ class ApuDmc {
         }
     }
 
-private:
+  std::optional<word> ClockTimer() {
+      timer -= 2;  // Timer is clocked every APU cycle but rates are CPU cycles
+      if (timer == 0 && loop) {
+          timer = LEVEL_CHANGE_RATE.at(rate_index);
+      }
+      return std::nullopt;
+  }
+
+  private:
+    // Based on the NTSC table CPU cycles - Divide by 2 for APU cycles
+    constexpr static std::array<int, 0x10> LEVEL_CHANGE_RATE = {
+      428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72, 54 
+    };
+
+    constexpr static auto DMC_SAMPLE_BASE = 0xC000U;
+        
     InterruptRequestFlag irq_flag;
 
     word sample_start_address{}, sample_length{};
+    word current_sample_address{}, bytes_remaining_in_sample{};
 
-    byte frequency{};
-    byte counter{};
-
+    byte rate_index{}, timer{};
+    byte current_level{}, sample_buffer{};
     bool irq_enable{}, loop{};
 
     void update_irq_loop_freq(const byte data) {
-        irq_enable = (data & 0x80) != 0x00;
-        loop = (data & 0x40) != 0x00;
-        frequency = data & 0x0F;
+        irq_enable = (data & 0x80U) != 0x00U;
+        loop = (data & 0x40U) != 0x00U;
+        rate_index = data & 0x0FU;
+        timer = LEVEL_CHANGE_RATE.at(rate_index);
     }
 
     void load_counter(const byte data) {
-        counter = data & 0x7F;
+        current_level = data & 0x7FU;
     }
 
     void load_sample_address(const byte data) {
-        sample_start_address = 0xC000U | (static_cast<word>(data) << 6);
+        sample_start_address = DMC_SAMPLE_BASE | (static_cast<word>(data) << 6U);
     }
 
     void load_sample_length(const byte data) {
-        sample_length = (static_cast<word>(data) << 4) | 0x0001;
+        sample_length = (static_cast<word>(data) << 4U) | 0x0001U;
     }
 };
 
@@ -478,10 +493,10 @@ class Apu {
   public:
     explicit Apu(std::shared_ptr<AudioQueue> sink, InterruptRequestFlag irq_requested) :
         audio_queue{std::move(sink)},
-        dmc {irq_requested},
+        dmc{irq_requested},
         irq_requested(std::move(irq_requested)) {}
 
-    void Tick(uint64_t cpu_cycles);
+    std::optional<word> Tick(uint64_t cpu_cycles);
 
     [[maybe_unused]] static void Reset() {
         spdlog::error("Reset not implemented for APU");
@@ -493,14 +508,14 @@ class Apu {
     friend class Debugger;
 
   private:
-    std::shared_ptr<AudioQueue> audio_queue{};
+    std::shared_ptr<AudioQueue> audio_queue;
 
     ApuPulse pulse_1{false}, pulse_2{true};
     ApuTriangle triangle;
     ApuNoise noise;
     ApuDmc dmc;
 
-    InterruptRequestFlag irq_requested{};
+    InterruptRequestFlag irq_requested;
 
     uint64_t frame_begin_cpu_cycle{0x00};
     FrameCounterStepMode step_mode{FrameCounterStepMode::FourStep};
@@ -509,8 +524,14 @@ class Apu {
     byte prev_enabled_channels{0x00};
 
     void UpdateFrameCounter(byte data);
+    void update_enabled_channels(byte data);
+    
     static float
-    Mix(byte pulse1_sample, byte pulse2_sample, byte triangle_sample, byte noise_sample, byte dmc_sample);
+    Mix(byte pulse1_sample,
+        byte pulse2_sample,
+        byte triangle_sample,
+        byte noise_sample,
+        byte dmc_sample);
 
     static bool ChannelEnabled(const byte reg, ApuChannel channel) {
         return (reg & static_cast<byte>(channel)) != 0x00;

@@ -10,8 +10,10 @@
 #include "cartridge.hxx"
 #include "constants.hxx"
 #include "controller.hxx"
-#include "cpu.hxx"
+#include "events.hxx"
 #include "ppu.hxx"
+// Stay down!
+#include "cpu.hxx"
 
 struct RomArgs {
     std::vector<byte> rom;
@@ -22,21 +24,27 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args);
 
 class Sen {
   private:
-    uint64_t carry_over_cycles{};
-    bool running{false};
-
+    EventBus event_bus{};
+    Cpu<Bus> cpu;
     std::shared_ptr<Bus> bus;
     std::shared_ptr<Ppu> ppu;
     std::shared_ptr<Controller> controller;
     std::shared_ptr<Apu> apu;
-    Cpu<Bus> cpu;
 
-    InterruptRequestFlag nmi_requested{}, irq_requested{};
+    uint64_t carry_over_cycles{};
+
+    InterruptRequestFlag nmi_requested, irq_requested;
+    bool running{false};
 
   public:
     explicit Sen(const RomArgs& rom_args, const std::shared_ptr<AudioQueue>& sink);
 
-    uint64_t FrameCount() const {
+    template<typename E>
+    void register_handler(Handler* handler) {
+        event_bus.register_handler<E>(handler);
+    }
+
+    [[nodiscard]] uint64_t FrameCount() const {
         return ppu->frame_count;
     }
 

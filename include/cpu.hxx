@@ -13,6 +13,7 @@
 #include <tuple>
 
 #include "constants.hxx"
+#include "events.hxx"
 
 #define OPCODE_CASE(opc) \
     case OpcodeClass::opc: \
@@ -33,7 +34,7 @@ concept SystemBus = requires(T bus, word address, byte data) {
     bus.cpu_write(address, data);
 };
 
-enum class OpcodeClass {
+enum class OpcodeClass : std::uint8_t {
     // Add Memory to Accumulator With Carry
     ADC,
     // AND Memory with Accumulator
@@ -150,7 +151,7 @@ enum class OpcodeClass {
     TYA,
 };
 
-enum class AddressingMode {
+enum class AddressingMode : std::uint8_t {
     Accumulator,
     Absolute,
     AbsoluteXIndexed,
@@ -177,7 +178,8 @@ struct Opcode {
     const char* label;
 };
 
-struct ExecutedOpcode {
+class ExecutedOpcode: public Event {
+  public:
     uint64_t start_cycle{};
     word pc{};
     byte opcode{};
@@ -206,8 +208,6 @@ class Cpu {
 
     std::shared_ptr<BusType> bus{};
     InterruptRequestFlag nmi_requested, irq_requested;
-
-    boost::circular_buffer<ExecutedOpcode> executed_opcodes{30};
 
     // Addressing Modes
 
@@ -334,7 +334,7 @@ class Cpu {
         return bus->ticked_cpu_read(pc++);
     }
 
-    void step();
+    void step(EventBus& event_bus);
     void execute_opcode(Opcode opcode);
 
     // For setting random register state during opcode tests
@@ -621,7 +621,7 @@ void Cpu<BusType>::start() {
 };
 
 template<SystemBus BusType>
-void Cpu<BusType>::step() {
+void Cpu<BusType>::step(EventBus& event_bus) {
     check_interrupts();
 
     const auto initial_cycles = bus->cycles;
@@ -632,6 +632,8 @@ void Cpu<BusType>::step() {
         .start_cycle = initial_cycles,
         .pc = static_cast<word>(pc - 1),
         .opcode = opcode.opcode,
+        .arg1 = 0x00,
+        .arg2 = 0x00,
     };
     if (opcode.length >= 2) {
         executed_opcode.arg1 = bus->cpu_read(pc);
@@ -639,10 +641,11 @@ void Cpu<BusType>::step() {
     if (opcode.length >= 3) {
         executed_opcode.arg2 = bus->cpu_read(pc + 1);
     }
-    executed_opcodes.push_back(executed_opcode);
 
     execute_opcode(opcode);
-};
+
+    event_bus.dispatch<ExecutedOpcode>(executed_opcode);
+}
 
 template<SystemBus BusType>
 void Cpu<BusType>::check_interrupts() {

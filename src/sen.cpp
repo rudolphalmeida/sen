@@ -42,7 +42,7 @@ void Sen::RunForCycles(const uint64_t cycles) {
     const auto target_cycles = cpu_cycles + cycles - carry_over_cycles;
 
     while (bus->cycles < target_cycles) {
-        cpu.step();
+        cpu.step(event_bus);
     }
 
     carry_over_cycles = bus->cycles - target_cycles;
@@ -54,7 +54,7 @@ void Sen::StepOpcode() {
         cpu.start();
     }
 
-    cpu.step();
+    cpu.step(event_bus);
 }
 
 void Sen::RunForOneScanline() {
@@ -65,9 +65,9 @@ void Sen::RunForOneScanline() {
 
     const auto ppu_start_scanline = ppu->Scanline();
 
-    cpu.step();
+    cpu.step(event_bus);
     while (ppu->Scanline() == ppu_start_scanline) {
-        cpu.step();
+        cpu.step(event_bus);
     }
 }
 
@@ -81,7 +81,7 @@ void Sen::RunForOneFrame() {
     const auto target_cycles = cpu_cycles + CYCLES_PER_FRAME - carry_over_cycles;
 
     while (bus->cycles < target_cycles) {
-        cpu.step();
+        cpu.step(event_bus);
     }
 
     carry_over_cycles = bus->cycles - target_cycles;
@@ -171,14 +171,14 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
     }
 
     const RomHeader header{
-        prg_rom_size,
-        prg_rom_banks,
-        chr_rom_size,
-        chr_rom_banks,
-        prg_ram_size,
-        mirroring,
-        mapper_number,
-        battery_backed_ram
+        .prg_rom_size = prg_rom_size,
+        .prg_rom_banks = prg_rom_banks,
+        .chr_rom_size = chr_rom_size,
+        .chr_rom_banks = chr_rom_banks,
+        .prg_ram_size = prg_ram_size,
+        .hardware_mirroring = mirroring,
+        .mapper_number = mapper_number,
+        .battery_backed_ram = battery_backed_ram
     };
 
     // Check if a 512-byte trainer is present and is so, ignore it
