@@ -10,7 +10,6 @@
 #include "cartridge.hxx"
 #include "constants.hxx"
 #include "controller.hxx"
-#include "events.hxx"
 #include "ppu.hxx"
 // Stay down!
 #include "cpu.hxx"
@@ -24,7 +23,6 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args);
 
 class Sen {
   private:
-    EventBus event_bus{};
     Cpu<Bus> cpu;
     std::shared_ptr<Bus> bus;
     std::shared_ptr<Ppu> ppu;
@@ -38,11 +36,6 @@ class Sen {
 
   public:
     explicit Sen(const RomArgs& rom_args, const std::shared_ptr<AudioQueue>& sink);
-
-    template<typename E>
-    void register_handler(Handler* handler) {
-        event_bus.register_handler<E>(handler);
-    }
 
     [[nodiscard]] uint64_t FrameCount() const {
         return ppu->frame_count;

@@ -6,14 +6,11 @@
 #include <boost/circular_buffer.hpp>
 #include <boost/circular_buffer/base.hpp>
 #include <concepts>
-#include <cstddef>
-#include <cstdint>
 #include <cstdlib>
 #include <memory>
 #include <tuple>
 
 #include "constants.hxx"
-#include "events.hxx"
 
 #define OPCODE_CASE(opc) \
     case OpcodeClass::opc: \
@@ -178,7 +175,7 @@ struct Opcode {
     const char* label;
 };
 
-class ExecutedOpcode: public Event {
+class ExecutedOpcode {
   public:
     uint64_t start_cycle{};
     word pc{};
@@ -208,6 +205,8 @@ class Cpu {
 
     std::shared_ptr<BusType> bus{};
     InterruptRequestFlag nmi_requested, irq_requested;
+
+    boost::circular_buffer<ExecutedOpcode> executed_opcodes{30};
 
     // Addressing Modes
 
@@ -334,7 +333,7 @@ class Cpu {
         return bus->ticked_cpu_read(pc++);
     }
 
-    void step(EventBus& event_bus);
+    void step();
     void execute_opcode(Opcode opcode);
 
     // For setting random register state during opcode tests
@@ -621,7 +620,7 @@ void Cpu<BusType>::start() {
 };
 
 template<SystemBus BusType>
-void Cpu<BusType>::step(EventBus& event_bus) {
+void Cpu<BusType>::step() {
     check_interrupts();
 
     const auto initial_cycles = bus->cycles;
@@ -644,7 +643,7 @@ void Cpu<BusType>::step(EventBus& event_bus) {
 
     execute_opcode(opcode);
 
-    event_bus.dispatch<ExecutedOpcode>(executed_opcode);
+    executed_opcodes.push_back(executed_opcode);
 }
 
 template<SystemBus BusType>

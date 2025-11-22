@@ -25,7 +25,6 @@ add_library(sen
         include/ppu.hxx src/ppu.cpp
         include/controller.hxx
         src/apu.cpp include/apu.hxx
-        include/events.hxx
 )
 target_link_libraries(sen PRIVATE
         spdlog::spdlog
@@ -35,15 +34,15 @@ target_link_libraries(sen PRIVATE
         Boost::circular_buffer
 )
 target_include_directories(sen PUBLIC include lib)
-# if (UNIX)
-#     target_compile_options(sen
-#             PUBLIC
-#             -Wall
-#             -Wpedantic
-#             -Wextra
-#             -Werror
-#     )
-# endif ()
+ if (UNIX)
+     target_compile_options(sen
+             PUBLIC
+             -Wall
+             -Wpedantic
+             -Wextra
+             -Werror
+     )
+ endif ()
 
 add_executable(sen_sdl
         bin/main.cpp

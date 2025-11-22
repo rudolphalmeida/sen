@@ -42,7 +42,7 @@ void Sen::RunForCycles(const uint64_t cycles) {
     const auto target_cycles = cpu_cycles + cycles - carry_over_cycles;
 
     while (bus->cycles < target_cycles) {
-        cpu.step(event_bus);
+        cpu.step();
     }
 
     carry_over_cycles = bus->cycles - target_cycles;
@@ -54,7 +54,7 @@ void Sen::StepOpcode() {
         cpu.start();
     }
 
-    cpu.step(event_bus);
+    cpu.step();
 }
 
 void Sen::RunForOneScanline() {
@@ -65,9 +65,9 @@ void Sen::RunForOneScanline() {
 
     const auto ppu_start_scanline = ppu->Scanline();
 
-    cpu.step(event_bus);
+    cpu.step();
     while (ppu->Scanline() == ppu_start_scanline) {
-        cpu.step(event_bus);
+        cpu.step();
     }
 }
 
@@ -81,7 +81,7 @@ void Sen::RunForOneFrame() {
     const auto target_cycles = cpu_cycles + CYCLES_PER_FRAME - carry_over_cycles;
 
     while (bus->cycles < target_cycles) {
-        cpu.step(event_bus);
+        cpu.step();
     }
 
     carry_over_cycles = bus->cycles - target_cycles;
@@ -111,10 +111,10 @@ std::shared_ptr<Cartridge> ParseRomFile(const RomArgs& rom_args) {
 
     const auto flag_6 = *rom_iter++;
     Mirroring mirroring{};
-    if (flag_6 & 0b1000U) {
+    if ((flag_6 & 0b1000U) != 0U) {
         spdlog::debug("TODO: Cartridge uses alternative nametable layout");
         mirroring = Mirroring::FourScreenVram;
-    } else if (flag_6 & 0b1U) {
+    } else if ((flag_6 & 0b1U) != 0U) {
         mirroring = Mirroring::Vertical;
     } else {
         mirroring = Mirroring::Horizontal;
