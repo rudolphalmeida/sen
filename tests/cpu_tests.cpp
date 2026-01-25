@@ -55,8 +55,7 @@ static void test_opcode(const nlohmann::json& tests_data) {
             bus->cpu_write(static_cast<word>(ram_state[0]), static_cast<byte>(ram_state[1]));
         }
 
-        EventBus event_bus{};
-        cpu.step(event_bus);
+        cpu.step();
 
         auto final_state = test_case["final"];
         REQUIRE(cpu_state.pc == final_state["pc"]);
