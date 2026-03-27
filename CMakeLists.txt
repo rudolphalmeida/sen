@@ -7,12 +7,50 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(imgui CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(libconfig CONFIG REQUIRED)
-find_package(SDL3 CONFIG REQUIRED)
 find_package(boost_circular_buffer REQUIRED CONFIG)
+
+include(FetchContent)
+
+FetchContent_Declare(
+    SDL3
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+    GIT_TAG        release-3.4.2
+)
+
+FetchContent_MakeAvailable(SDL3)
+
+FetchContent_Declare(
+  imgui
+  GIT_REPOSITORY https://github.com/ocornut/imgui.git
+  GIT_TAG        docking
+  )
+
+FetchContent_MakeAvailable(imgui)
+
+add_library(imgui)
+
+target_include_directories(imgui
+    PUBLIC
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
+)
+
+target_sources(
+    imgui
+    PUBLIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+)
+
+target_link_libraries(imgui PUBLIC SDL3::SDL3)
 
 add_library(sen
         include/constants.hxx
@@ -68,7 +106,7 @@ target_link_libraries(sen_sdl PRIVATE
         spdlog::spdlog_header_only
         nlohmann_json::nlohmann_json
         OpenGL::GL
-        imgui::imgui
+        imgui
         SDL3::SDL3
         Boost::circular_buffer
 

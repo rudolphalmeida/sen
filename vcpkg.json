@@ -4,28 +4,8 @@
   "dependencies": [
     "catch2",
     "fmt",
-    {
-      "name": "imgui",
-      "features": [
-        "docking-experimental",
-        "opengl3-binding",
-        "sdl3-binding"
-      ]
-    },
     "libconfig",
     "nlohmann-json",
-    {
-      "name": "sdl3",
-      "features": [
-        "alsa",
-        "wayland"
-      ],
-      "platform": "linux"
-    },
-    {
-      "name": "sdl3",
-      "platform": "windows"
-    },
     "spdlog",
     "boost-circular-buffer"
   ]
