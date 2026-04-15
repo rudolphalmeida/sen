@@ -346,6 +346,7 @@ inline word non_page_crossing_add(const word value, const word increment) {
 
 static constexpr std::array<Opcode, 256> OPCODES{
     {
+        // NOLINTBEGIN(modernize-use-designated-initializers)
         {OpcodeClass::BRK, 0x00, AddressingMode::Implied, 1, 7, "BRK"},
         {OpcodeClass::ORA, 0x01, AddressingMode::IndirectX, 2, 6, "ORA"},
         {OpcodeClass::JAM, 0x02, AddressingMode::Implied, 1, 1, "JAM"},
@@ -602,6 +603,7 @@ static constexpr std::array<Opcode, 256> OPCODES{
         {OpcodeClass::SBC, 0xFD, AddressingMode::AbsoluteXIndexed, 3, 4, "SBC"},
         {OpcodeClass::INC, 0xFE, AddressingMode::AbsoluteXIndexed, 3, 7, "INC"},
         {OpcodeClass::JAM, 0xFF, AddressingMode::Implied, 1, 1, "JAM"},
+        // NOLINTEND(modernize-use-designated-initializers)
     },
 };
 

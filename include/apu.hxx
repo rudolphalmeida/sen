@@ -409,6 +409,8 @@ class ApuNoise {
 
 class ApuDmc {
   public:
+    // DMC being enabled only implies the automatic delta playback. The output level
+    // is always sent to the mixer
     bool enabled{false};
 
     explicit ApuDmc(InterruptRequestFlag irq_flag) : irq_flag{std::move(irq_flag)} {}
