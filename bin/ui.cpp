@@ -131,8 +131,12 @@ void Ui::init_imgui() const {
     spdlog::info("Initialized ImGui context");
 
     // Icon Fonts
-    io.Fonts->AddFontDefault();
-    constexpr float baseFontSize = 24.0f;
+    ImFontConfig default_font_config;
+    default_font_config.MergeMode = false;
+    default_font_config.SizePixels = 13.0F;
+    io.Fonts->AddFontDefault(&default_font_config);
+
+    constexpr float baseFontSize = 24.0F;
     constexpr float iconFontSize =
         baseFontSize * 2.0F / 4.0F; // FontAwesome fonts need to have their sizes reduced
     // by 2.0f/3.0f in order to align correctly
@@ -211,14 +215,14 @@ void Ui::handle_sdl_events() {
                 break;
 
             case SDL_EVENT_GAMEPAD_ADDED:
-                if (!controller) {
+                if (controller == nullptr) {
                     spdlog::info("Controller connected");
                     controller = SDL_OpenGamepad(event.cdevice.which);
                 }
                 break;
 
             case SDL_EVENT_GAMEPAD_REMOVED:
-                if (controller
+                if ((controller != nullptr)
                     && event.cdevice.which
                         == SDL_GetJoystickID(SDL_GetGamepadJoystick(controller))) {
                     spdlog::info("Controller disconnected");
@@ -847,7 +851,7 @@ void Ui::draw_sprite(
     const std::array<byte, 0x20>& palettes
 ) const {
     std::vector<Pixel> pixels(8 * 8);
-    const auto palette_id = sprite.oam_entry.PaletteIndex() + 4;
+    const auto palette_id = sprite.oam_entry.PaletteIndex() + 4U;
 
     for (int column = 0; column < 8; column++) {
         for (int row = 0; row < 8; row++) {
@@ -857,8 +861,9 @@ void Ui::draw_sprite(
             const byte pixel_lsb = ((low & (1 << (7 - column))) != 0) ? 0b01 : 0b00;
             const byte color_index = pixel_msb | pixel_lsb;
 
-            const size_t pixel_index = column + row * 8;
-            const auto nes_palette_color_index = ((palette_id & 0b111) << 2) | (color_index & 0b11);
+            const size_t pixel_index = column + (row * 8);
+            const auto nes_palette_color_index =
+                ((palette_id & 0b111U) << 2U) | (color_index & 0b11U);
             pixels[pixel_index] = PALETTE_COLORS[palettes[nes_palette_color_index]];
         }
     }

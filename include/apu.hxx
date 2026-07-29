@@ -419,7 +419,7 @@ class ApuDmc {
         return current_level;
     }
 
-    void WriteRegister(const byte offset, const byte data) {
+    void write_register(const byte offset, const byte data) {
         switch (offset) {
             case 0:
                 update_irq_loop_freq(data);
@@ -438,22 +438,21 @@ class ApuDmc {
         }
     }
 
-  std::optional<word> ClockTimer() {
-      timer -= 2;  // Timer is clocked every APU cycle but rates are CPU cycles
-      if (timer == 0 && loop) {
-          timer = LEVEL_CHANGE_RATE.at(rate_index);
-      }
-      return std::nullopt;
-  }
+    std::optional<word> clock_timer() {
+        timer -= 2; // Timer is clocked every APU cycle but rates are CPU cycles
+        if (timer == 0 && loop) {
+            timer = LEVEL_CHANGE_RATE.at(rate_index);
+        }
+        return std::nullopt;
+    }
 
   private:
     // Based on the NTSC table CPU cycles - Divide by 2 for APU cycles
-    constexpr static std::array<int, 0x10> LEVEL_CHANGE_RATE = {
-      428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72, 54 
-    };
+    constexpr static std::array<int, 0x10> LEVEL_CHANGE_RATE =
+        {428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54};
 
     constexpr static auto DMC_SAMPLE_BASE = 0xC000U;
-        
+
     InterruptRequestFlag irq_flag;
 
     word sample_start_address{}, sample_length{};
@@ -527,7 +526,7 @@ class Apu {
 
     void UpdateFrameCounter(byte data);
     void update_enabled_channels(byte data);
-    
+
     static float
     Mix(byte pulse1_sample,
         byte pulse2_sample,

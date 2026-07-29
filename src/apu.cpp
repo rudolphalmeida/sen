@@ -12,8 +12,6 @@ std::optional<word> Apu::Tick(const uint64_t cpu_cycles) {
     const uint64_t cpu_cycles_into_frame = cpu_cycles - frame_begin_cpu_cycle;
 
     if (cpu_cycles_into_frame == 7457) {
-        // TODO: Step 1
-        //       Clock envelopes and triangle linear counter
         pulse_1.ClockEnvelope();
         pulse_2.ClockEnvelope();
         triangle.ClockLinearCounter();
@@ -21,9 +19,6 @@ std::optional<word> Apu::Tick(const uint64_t cpu_cycles) {
     }
 
     if (cpu_cycles_into_frame == 14913) {
-        // TODO: Step 2
-        //       Clock envelopes and triangle linear counter
-        //       Clock length counters and sweep units
         pulse_1.ClockEnvelope();
         pulse_1.ClockLengthCounter();
         pulse_1.ClockSweep();
@@ -37,8 +32,6 @@ std::optional<word> Apu::Tick(const uint64_t cpu_cycles) {
     }
 
     if (cpu_cycles_into_frame == 22371) {
-        // TODO: Step 3
-        //       Clock envelopes and triangle linear counter
         pulse_1.ClockEnvelope();
         pulse_2.ClockEnvelope();
         triangle.ClockLinearCounter();
@@ -51,9 +44,6 @@ std::optional<word> Apu::Tick(const uint64_t cpu_cycles) {
     }
 
     if (cpu_cycles_into_frame == 29829) {
-        // TODO: Step 4
-        //       Clock envelopes and triangle linear counter if 4 step
-        //       Clock length counters and sweep units if 4 step
         pulse_1.ClockEnvelope();
         pulse_1.ClockLengthCounter();
         pulse_1.ClockSweep();
@@ -69,15 +59,11 @@ std::optional<word> Apu::Tick(const uint64_t cpu_cycles) {
     }
 
     if (step_mode == FrameCounterStepMode::FourStep && cpu_cycles_into_frame == 29830) {
-        // TODO: 4 step frame end
         frame_begin_cpu_cycle = cpu_cycles;
         *irq_requested = raise_irq;
     }
 
     if (step_mode == FrameCounterStepMode::FiveStep && cpu_cycles_into_frame == 37281) {
-        // TODO: Step 5
-        //       Clock envelopes and triangle linear counter
-        //       Clock length counters and sweep units
         pulse_1.ClockEnvelope();
         pulse_1.ClockLengthCounter();
         pulse_1.ClockSweep();
@@ -100,7 +86,7 @@ std::optional<word> Apu::Tick(const uint64_t cpu_cycles) {
         pulse_1.ClockTimer();
         pulse_2.ClockTimer();
         noise.ClockTimer();
-        dmc_sample_read_addr = dmc.ClockTimer();
+        dmc_sample_read_addr = dmc.clock_timer();
     };
 
     // Triangle timers are updated every CPU cycle
@@ -154,7 +140,7 @@ void Apu::CpuWrite(const word address, const byte data) {
     } else if (InRange<word>(0x400C, address, 0x400F)) {
         noise.WriteRegister(address - 0x400C, data);
     } else if (InRange<word>(0x4010, address, 0x4013)) {
-        dmc.WriteRegister(address - 0x4010, data);
+        dmc.write_register(address - 0x4010, data);
     } else if (address == 0x4015) {
         update_enabled_channels(data);
     } else if (address == 0x4017U) {
